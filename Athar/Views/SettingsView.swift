@@ -119,8 +119,8 @@ struct SettingsView: View {
                     LabeledContent("الإصدار", value: appVersion)
                     Link("سياسة الخصوصية", destination: URL(string: "https://ibrahimu.github.io/athar-app/privacy.html")!)
                     Link("الدعم والتواصل", destination: URL(string: "https://ibrahimu.github.io/athar-app/support.html")!)
-                    ShareLink(item: URL(string: "https://apps.apple.com/app/id0000000000")!,
-                              message: Text("تطبيق أثر — أذكار ومسبحة، مجاني وبدون إعلانات.")) {
+                    ShareLink(item: Self.appStoreURL,
+                              message: Text("تطبيق أثر — أذكار وأوقات الصلاة ومسبحة. مجاني بلا إعلانات، ويعمل بدون إنترنت.")) {
                         Label("انشر التطبيق", systemImage: "square.and.arrow.up")
                     }
                 }
@@ -169,6 +169,9 @@ struct SettingsView: View {
         WidgetCenter.shared.reloadAllTimelines()
         Task { await Reminders.rescheduleAthan(store: store) }
     }
+
+    /// App Store page for أثر (Apple ID 6806411693).
+    static let appStoreURL = URL(string: "https://apps.apple.com/app/id6806411693")!
 
     private var appVersion: String {
         let v = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
