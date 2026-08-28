@@ -79,6 +79,16 @@ struct SectionHeader: View {
     }
 }
 
+// MARK: - Readable width
+
+extension View {
+    /// Caps content at a comfortable measure so iPad does not stretch cards edge to edge.
+    func readableWidth(_ max: CGFloat = 680) -> some View {
+        frame(maxWidth: max)
+            .frame(maxWidth: .infinity)
+    }
+}
+
 // MARK: - Haptics
 
 enum Haptics {

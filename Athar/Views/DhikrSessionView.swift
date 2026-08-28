@@ -87,6 +87,7 @@ struct DhikrSessionView: View {
         }
         .padding(.horizontal, 20)
         .padding(.top, 8)
+        .readableWidth(720)
     }
 
     private func dhikrPage(_ dhikr: Dhikr) -> some View {
@@ -129,7 +130,7 @@ struct DhikrSessionView: View {
             }
             .padding(.horizontal, 18)
             .padding(.vertical, 16)
-            .frame(maxWidth: .infinity)
+            .readableWidth(720)
             .containerRelativeFrame(.vertical, alignment: .center)
         }
         .scrollBounceBehavior(.basedOnSize)

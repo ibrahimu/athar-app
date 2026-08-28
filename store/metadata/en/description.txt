@@ -1,0 +1,60 @@
+Athar is a calm daily companion for Islamic remembrance (adhkar) and prayer times.
+
+No ads. No subscriptions. No accounts. No internet required.
+
+
+ADHKAR
+
+108 adhkar across 10 collections: morning, evening, before sleep, on waking, after prayer, for distress and worry, seeking forgiveness, sending peace upon the Prophet ﷺ, the lasting good deeds, and adhkar for the day and night.
+
+Every text is fully vowelled (tashkeel) so it reads correctly, and carries its source (Bukhari, Muslim, Abu Dawud, Tirmidhi, Nasa'i, Ibn Majah, Ahmad) along with its narrated virtue.
+
+Tap the counter to count, swipe for the next dhikr. A progress bar shows where you are, and a quiet celebration when you finish.
+
+
+PRAYER TIMES
+
+The five prayers plus sunrise, computed astronomically on your device — no internet, no servers.
+
+- Live countdown to the next prayer
+- An alert when each time enters
+- Six calculation methods: Umm al-Qura, Muslim World League, Egyptian, Karachi, ISNA, Dubai
+- Both Asr methods: standard and Hanafi
+- Use your current location, or pick from 35 cities
+
+
+TASBIH
+
+A counter with 33 / 100 / 500 / 1000 targets, eight ready phrases, gentle haptics on each count, and completed-round tracking.
+
+
+WIDGETS
+
+For the Home Screen and the Lock Screen:
+- A dhikr that refreshes through the day
+- The next prayer and time remaining
+- Your daily streak and total count
+
+
+REMINDERS
+
+Morning and evening adhkar reminders at times you choose, plus prayer-time alerts. All local notifications from your own device — no servers, no push.
+
+
+YOUR PRIVACY
+
+We collect nothing. Nothing at all.
+
+No accounts, no sign-in, no analytics, no tracking, no ads, no third-party SDKs. The app makes no network requests of its own. Everything — your counts, your stats, your location — stays on your device and is erased when you delete the app.
+
+Location access is entirely optional and used on device only, to compute prayer times where you are.
+
+
+WHY "ATHAR"?
+
+Athar means a trace, a lasting mark. Remembrance does not stop with you — like a drop falling into still water, its circles keep widening.
+
+The app is free for everyone and will stay that way.
+
+
+Note: prayer times are computed astronomically and may differ by a few minutes from your local mosque's calendar. When they differ, follow your mosque.

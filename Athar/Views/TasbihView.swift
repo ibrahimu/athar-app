@@ -37,6 +37,7 @@ struct TasbihView: View {
                 }
                 .padding(.horizontal, 20)
                 .padding(.bottom, 12)
+                .readableWidth(560)
             }
             .navigationTitle("المسبحة")
             .navigationBarTitleDisplayMode(.inline)

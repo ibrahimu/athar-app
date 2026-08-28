@@ -23,3 +23,6 @@ Athar.xcodeproj/
 fastlane/report.xml
 fastlane/Preview.html
 export/
+
+# Local build output
+export/

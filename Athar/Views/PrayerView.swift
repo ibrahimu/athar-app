@@ -37,6 +37,7 @@ struct PrayerView: View {
                     }
                     .padding(.horizontal, 18)
                     .padding(.bottom, 30)
+                    .readableWidth()
                 }
             }
             .navigationTitle("الصلاة")

@@ -40,6 +40,7 @@ struct AdhkarIndexView: View {
                     }
                     .padding(.horizontal, 18)
                     .padding(.bottom, 32)
+                    .readableWidth()
                 }
             }
             .navigationTitle("الأذكار")
