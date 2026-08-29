@@ -78,7 +78,7 @@ struct PrayerView: View {
                             .foregroundStyle(Theme.ink)
                     }
 
-                    Text(Self.clock.string(from: upcoming.date))
+                    Text(Self.time(upcoming.date, in: store.placeTimeZone))
                         .font(.system(size: 20, weight: .semibold, design: .rounded))
                         .foregroundStyle(Theme.accent)
 
@@ -126,7 +126,7 @@ struct PrayerView: View {
 
                         Spacer()
 
-                        Text(Self.clock.string(from: entry.date))
+                        Text(Self.time(entry.date, in: store.placeTimeZone))
                             .font(.system(size: 17, weight: isNext ? .bold : .regular, design: .rounded))
                             .foregroundStyle(isNext ? Theme.accent : Theme.inkSoft)
                             .monospacedDigit()
@@ -176,6 +176,16 @@ struct PrayerView: View {
         f.dateFormat = "h:mm a"
         return f
     }()
+
+    /// Renders an instant in the chosen place's own zone, so a city picked from
+    /// another country reads the way a local there would read it.
+    static func time(_ date: Date, in zone: TimeZone) -> String {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "ar_SA@numbers=latn")
+        f.dateFormat = "h:mm a"
+        f.timeZone = zone
+        return f.string(from: date)
+    }
 }
 
 // MARK: - Location picker

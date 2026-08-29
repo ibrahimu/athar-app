@@ -243,47 +243,52 @@ struct City: Identifiable, Hashable {
     let country: String
     let latitude: Double
     let longitude: Double
+    /// IANA identifier. Prayer times are meaningless without it: the maths needs the
+    /// city's own UTC offset, not whatever zone the device happens to be in.
+    let tz: String
 
     var coordinate: CLLocationCoordinate2D {
         CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
     }
 
+    var timeZone: TimeZone { TimeZone(identifier: tz) ?? .current }
+
     static let all: [City] = [
-        City(id: "makkah",   name: "مكة المكرمة",  country: "السعودية", latitude: 21.4225, longitude: 39.8262),
-        City(id: "madinah",  name: "المدينة المنورة", country: "السعودية", latitude: 24.4672, longitude: 39.6111),
-        City(id: "riyadh",   name: "الرياض",       country: "السعودية", latitude: 24.7136, longitude: 46.6753),
-        City(id: "jeddah",   name: "جدة",          country: "السعودية", latitude: 21.4858, longitude: 39.1925),
-        City(id: "dammam",   name: "الدمام",       country: "السعودية", latitude: 26.3927, longitude: 49.9777),
-        City(id: "abha",     name: "أبها",         country: "السعودية", latitude: 18.2465, longitude: 42.5117),
-        City(id: "tabuk",    name: "تبوك",         country: "السعودية", latitude: 28.3835, longitude: 36.5662),
-        City(id: "buraydah", name: "بريدة",        country: "السعودية", latitude: 26.3260, longitude: 43.9750),
-        City(id: "hail",     name: "حائل",         country: "السعودية", latitude: 27.5114, longitude: 41.7208),
-        City(id: "jazan",    name: "جازان",        country: "السعودية", latitude: 16.8892, longitude: 42.5511),
-        City(id: "kuwait",   name: "الكويت",       country: "الكويت",   latitude: 29.3759, longitude: 47.9774),
-        City(id: "doha",     name: "الدوحة",       country: "قطر",      latitude: 25.2854, longitude: 51.5310),
-        City(id: "manama",   name: "المنامة",      country: "البحرين",  latitude: 26.2285, longitude: 50.5860),
-        City(id: "muscat",   name: "مسقط",         country: "عُمان",    latitude: 23.5859, longitude: 58.4059),
-        City(id: "dubai",    name: "دبي",          country: "الإمارات", latitude: 25.2048, longitude: 55.2708),
-        City(id: "abudhabi", name: "أبوظبي",       country: "الإمارات", latitude: 24.4539, longitude: 54.3773),
-        City(id: "amman",    name: "عمّان",        country: "الأردن",   latitude: 31.9454, longitude: 35.9284),
-        City(id: "quds",     name: "القدس",        country: "فلسطين",   latitude: 31.7683, longitude: 35.2137),
-        City(id: "cairo",    name: "القاهرة",      country: "مصر",      latitude: 30.0444, longitude: 31.2357),
-        City(id: "khartoum", name: "الخرطوم",      country: "السودان",  latitude: 15.5007, longitude: 32.5599),
-        City(id: "baghdad",  name: "بغداد",        country: "العراق",   latitude: 33.3152, longitude: 44.3661),
-        City(id: "beirut",   name: "بيروت",        country: "لبنان",    latitude: 33.8938, longitude: 35.5018),
-        City(id: "damascus", name: "دمشق",         country: "سوريا",    latitude: 33.5138, longitude: 36.2765),
-        City(id: "sanaa",    name: "صنعاء",        country: "اليمن",    latitude: 15.3694, longitude: 44.1910),
-        City(id: "casa",     name: "الدار البيضاء", country: "المغرب",  latitude: 33.5731, longitude: -7.5898),
-        City(id: "algiers",  name: "الجزائر",      country: "الجزائر",  latitude: 36.7538, longitude: 3.0588),
-        City(id: "tunis",    name: "تونس",         country: "تونس",     latitude: 36.8065, longitude: 10.1815),
-        City(id: "istanbul", name: "إسطنبول",      country: "تركيا",    latitude: 41.0082, longitude: 28.9784),
-        City(id: "london",   name: "لندن",         country: "بريطانيا", latitude: 51.5074, longitude: -0.1278),
-        City(id: "paris",    name: "باريس",        country: "فرنسا",    latitude: 48.8566, longitude: 2.3522),
-        City(id: "berlin",   name: "برلين",        country: "ألمانيا",  latitude: 52.5200, longitude: 13.4050),
-        City(id: "newyork",  name: "نيويورك",      country: "أمريكا",   latitude: 40.7128, longitude: -74.0060),
-        City(id: "toronto",  name: "تورنتو",       country: "كندا",     latitude: 43.6532, longitude: -79.3832),
-        City(id: "kualalumpur", name: "كوالالمبور", country: "ماليزيا", latitude: 3.1390, longitude: 101.6869),
-        City(id: "jakarta",  name: "جاكرتا",       country: "إندونيسيا", latitude: -6.2088, longitude: 106.8456)
+        City(id: "makkah",   name: "مكة المكرمة",  country: "السعودية", latitude: 21.4225, longitude: 39.8262, tz: "Asia/Riyadh"),
+        City(id: "madinah",  name: "المدينة المنورة", country: "السعودية", latitude: 24.4672, longitude: 39.6111, tz: "Asia/Riyadh"),
+        City(id: "riyadh",   name: "الرياض",       country: "السعودية", latitude: 24.7136, longitude: 46.6753, tz: "Asia/Riyadh"),
+        City(id: "jeddah",   name: "جدة",          country: "السعودية", latitude: 21.4858, longitude: 39.1925, tz: "Asia/Riyadh"),
+        City(id: "dammam",   name: "الدمام",       country: "السعودية", latitude: 26.3927, longitude: 49.9777, tz: "Asia/Riyadh"),
+        City(id: "abha",     name: "أبها",         country: "السعودية", latitude: 18.2465, longitude: 42.5117, tz: "Asia/Riyadh"),
+        City(id: "tabuk",    name: "تبوك",         country: "السعودية", latitude: 28.3835, longitude: 36.5662, tz: "Asia/Riyadh"),
+        City(id: "buraydah", name: "بريدة",        country: "السعودية", latitude: 26.3260, longitude: 43.9750, tz: "Asia/Riyadh"),
+        City(id: "hail",     name: "حائل",         country: "السعودية", latitude: 27.5114, longitude: 41.7208, tz: "Asia/Riyadh"),
+        City(id: "jazan",    name: "جازان",        country: "السعودية", latitude: 16.8892, longitude: 42.5511, tz: "Asia/Riyadh"),
+        City(id: "kuwait",   name: "الكويت",       country: "الكويت",   latitude: 29.3759, longitude: 47.9774, tz: "Asia/Kuwait"),
+        City(id: "doha",     name: "الدوحة",       country: "قطر",      latitude: 25.2854, longitude: 51.5310, tz: "Asia/Qatar"),
+        City(id: "manama",   name: "المنامة",      country: "البحرين",  latitude: 26.2285, longitude: 50.5860, tz: "Asia/Bahrain"),
+        City(id: "muscat",   name: "مسقط",         country: "عُمان",    latitude: 23.5859, longitude: 58.4059, tz: "Asia/Muscat"),
+        City(id: "dubai",    name: "دبي",          country: "الإمارات", latitude: 25.2048, longitude: 55.2708, tz: "Asia/Dubai"),
+        City(id: "abudhabi", name: "أبوظبي",       country: "الإمارات", latitude: 24.4539, longitude: 54.3773, tz: "Asia/Dubai"),
+        City(id: "amman",    name: "عمّان",        country: "الأردن",   latitude: 31.9454, longitude: 35.9284, tz: "Asia/Amman"),
+        City(id: "quds",     name: "القدس",        country: "فلسطين",   latitude: 31.7683, longitude: 35.2137, tz: "Asia/Hebron"),
+        City(id: "cairo",    name: "القاهرة",      country: "مصر",      latitude: 30.0444, longitude: 31.2357, tz: "Africa/Cairo"),
+        City(id: "khartoum", name: "الخرطوم",      country: "السودان",  latitude: 15.5007, longitude: 32.5599, tz: "Africa/Khartoum"),
+        City(id: "baghdad",  name: "بغداد",        country: "العراق",   latitude: 33.3152, longitude: 44.3661, tz: "Asia/Baghdad"),
+        City(id: "beirut",   name: "بيروت",        country: "لبنان",    latitude: 33.8938, longitude: 35.5018, tz: "Asia/Beirut"),
+        City(id: "damascus", name: "دمشق",         country: "سوريا",    latitude: 33.5138, longitude: 36.2765, tz: "Asia/Damascus"),
+        City(id: "sanaa",    name: "صنعاء",        country: "اليمن",    latitude: 15.3694, longitude: 44.1910, tz: "Asia/Aden"),
+        City(id: "casa",     name: "الدار البيضاء", country: "المغرب",  latitude: 33.5731, longitude: -7.5898, tz: "Africa/Casablanca"),
+        City(id: "algiers",  name: "الجزائر",      country: "الجزائر",  latitude: 36.7538, longitude: 3.0588, tz: "Africa/Algiers"),
+        City(id: "tunis",    name: "تونس",         country: "تونس",     latitude: 36.8065, longitude: 10.1815, tz: "Africa/Tunis"),
+        City(id: "istanbul", name: "إسطنبول",      country: "تركيا",    latitude: 41.0082, longitude: 28.9784, tz: "Europe/Istanbul"),
+        City(id: "london",   name: "لندن",         country: "بريطانيا", latitude: 51.5074, longitude: -0.1278, tz: "Europe/London"),
+        City(id: "paris",    name: "باريس",        country: "فرنسا",    latitude: 48.8566, longitude: 2.3522, tz: "Europe/Paris"),
+        City(id: "berlin",   name: "برلين",        country: "ألمانيا",  latitude: 52.5200, longitude: 13.4050, tz: "Europe/Berlin"),
+        City(id: "newyork",  name: "نيويورك",      country: "أمريكا",   latitude: 40.7128, longitude: -74.0060, tz: "America/New_York"),
+        City(id: "toronto",  name: "تورنتو",       country: "كندا",     latitude: 43.6532, longitude: -79.3832, tz: "America/Toronto"),
+        City(id: "kualalumpur", name: "كوالالمبور", country: "ماليزيا", latitude: 3.1390, longitude: 101.6869, tz: "Asia/Kuala_Lumpur"),
+        City(id: "jakarta",  name: "جاكرتا",       country: "إندونيسيا", latitude: -6.2088, longitude: 106.8456, tz: "Asia/Jakarta")
     ]
 
     static func named(_ id: String) -> City? { all.first { $0.id == id } }

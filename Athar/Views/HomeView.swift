@@ -118,7 +118,7 @@ struct HomeView: View {
                         Spacer()
 
                         VStack(alignment: .trailing, spacing: 2) {
-                            Text(PrayerView.clock.string(from: upcoming.date))
+                            Text(PrayerView.time(upcoming.date, in: store.placeTimeZone))
                                 .font(.system(size: 17, weight: .semibold, design: .rounded))
                                 .foregroundStyle(Theme.accent)
                             Text(countdown(to: upcoming.date))

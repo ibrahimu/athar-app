@@ -6,6 +6,7 @@ import SwiftUI
 struct PrayerEntry: TimelineEntry {
     let date: Date
     let place: String
+    let zone: TimeZone
     let upcoming: (prayer: Prayer, date: Date)?
     let today: [(prayer: Prayer, date: Date)]
 }
@@ -22,6 +23,7 @@ struct PrayerProvider: TimelineProvider {
         }
         return PrayerEntry(date: date,
                            place: store.placeName,
+                           zone: store.placeTimeZone,
                            upcoming: upcoming,
                            today: today?.ordered ?? [])
     }
@@ -62,7 +64,13 @@ struct PrayerWidgetView: View {
         return f
     }()
 
-    private func time(_ date: Date) -> String { Self.clock.string(from: date) }
+    private func time(_ date: Date) -> String {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "ar_SA@numbers=latn")
+        f.dateFormat = "h:mm a"
+        f.timeZone = entry.zone
+        return f.string(from: date)
+    }
 
     var body: some View {
         switch family {

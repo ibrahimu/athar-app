@@ -32,6 +32,7 @@ final class AtharStore: ObservableObject {
         static let calcMethod        = "athar.calcMethod"
         static let asrMethod         = "athar.asrMethod"
         static let athanAlerts       = "athar.athanAlerts"
+        static let placeTimeZone     = "athar.placeTimeZone"
     }
 
     init(defaults: UserDefaults? = nil) {
@@ -52,6 +53,7 @@ final class AtharStore: ObservableObject {
             Key.longitude: 39.8262,
             Key.placeName: "مكة المكرمة",
             Key.cityId: "makkah",
+            Key.placeTimeZone: "Asia/Riyadh",
             Key.usesDeviceLocation: false,
             Key.calcMethod: CalculationMethod.ummAlQura.rawValue,
             Key.asrMethod: AsrMethod.standard.rawValue,
@@ -176,6 +178,16 @@ final class AtharStore: ObservableObject {
         set { defaults.set(newValue, forKey: Key.cityId); objectWillChange.send() }
     }
 
+    /// The zone the chosen place actually sits in — not the device's. Prayer times computed
+    /// with the device zone but a remote city's longitude come out hours wrong.
+    var placeTimeZone: TimeZone {
+        guard !usesDeviceLocation,
+              let id = defaults.string(forKey: Key.placeTimeZone),
+              let zone = TimeZone(identifier: id)
+        else { return .current }
+        return zone
+    }
+
     var usesDeviceLocation: Bool {
         get { defaults.bool(forKey: Key.usesDeviceLocation) }
         set { defaults.set(newValue, forKey: Key.usesDeviceLocation); objectWillChange.send() }
@@ -201,6 +213,7 @@ final class AtharStore: ObservableObject {
         defaults.set(city.longitude, forKey: Key.longitude)
         defaults.set(city.name, forKey: Key.placeName)
         defaults.set(city.id, forKey: Key.cityId)
+        defaults.set(city.tz, forKey: Key.placeTimeZone)
         defaults.set(false, forKey: Key.usesDeviceLocation)
         objectWillChange.send()
     }
@@ -210,6 +223,7 @@ final class AtharStore: ObservableObject {
         defaults.set(coordinate.longitude, forKey: Key.longitude)
         if let name, !name.isEmpty { defaults.set(name, forKey: Key.placeName) }
         defaults.removeObject(forKey: Key.cityId)
+        defaults.removeObject(forKey: Key.placeTimeZone)
         defaults.set(true, forKey: Key.usesDeviceLocation)
         objectWillChange.send()
     }
@@ -218,6 +232,7 @@ final class AtharStore: ObservableObject {
     func prayerTimes(for date: Date = Date()) -> PrayerTimes? {
         PrayerTimes(date: date,
                     coordinate: coordinate,
+                    timeZone: placeTimeZone,
                     method: calculationMethod,
                     asr: asrMethod)
     }
