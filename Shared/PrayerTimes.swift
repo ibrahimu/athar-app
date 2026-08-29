@@ -95,6 +95,9 @@ enum AsrMethod: String, CaseIterable, Identifiable {
 struct PrayerTimes {
     let date: Date
     let times: [Prayer: Date]
+    /// True when Fajr or Isha had to be estimated because the sun never reaches the
+    /// required depression angle at this latitude on this date.
+    let usedHighLatitudeRule: Bool
 
     init?(date: Date,
           coordinate: CLLocationCoordinate2D,
@@ -143,24 +146,45 @@ struct PrayerTimes {
         }
 
         let riseSetAngle = 0.833
-        guard let fajrT    = sunAngleTime(method.fajrAngle, guess: 5, afterNoon: false),
-              let sunriseT = sunAngleTime(riseSetAngle, guess: 6, afterNoon: false),
+        guard let sunriseT = sunAngleTime(riseSetAngle, guess: 6, afterNoon: false),
               let maghribT = sunAngleTime(riseSetAngle, guess: 18, afterNoon: true),
               let asrT     = asrTime(factor: asr.shadowFactor, guess: 13)
-        else { return nil }
+        else { return nil }  // true polar day or night — no sunrise or sunset at all
+
+        // Above roughly 48° the sun never reaches the Fajr/Isha depression angle around
+        // midsummer, so the geometric solution does not exist — London loses 64 nights a
+        // year, Berlin 74. Fall back to the One-Seventh of the Night rule
+        // (تقدير بسُبع الليل): split night into seven parts, give one to each end.
+        let nightLength = (24 - maghribT) + sunriseT
+        let seventh = nightLength / 7
+
+        var estimated = false
+        let fajrT: Double
+        if let t = sunAngleTime(method.fajrAngle, guess: 5, afterNoon: false) {
+            fajrT = t
+        } else {
+            fajrT = sunriseT - seventh
+            estimated = true
+        }
 
         let dhuhrT = Self.midDay(jDate + 0.5) + 1.0 / 60  // +1 min so Dhuhr clears true noon
-        let ishaT: Double = {
-            if let angle = method.ishaAngle,
-               let t = sunAngleTime(angle, guess: 19, afterNoon: true) { return t }
-            return maghribT + method.ishaInterval / 60
-        }()
+        let ishaT: Double
+        if method.ishaAngle == nil {
+            ishaT = maghribT + method.ishaInterval / 60
+        } else if let angle = method.ishaAngle,
+                  let t = sunAngleTime(angle, guess: 19, afterNoon: true) {
+            ishaT = t
+        } else {
+            ishaT = maghribT + seventh
+            estimated = true
+        }
 
         func stamp(_ hours: Double) -> Date {
             let local = hours + tzOffset - lng / 15
             return midnight.addingTimeInterval(local * 3600)
         }
 
+        self.usedHighLatitudeRule = estimated
         self.date = midnight
         self.times = [
             .fajr:    stamp(fajrT),

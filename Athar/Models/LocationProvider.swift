@@ -1,8 +1,9 @@
 import Foundation
 import CoreLocation
 
-/// One-shot location lookup. Nothing is transmitted — the coordinate is written
-/// to the shared store so prayer times can be computed on device.
+/// One-shot location lookup. The coordinate is written to the shared store so prayer
+/// times can be computed on device. The only thing that leaves the device is the
+/// coordinate handed to Apple's CLGeocoder for a display-only city name.
 @MainActor
 final class LocationProvider: NSObject, ObservableObject {
     @Published var status: CLAuthorizationStatus

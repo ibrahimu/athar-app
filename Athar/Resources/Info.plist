@@ -23,24 +23,19 @@
 	<key>CFBundleLocalizations</key>
 	<array>
 		<string>ar</string>
-		<string>en</string>
 	</array>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>UILaunchScreen</key>
 	<dict>
 		<key>UIColorName</key>
-		<string></string>
+		<string>LaunchBackground</string>
 	</dict>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
 		<false/>
 	</dict>
-	<key>UIRequiredDeviceCapabilities</key>
-	<array>
-		<string>armv7</string>
-	</array>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>

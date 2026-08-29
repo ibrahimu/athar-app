@@ -32,6 +32,7 @@ struct PrayerView: View {
                     VStack(spacing: 20) {
                         countdownCard
                         timesList
+                        highLatitudeNote
                         afterPrayerLink
                         methodNote
                     }
@@ -155,6 +156,24 @@ struct PrayerView: View {
                 CategoryRow(category: category, completed: store.completedToday.contains(category.id))
             }
             .buttonStyle(.plain)
+        }
+    }
+
+    @ViewBuilder
+    private var highLatitudeNote: some View {
+        if times?.usedHighLatitudeRule == true {
+            HStack(alignment: .top, spacing: 8) {
+                Image(systemName: "info.circle.fill")
+                    .font(.system(size: 13))
+                    .foregroundStyle(Theme.gold)
+                    .padding(.top, 2)
+                Text("في هذا الوقت من السنة لا تنزل الشمس إلى الزاوية المطلوبة في \(store.placeName)، فقُدِّر الفجر والعشاء بقاعدة سُبع الليل.")
+                    .font(Theme.display(12))
+                    .foregroundStyle(Theme.inkSoft)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding(14)
+            .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Theme.surfaceAlt))
         }
     }
 

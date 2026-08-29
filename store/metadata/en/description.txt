@@ -45,9 +45,11 @@ YOUR PRIVACY
 
 We collect nothing. Nothing at all.
 
-No accounts, no sign-in, no analytics, no tracking, no ads, no third-party SDKs. The app makes no network requests of its own. Everything — your counts, your stats, your location — stays on your device and is erased when you delete the app.
+No accounts, no sign-in, no analytics, no tracking, no ads, no third-party SDKs, and no servers of our own. Everything — your counts, your stats, your location — stays on your device and is erased when you delete the app.
 
-Location access is entirely optional and used on device only, to compute prayer times where you are.
+Location access is entirely optional, and the prayer-time calculation runs on your device. The only network request the app can make is an optional lookup to Apple's geocoding service to turn your coordinates into a city name, and only if you enable location.
+
+The interface is in Arabic.
 
 
 WHY "ATHAR"?

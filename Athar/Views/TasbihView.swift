@@ -101,7 +101,6 @@ struct TasbihView: View {
             .contentShape(Circle())
         }
         .buttonStyle(.plain)
-        .sensoryFeedback(.increase, trigger: store.tasbihCount)
     }
 
     private var targetPicker: some View {

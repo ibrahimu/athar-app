@@ -218,10 +218,15 @@ final class AtharStore: ObservableObject {
         objectWillChange.send()
     }
 
+    static let deviceLocationFallbackName = "موقعك الحالي"
+
     func setDeviceLocation(_ coordinate: CLLocationCoordinate2D, name: String?) {
         defaults.set(coordinate.latitude, forKey: Key.latitude)
         defaults.set(coordinate.longitude, forKey: Key.longitude)
-        if let name, !name.isEmpty { defaults.set(name, forKey: Key.placeName) }
+        // Always overwrite: leaving the previous city's name next to new coordinates
+        // would tell the user they are somewhere they are not.
+        let resolved = (name?.isEmpty == false) ? name! : Self.deviceLocationFallbackName
+        defaults.set(resolved, forKey: Key.placeName)
         defaults.removeObject(forKey: Key.cityId)
         defaults.removeObject(forKey: Key.placeTimeZone)
         defaults.set(true, forKey: Key.usesDeviceLocation)

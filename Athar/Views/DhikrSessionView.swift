@@ -162,7 +162,6 @@ struct DhikrSessionView: View {
                 .contentShape(Circle())
             }
             .buttonStyle(.plain)
-            .sensoryFeedback(.increase, trigger: left)
 
             Text(left == 0 ? "اسحب للذكر التالي" : "اضغط للعدّ")
                 .font(Theme.display(12, weight: .medium))
