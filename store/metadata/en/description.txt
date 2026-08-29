@@ -23,6 +23,11 @@ The five prayers plus sunrise, computed astronomically on your device — no int
 - Use your current location, or pick from 35 cities
 
 
+QIBLA
+
+A compass pointing to the Kaaba from where you are, with the bearing in degrees and the distance to Makkah. A gentle cue when you are lined up. Computed as a great-circle bearing on your device.
+
+
 TASBIH
 
 A counter with 33 / 100 / 500 / 1000 targets, eight ready phrases, gentle haptics on each count, and completed-round tracking.

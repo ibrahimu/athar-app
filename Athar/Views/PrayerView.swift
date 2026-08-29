@@ -33,6 +33,7 @@ struct PrayerView: View {
                         countdownCard
                         timesList
                         highLatitudeNote
+                        qiblaLink
                         afterPrayerLink
                         methodNote
                     }
@@ -148,6 +149,42 @@ struct PrayerView: View {
     }
 
     // MARK: Extras
+
+    private var qiblaLink: some View {
+        NavigationLink { QiblaView() } label: {
+            AtharCard(padding: 16) {
+                HStack(spacing: 14) {
+                    Image(systemName: "location.north.line.fill")
+                        .font(.system(size: 22))
+                        .foregroundStyle(Theme.gold)
+                        .frame(width: 46, height: 46)
+                        .background(Circle().fill(Theme.gold.opacity(0.13)))
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(spacing: 6) {
+                            Text("اتجاه القبلة")
+                                .font(Theme.display(17, weight: .semibold))
+                                .foregroundStyle(Theme.ink)
+                            Spacer()
+                        }
+                        Text(qiblaSubtitle)
+                            .font(Theme.display(12))
+                            .foregroundStyle(Theme.inkSoft)
+                    }
+
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(Theme.inkFaint)
+                }
+            }
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var qiblaSubtitle: String {
+        guard let b = Qibla.bearing(from: store.coordinate) else { return "أنت عند الكعبة" }
+        return String(format: "%.0f° — %@ من %@", b, Qibla.compassName(for: b), store.placeName)
+    }
 
     @ViewBuilder
     private var afterPrayerLink: some View {
