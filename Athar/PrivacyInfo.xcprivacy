@@ -2,7 +2,7 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-	<!-- أثر لا يتتبّع المستخدمين ولا يجمع أي بيانات ولا يجري أي اتصال بالشبكة. -->
+	<!-- أثر لا يتتبّع المستخدمين ولا يجمع أي بيانات. -->
 	<key>NSPrivacyTracking</key>
 	<false/>
 	<key>NSPrivacyTrackingDomains</key>
