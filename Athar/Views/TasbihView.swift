@@ -39,6 +39,8 @@ struct TasbihView: View {
                 .padding(.bottom, 12)
                 .readableWidth(560)
             }
+            .contentShape(Rectangle())
+            .onTapGesture { if store.countTapArea == .screen { increment() } }
             .navigationTitle("المسبحة")
             .navigationBarTitleDisplayMode(.inline)
         }

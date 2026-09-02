@@ -199,6 +199,14 @@ struct SettingsView: View {
                 .padding(14)
 
                 SettingsDivider()
+                SettingsPickerRow(
+                    icon: "hand.point.up.left.fill", tint: Theme.accent(for: "calm"),
+                    title: "منطقة العدّ", options: CountTapArea.allCases,
+                    selection: Binding(
+                        get: { store.countTapArea },
+                        set: { store.countTapArea = $0 }))
+
+                SettingsDivider()
                 SettingsRow(icon: "hand.tap.fill", tint: Theme.gold, title: "الاهتزاز عند العدّ") {
                     Toggle("", isOn: Binding(
                         get: { store.hapticsEnabled },

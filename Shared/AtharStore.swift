@@ -3,6 +3,20 @@ import CoreLocation
 
 /// Shared, file-backed state so the app and its widgets read the same numbers.
 /// Falls back to standard defaults if the App Group is unavailable.
+/// أين يضغط المستخدم ليعدّ. الدائرة وحدها تُلزمه بمدّ إبهامه إلى أسفل الشاشة،
+/// فجعلنا «الشاشة كاملة» هي الأصل بناءً على ملاحظة مستخدم.
+enum CountTapArea: String, CaseIterable, Identifiable {
+    case screen, circle
+    var id: String { rawValue }
+    var title: String { self == .screen ? "الشاشة كاملة" : "الدائرة فقط" }
+    var shortTitle: String { title }
+    var detail: String {
+        self == .screen
+            ? "اضغط أي مكان في الشاشة ليزيد العدّ — أسهل للإبهام"
+            : "لا يزيد العدّ إلا بالضغط على الدائرة نفسها"
+    }
+}
+
 final class AtharStore: ObservableObject {
     static let appGroup = "group.com.ibrahim.athar"
     static let shared = AtharStore()
@@ -32,6 +46,7 @@ final class AtharStore: ObservableObject {
         static let calcMethod        = "athar.calcMethod"
         static let asrMethod         = "athar.asrMethod"
         static let athanAlerts       = "athar.athanAlerts"
+        static let countTapArea      = "athar.countTapArea"
         static let placeTimeZone     = "athar.placeTimeZone"
     }
 
@@ -57,7 +72,8 @@ final class AtharStore: ObservableObject {
             Key.usesDeviceLocation: false,
             Key.calcMethod: CalculationMethod.ummAlQura.rawValue,
             Key.asrMethod: AsrMethod.standard.rawValue,
-            Key.athanAlerts: false
+            Key.athanAlerts: false,
+            Key.countTapArea: CountTapArea.screen.rawValue
         ])
     }
 
@@ -201,6 +217,11 @@ final class AtharStore: ObservableObject {
     var asrMethod: AsrMethod {
         get { AsrMethod(rawValue: defaults.string(forKey: Key.asrMethod) ?? "") ?? .standard }
         set { defaults.set(newValue.rawValue, forKey: Key.asrMethod); objectWillChange.send() }
+    }
+
+    var countTapArea: CountTapArea {
+        get { CountTapArea(rawValue: defaults.string(forKey: Key.countTapArea) ?? "") ?? .screen }
+        set { defaults.set(newValue.rawValue, forKey: Key.countTapArea); objectWillChange.send() }
     }
 
     var athanAlerts: Bool {

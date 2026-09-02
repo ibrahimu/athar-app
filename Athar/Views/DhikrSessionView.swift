@@ -43,6 +43,9 @@ struct DhikrSessionView: View {
                 bottomBar
             }
         }
+        // ملاحظة مستخدم: الدائرة وحدها تُلزم بمدّ الإبهام إلى أسفل الشاشة.
+        .contentShape(Rectangle())
+        .onTapGesture { if store.countTapArea == .screen { step() } }
         .navigationTitle(category.title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.hidden, for: .tabBar)
@@ -163,7 +166,7 @@ struct DhikrSessionView: View {
             }
             .buttonStyle(.plain)
 
-            Text(left == 0 ? "اسحب للذكر التالي" : "اضغط للعدّ")
+            Text(left == 0 ? "اسحب للذكر التالي" : (store.countTapArea == .screen ? "اضغط أي مكان للعدّ" : "اضغط الدائرة للعدّ"))
                 .font(Theme.display(12, weight: .medium))
                 .foregroundStyle(Theme.inkFaint)
         }
