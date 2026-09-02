@@ -23,16 +23,19 @@ enum AppTab: String, CaseIterable, Identifiable, Codable {
     var icon: String {
         switch self {
         case .home:     return "sun.horizon.fill"
-        case .mushaf:   return "book.pages.fill"
+        case .mushaf:   return "book.closed.fill"       // مصحف
         case .adhkar:   return "text.book.closed.fill"
-        case .prayer:   return "moon.stars.fill"
+        case .prayer:   return "moon.stars.fill"        // بديل — الفعلي سجّادة مخصّصة
         case .tasbih:   return "circle.hexagongrid.fill"
-        case .hajj:     return "building.columns.fill"
+        case .hajj:     return "cube.fill"              // الكعبة (مكعّب)
         case .qibla:    return "location.north.line.fill"
         case .hifz:     return "brain.head.profile"
         case .settings: return "gearshape.fill"
         }
     }
+
+    /// التبويبات ذات الأيقونة المرسومة (لا SF): الصلاة = سجّادة مصلّى.
+    var usesCustomIcon: Bool { self == .prayer }
 
     /// «اليوم» ثابت دائمًا — هو مدخل التطبيق.
     var isPinned: Bool { self == .home }
@@ -48,6 +51,7 @@ extension AtharStore {
         static let appearance = "athar.appearance"
         static let language   = "athar.language"
         static let bgPattern  = "athar.bgPattern"
+        static let unifyIcons = "athar.unifyIcons"
     }
 
     /// التبويبات الظاهرة بترتيب المستخدم.
@@ -89,6 +93,16 @@ extension AtharStore {
     var appLanguage: AppLanguage {
         get { AppLanguage(rawValue: defaults.string(forKey: TKey.language) ?? "") ?? .system }
         set { defaults.set(newValue.rawValue, forKey: TKey.language); objectWillChange.send() }
+    }
+
+    /// توحيد ألوان الأيقونات على اللون المميّز (بدل ألوان الأقسام المتعدّدة).
+    var unifyIcons: Bool {
+        get { defaults.bool(forKey: TKey.unifyIcons) }
+        set {
+            defaults.set(newValue, forKey: TKey.unifyIcons)
+            Theme.unifyIcons = newValue
+            objectWillChange.send()
+        }
     }
 
     /// نقش خلفية التطبيق.

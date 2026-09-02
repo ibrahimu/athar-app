@@ -12,6 +12,7 @@ struct AppearanceView: View {
                 VStack(spacing: 24) {
                     if !AppConfig.arabicOnly { languagePicker }
                     themes
+                    iconStylePicker
                     backgroundPicker
                     appearanceMode
                     tabBar
@@ -114,6 +115,60 @@ struct AppearanceView: View {
                 .foregroundStyle(on ? accent : Theme.inkSoft)
         }
         .scaleEffect(on ? 1.03 : 1)
+    }
+
+    // MARK: لون الأيقونات
+
+    private var iconStylePicker: some View {
+        VStack(spacing: 10) {
+            SectionHeader(title: loc("لون الأيقونات"), tint: Theme.accent(for: "calm"))
+            HStack(spacing: 10) {
+                // ألوان صريحة (لا تمرّ بـaccent(for:) حتى لا تتأثر بالوضع الحالي)
+                let multi: [Color] = [
+                    .adaptive(light: Color(hex: 0xC77B36), dark: Color(hex: 0xE0A063)),
+                    .adaptive(light: Color(hex: 0x1F6473), dark: Color(hex: 0x5FB7CB)),
+                    .adaptive(light: Color(hex: 0xA0466A), dark: Color(hex: 0xDD8CAA)),
+                    .adaptive(light: Color(hex: 0x2F4A73), dark: Color(hex: 0x7FA3D8))]
+                iconStyleOption(unified: false, title: loc("متعدّد"), colors: multi)
+                iconStyleOption(unified: true, title: loc("موحّد"),
+                                colors: Array(repeating: Theme.accent, count: 4))
+            }
+        }
+    }
+
+    private func iconStyleOption(unified: Bool, title: String, colors: [Color]) -> some View {
+        let on = store.unifyIcons == unified
+        let icons = ["sparkles", "moon.stars.fill", "drop.fill", "book.closed.fill"]
+        return Button {
+            withAnimation(Motion.gentle) { store.unifyIcons = unified }
+            Haptics.tap(enabled: store.hapticsEnabled)
+        } label: {
+            VStack(spacing: 9) {
+                // معاينة: أربع أيقونات صغيرة (ملوّنة أو موحّدة)
+                HStack(spacing: 6) {
+                    ForEach(0..<4, id: \.self) { i in
+                        Image(systemName: icons[i])
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(colors[i])
+                            .frame(width: 26, height: 26)
+                            .background(Circle().fill(colors[i].opacity(0.14)))
+                    }
+                }
+                Text(title)
+                    .font(Theme.display(13, weight: on ? .semibold : .regular))
+                    .foregroundStyle(on ? Theme.accent : Theme.inkSoft)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 14)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(Theme.surfaceGradient)
+                    .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .strokeBorder(on ? Theme.accent : Theme.hairline.opacity(0.6), lineWidth: on ? 2.5 : 1))
+            )
+            .atharElevation(on ? .e2 : .e1)
+        }
+        .buttonStyle(.plain)
     }
 
     // MARK: الخلفية

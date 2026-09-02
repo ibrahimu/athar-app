@@ -1,20 +1,20 @@
 import SwiftUI
 
-/// الحج والعمرة — مربّعان كبيران فوق بعض، كلٌّ يفتح دليلًا مفصّلًا متحقَّقًا شرعيًّا.
+/// الحج والعمرة — مربّعان كبيران، كلٌّ يفتح دليلًا مفصّلًا منظّمًا بالأيقونات.
 struct HajjView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                AtharBackground(tint: Theme.gold, secondary: Theme.accent)
+                AtharBackground(tint: Theme.gold, secondary: Theme.accent(for: "sea"))
                 ScrollView {
                     VStack(spacing: 16) {
                         header
                         if let umrah = HajjData.umrah {
-                            guideSquare(umrah, tint: Theme.accent(for: "sea"), badge: "العمرة")
+                            guideSquare(umrah, tint: Theme.accent(for: "sea"), badge: loc("العمرة"))
                                 .appearStagger(1)
                         }
                         if let hajj = HajjData.hajj {
-                            guideSquare(hajj, tint: Theme.gold, badge: "الحج")
+                            guideSquare(hajj, tint: Theme.gold, badge: loc("الحج"))
                                 .appearStagger(2)
                         }
                         footer.appearStagger(3)
@@ -34,9 +34,9 @@ struct HajjView: View {
     private var header: some View {
         VStack(spacing: 6) {
             Text(loc("مناسك بين يديك"))
-                .font(Theme.display(22, weight: .bold))
+                .font(Theme.display(23, weight: .bold))
                 .foregroundStyle(Theme.ink)
-            Text(loc("دليل متحقَّق، خطوة بخطوة، على ما عليه العمل في الحرمين."))
+            Text(loc("دليل منظّم خطوة بخطوة، بالأدعية المأثورة."))
                 .font(Theme.display(13))
                 .foregroundStyle(Theme.inkSoft)
                 .multilineTextAlignment(.center)
@@ -46,28 +46,24 @@ struct HajjView: View {
         .appearStagger(0)
     }
 
-    /// مربّع كبير لكل نسك.
     private func guideSquare(_ guide: HajjGuide, tint: Color, badge: String) -> some View {
         NavigationLink {
             HajjGuideView(guide: guide, tint: tint)
         } label: {
             AtharCard(padding: 20, elevation: .e2, tint: tint) {
                 VStack(alignment: .leading, spacing: 14) {
-                    HStack {
-                        Text(badge)
-                            .font(Theme.display(12, weight: .bold))
-                            .foregroundStyle(Theme.onAccent)
-                            .padding(.horizontal, 12).padding(.vertical, 5)
-                            .background(Capsule().fill(Theme.gradient(for: tint == Theme.gold ? "gold" : "sea")))
-                        Spacer()
-                        Image(systemName: guide.icon)
-                            .font(.system(size: 30))
-                            .foregroundStyle(tint)
+                    HStack(alignment: .top) {
+                        // الكعبة على دائرة محايدة هادئة (تُقرأ بلا تنازع ألوان)
+                        KaabaMark()
+                            .padding(13)
                             .frame(width: 58, height: 58)
-                            .background(
-                                Circle().fill(tint.opacity(0.13))
-                                    .overlay(EightPointStar().fill(tint.opacity(0.06)).padding(8))
-                            )
+                            .background(Circle().fill(Theme.surfaceAlt))
+                        Spacer()
+                        Text(badge)
+                            .font(Theme.display(13, weight: .bold))
+                            .foregroundStyle(Theme.onAccent)
+                            .padding(.horizontal, 14).padding(.vertical, 6)
+                            .background(Capsule().fill(Theme.gradient(for: badge == loc("العمرة") ? "sea" : "gold")))
                     }
 
                     VStack(alignment: .leading, spacing: 5) {
@@ -75,20 +71,21 @@ struct HajjView: View {
                             .font(Theme.display(21, weight: .bold))
                             .foregroundStyle(Theme.ink)
                         Text(guide.subtitle)
-                            .font(Theme.display(12.5))
+                            .font(Theme.display(13))
                             .foregroundStyle(Theme.inkSoft)
-                            .multilineTextAlignment(.leading)
                             .fixedSize(horizontal: false, vertical: true)
                     }
 
                     HStack(spacing: 6) {
-                        Image(systemName: "list.number")
+                        Image(systemName: "list.bullet.rectangle.portrait")
                             .font(.system(size: 12, weight: .semibold))
-                        Text(loc("\(guide.steps.count.counterText) خطوة"))
+                        Text(loc("\(guide.steps.count.counterText) خطوات"))
                             .font(Theme.display(13, weight: .semibold))
                         Spacer()
+                        Text(loc("ابدأ الدليل"))
+                            .font(Theme.display(13, weight: .semibold))
                         Image(systemName: "chevron.backward")
-                            .font(.system(size: 13, weight: .semibold))
+                            .font(.system(size: 12, weight: .semibold))
                     }
                     .foregroundStyle(tint)
                     .padding(.top, 2)
@@ -108,7 +105,7 @@ struct HajjView: View {
     }
 }
 
-// MARK: - دليل مفصّل لنسك
+// MARK: - دليل مفصّل منظّم
 
 struct HajjGuideView: View {
     let guide: HajjGuide
@@ -116,23 +113,28 @@ struct HajjGuideView: View {
 
     var body: some View {
         ZStack {
-            AtharBackground(tint: tint, secondary: Theme.accent)
+            AtharBackground(tint: tint, secondary: Theme.accent(for: "sea"))
             ScrollView {
                 VStack(spacing: 14) {
-                    Text(guide.subtitle)
-                        .font(Theme.display(13))
-                        .foregroundStyle(Theme.inkSoft)
-                        .multilineTextAlignment(.center)
-                        .frame(maxWidth: .infinity)
-                        .padding(.top, 4)
+                    // شريط تعريفي بعدد الخطوات
+                    HStack(spacing: 8) {
+                        Image(systemName: "list.bullet.rectangle.portrait.fill")
+                            .font(.system(size: 13))
+                        Text(loc("\(guide.steps.count.counterText) خطوات · بالأدعية المأثورة"))
+                            .font(Theme.display(13, weight: .semibold))
+                    }
+                    .foregroundStyle(tint)
+                    .padding(.horizontal, 14).padding(.vertical, 8)
+                    .background(Capsule().fill(tint.opacity(0.12)))
+                    .padding(.top, 4)
 
                     ForEach(Array(guide.steps.enumerated()), id: \.element.id) { i, step in
-                        stepCard(index: i + 1, step: step)
+                        stepCard(index: i + 1, step: step, isLast: i == guide.steps.count - 1)
                             .appearStagger(i)
                     }
                 }
                 .padding(.horizontal, 18)
-                .padding(.bottom, 30)
+                .padding(.bottom, 34)
                 .readableWidth(620)
             }
             .scrollIndicators(.hidden)
@@ -142,46 +144,48 @@ struct HajjGuideView: View {
         .toolbar(.hidden, for: .tabBar)
     }
 
-    private func stepCard(index: Int, step: HajjStep) -> some View {
-        AtharCard(padding: 18) {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(spacing: 11) {
-                    // رقم الخطوة في ميدالية نجمية
+    private func stepCard(index: Int, step: HajjStep, isLast: Bool) -> some View {
+        AtharCard(padding: 0) {
+            VStack(alignment: .leading, spacing: 0) {
+                // رأس الخطوة: رقم + أيقونة معناها + الاسم، على صبغة لون النسك
+                HStack(spacing: 12) {
                     ZStack {
-                        EightPointStar().fill(tint.opacity(0.14))
+                        EightPointStar().fill(tint.opacity(0.16))
                         EightPointStar().stroke(tint.opacity(0.5), lineWidth: 1)
                         Text(index.counterText)
                             .font(.system(size: 15, weight: .bold, design: .rounded))
                             .foregroundStyle(tint)
                     }
-                    .frame(width: 38, height: 38)
+                    .frame(width: 40, height: 40)
 
                     Text(step.name)
                         .font(Theme.display(17, weight: .bold))
                         .foregroundStyle(Theme.ink)
                         .fixedSize(horizontal: false, vertical: true)
-                    Spacer(minLength: 0)
+                    Spacer(minLength: 6)
                 }
+                .padding(.horizontal, 16).padding(.top, 16).padding(.bottom, 12)
 
+                SettingsDivider()
+
+                // الشرح
                 Text(step.detail)
                     .font(Theme.display(14.5))
                     .foregroundStyle(Theme.inkSoft)
-                    .lineSpacing(6)
+                    .lineSpacing(7)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 16).padding(.top, 12)
 
+                // الذكر المأثور
                 if step.hasDua {
-                    VStack(alignment: .leading, spacing: 6) {
-                        HStack(spacing: 5) {
-                            Image(systemName: "hands.and.sparkles.fill")
-                                .font(.system(size: 11))
-                            Text(loc("الذكر"))
-                                .font(Theme.display(11, weight: .semibold))
-                        }
-                        .foregroundStyle(tint)
-                        // النص المأثور — بخطّ النسخ، حِبرًا مهيبًا
+                    HStack(alignment: .top, spacing: 10) {
+                        Image(systemName: "hands.and.sparkles.fill")
+                            .font(.system(size: 13))
+                            .foregroundStyle(Theme.gold)
+                            .padding(.top, 2)
                         Text(step.dua)
-                            .font(Theme.dhikrFont(size: 18))
+                            .font(Theme.dhikrFont(size: 17))
                             .foregroundStyle(Theme.ink)
                             .lineSpacing(9)
                             .fixedSize(horizontal: false, vertical: true)
@@ -191,15 +195,16 @@ struct HajjGuideView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .background(
                         RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous)
-                            .fill(tint.opacity(0.08))
-                            .overlay(alignment: .top) {
-                                Capsule().fill(Theme.goldGradient).frame(width: 40, height: 3).opacity(0.7)
-                                    .padding(.top, 6)
-                            }
+                            .fill(Theme.gold.opacity(0.08))
+                            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous)
+                                .strokeBorder(Theme.gold.opacity(0.22), lineWidth: 0.5))
                     )
+                    .padding(.horizontal, 12).padding(.top, 12)
                 }
+
+                Spacer(minLength: 0)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.bottom, 16)
         }
     }
 }

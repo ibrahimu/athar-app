@@ -33,6 +33,10 @@ enum Theme {
         .adaptive(light: .white, dark: Color(hex: current.canvas.dark))
     }
 
+    /// توحيد ألوان الأيقونات على اللون المميّز بدل ألوان الأقسام المتعدّدة.
+    /// يُحدَّث من AtharStore حسب اختيار المستخدم في «المظهر».
+    nonisolated(unsafe) static var unifyIcons: Bool = false
+
     /// النغمة الثانية للتدرّج — من عائلة اللون المميّز نفسه.
     static var accent2: Color { .adaptive(light: Color(hex: current.accent2.light), dark: Color(hex: current.accent2.dark)) }
 
@@ -71,6 +75,7 @@ enum Theme {
     }
     /// تدرّج ذو نغمتين لكل قسم — لرؤوس الأقسام وأشرطة التقدّم.
     static func gradient(for key: String) -> LinearGradient {
+        if unifyIcons && key != "gold" { return accentGradient }   // وضع الأيقونات الموحّد
         let stops: [Color]
         switch key {
         case "dawn", "fajr":  stops = [Color(hex: 0xE0A063), Color(hex: 0xE08A6A)]
@@ -87,6 +92,8 @@ enum Theme {
     // MARK: Category accents — لوحة الأقسام القانونية الوحيدة
 
     static func accent(for key: String) -> Color {
+        // الوضع الموحّد: كل الأيقونات بلون الطابع (عدا الذهب الزخرفي).
+        if unifyIcons && key != "gold" { return accent }
         switch key {
         case "dawn", "fajr":  return Color.adaptive(light: Color(hex: 0xC77B36), dark: Color(hex: 0xE0A063))
         case "noon", "dhuhr": return Color.adaptive(light: Color(hex: 0xC79A2E), dark: Color(hex: 0xE6C468))

@@ -13,6 +13,7 @@ struct HajjStep: Codable, Identifiable {
     let name: String
     let detail: String
     let dua: String
+    var icon: String = "circle.fill"
     var id: String { name }
     var hasDua: Bool { !dua.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
 }
