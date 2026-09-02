@@ -23,8 +23,8 @@ struct RootView: View {
         case .prayer:   PrayerView(store: store)
         case .tasbih:   TasbihView()
         case .hajj:     HajjView()
-        case .qibla:    NavigationStack { QiblaView() }
-        case .hifz:     NavigationStack { HifzView() }
+        case .qibla:    NavigationStack { QiblaView(isRootTab: true) }
+        case .hifz:     NavigationStack { HifzView(isRootTab: true) }
         case .settings: SettingsView()
         }
     }

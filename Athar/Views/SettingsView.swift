@@ -35,6 +35,7 @@ struct SettingsView: View {
                 AtharBackground()
                 ScrollView {
                     VStack(spacing: 30) {
+                        languageRow
                         reminders
                         sunanReminders
                         prayer
@@ -114,6 +115,21 @@ struct SettingsView: View {
             }
         }
         .animation(Motion.smooth, value: store.remindersEnabled)
+    }
+
+    // MARK: اللغة
+
+    private var languageRow: some View {
+        VStack(spacing: 8) {
+            SettingsGroupTitle(text: loc("language"))
+            SettingsCard {
+                SettingsPickerRow(
+                    icon: "globe", tint: Theme.accent(for: "sea"),
+                    title: loc("language"), options: AppLanguage.allCases,
+                    selection: Binding(get: { store.appLanguage },
+                                       set: { store.appLanguage = $0 }))
+            }
+        }
     }
 
     // MARK: تنويع التذكيرات

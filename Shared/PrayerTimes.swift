@@ -41,28 +41,10 @@ enum CalculationMethod: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
-    var title: String {
-        switch self {
-        case .ummAlQura: return "أم القرى (مكة المكرمة)"
-        case .mwl:       return "رابطة العالم الإسلامي"
-        case .egypt:     return "الهيئة المصرية العامة للمساحة"
-        case .karachi:   return "جامعة العلوم الإسلامية، كراتشي"
-        case .isna:      return "الجمعية الإسلامية لأمريكا الشمالية"
-        case .dubai:     return "الإمارات (دبي)"
-        }
-    }
+    var title: String { loc("calc_" + rawValue) }
 
     /// اسم مختصر يصلح للعرض داخل صف ضيق.
-    var shortTitle: String {
-        switch self {
-        case .ummAlQura: return "أم القرى"
-        case .mwl:       return "رابطة العالم الإسلامي"
-        case .egypt:     return "الهيئة المصرية"
-        case .karachi:   return "كراتشي"
-        case .isna:      return "ISNA"
-        case .dubai:     return "الإمارات"
-        }
-    }
+    var shortTitle: String { loc("calcShort_" + rawValue) }
 
     /// شرح يظهر تحت الاسم في شاشة الاختيار.
     var detail: String {
@@ -108,8 +90,8 @@ enum CalculationMethod: String, CaseIterable, Identifiable {
 enum AsrMethod: String, CaseIterable, Identifiable {
     case standard, hanafi
     var id: String { rawValue }
-    var title: String { self == .standard ? "الجمهور (الشافعي والمالكي والحنبلي)" : "الحنفي" }
-    var shortTitle: String { self == .standard ? "الجمهور" : "الحنفي" }
+    var title: String { loc(self == .standard ? "asr_standard" : "asr_hanafi") }
+    var shortTitle: String { loc(self == .standard ? "asrShort_standard" : "asrShort_hanafi") }
     var detail: String {
         self == .standard
             ? "يدخل العصر إذا صار ظل الشيء مثله"

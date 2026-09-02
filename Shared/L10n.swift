@@ -62,6 +62,10 @@ enum L10nTable {
     static let strings: [String: [String: String]] = [
 
     "ar": [
+      "calc_ummAlQura":"أم القرى (مكة المكرمة)","calc_mwl":"رابطة العالم الإسلامي","calc_egypt":"الهيئة المصرية العامة للمساحة","calc_karachi":"جامعة العلوم الإسلامية، كراتشي","calc_isna":"الجمعية الإسلامية لأمريكا الشمالية","calc_dubai":"الإمارات (دبي)",
+      "calcShort_ummAlQura":"أم القرى","calcShort_mwl":"رابطة العالم الإسلامي","calcShort_egypt":"الهيئة المصرية","calcShort_karachi":"كراتشي","calcShort_isna":"ISNA","calcShort_dubai":"الإمارات",
+      "asr_standard":"الجمهور (الشافعي والمالكي والحنبلي)","asr_hanafi":"الحنفي","asrShort_standard":"الجمهور","asrShort_hanafi":"الحنفي",
+      "theme_paper":"ورق","theme_sepia":"دافئ","theme_night":"ليلي",
       "today":"اليوم","mushaf":"المصحف","adhkar":"الأذكار","prayer":"الصلاة","tasbih":"المسبحة",
       "hajj":"الحج والعمرة","qibla":"القبلة","hifz":"الحفظ","settings":"الإعدادات",
       "fajr":"الفجر","sunrise":"الشروق","dhuhr":"الظهر","asr":"العصر","maghrib":"المغرب","isha":"العشاء",
@@ -89,6 +93,10 @@ enum L10nTable {
     ],
 
     "en": [
+      "calc_ummAlQura":"Umm al-Qura (Makkah)","calc_mwl":"Muslim World League","calc_egypt":"Egyptian General Authority","calc_karachi":"Univ. of Islamic Sciences, Karachi","calc_isna":"ISNA (North America)","calc_dubai":"UAE (Dubai)",
+      "calcShort_ummAlQura":"Umm al-Qura","calcShort_mwl":"MWL","calcShort_egypt":"Egyptian","calcShort_karachi":"Karachi","calcShort_isna":"ISNA","calcShort_dubai":"UAE",
+      "asr_standard":"Majority (Shafi'i, Maliki, Hanbali)","asr_hanafi":"Hanafi","asrShort_standard":"Majority","asrShort_hanafi":"Hanafi",
+      "theme_paper":"Paper","theme_sepia":"Sepia","theme_night":"Night",
       "today":"Today","mushaf":"Mushaf","adhkar":"Adhkar","prayer":"Prayer","tasbih":"Tasbih",
       "hajj":"Hajj & Umrah","qibla":"Qibla","hifz":"Memorize","settings":"Settings",
       "fajr":"Fajr","sunrise":"Sunrise","dhuhr":"Dhuhr","asr":"Asr","maghrib":"Maghrib","isha":"Isha",

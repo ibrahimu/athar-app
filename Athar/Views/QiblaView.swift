@@ -2,6 +2,10 @@ import SwiftUI
 import CoreLocation
 
 struct QiblaView: View {
+    /// true حين تكون تبويبًا في الشريط السفلي (لا تُخفيه)،
+    /// false حين تُفتح مدفوعة من شاشة الصلاة (تُخفي الشريط وتُظهر زر الرجوع).
+    var isRootTab = false
+
     @EnvironmentObject private var store: AtharStore
     @StateObject private var compass = HeadingProvider()
     @State private var didAlignHaptic = false
@@ -55,7 +59,7 @@ struct QiblaView: View {
         }
         .navigationTitle("القبلة")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar(.hidden, for: .tabBar)
+        .toolbar(isRootTab ? .visible : .hidden, for: .tabBar)
         .onAppear { compass.start() }
         .onDisappear { compass.stop() }
         .onChange(of: isAligned) { _, aligned in

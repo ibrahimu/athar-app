@@ -9,6 +9,8 @@ enum HifzStage {
 }
 
 struct HifzView: View {
+    var isRootTab = false
+
     @EnvironmentObject private var store: AtharStore
     @State private var queue: [AyahRef] = []
     @State private var index = 0
@@ -33,7 +35,7 @@ struct HifzView: View {
         }
         .navigationTitle("الحفظ")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar(.hidden, for: .tabBar)
+        .toolbar(isRootTab ? .visible : .hidden, for: .tabBar)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 Button { showPicker = true } label: { Image(systemName: "plus.circle") }

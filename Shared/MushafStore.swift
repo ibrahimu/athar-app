@@ -10,13 +10,7 @@ enum ReadingTheme: String, CaseIterable, Identifiable {
     case night      // ورق أزرق داكن وحبر أبيض
 
     var id: String { rawValue }
-    var title: String {
-        switch self {
-        case .paper: return "ورق"
-        case .sepia: return "دافئ"
-        case .night: return "ليلي"
-        }
-    }
+    var title: String { loc("theme_" + rawValue) }
     var shortTitle: String { title }
     var detail: String {
         switch self {
