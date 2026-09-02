@@ -134,6 +134,37 @@ enum AppTheme: String, CaseIterable, Identifiable, Codable {
     var hairline: (light: UInt32, dark: UInt32)   { palette.hairline }
 }
 
+/// نقش خلفية التطبيق — يختاره المستخدم. النقوش كلها باهتة جدًا («تُحسّ لا تُقرأ»).
+enum BackgroundPattern: String, CaseIterable, Identifiable, Codable {
+    case stars      // نجمات ثمانية محفورة (الأصل)
+    case plain      // سادة — بلا نقش، غسالات لونية فقط
+    case waves      // أثر القطرة — حلقات متمددة، هوية «أثر»
+    case lattice    // تعريشة هندسية متشابكة
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .stars:   return "نجوم"
+        case .plain:   return "سادة"
+        case .waves:   return "موج"
+        case .lattice: return "تعريشة"
+        }
+    }
+    var shortTitle: String { title }
+    var detail: String {
+        switch self {
+        case .stars:   return "نجمات ثمانية محفورة على الورق"
+        case .plain:   return "ورق صافٍ بلا نقش"
+        case .waves:   return "حلقات أثر القطرة الهادئة"
+        case .lattice: return "تعريشة هندسية متشابكة"
+        }
+    }
+
+    /// النقش الفعّال — يُحدَّث من AtharStore، ويقرأه AtharBackground.
+    nonisolated(unsafe) static var current: BackgroundPattern = .stars
+}
+
 /// الوضع الفاتح/الداكن الذي يختاره المستخدم.
 enum AppearanceMode: String, CaseIterable, Identifiable, Codable {
     case system, light, dark

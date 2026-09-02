@@ -95,10 +95,10 @@ struct TasbihView: View {
                              lineWidth: 14, gradient: true, glow: true)
                     .padding(16)
 
-                // نجمة ثمانية باهتة خلف الرقم — نسيج زخرفي لا ينافس
+                // نجمة ثمانية باهتة جدًا خلف الرقم — نسيج زخرفي لا ينافس
                 EightPointStar(innerRatio: 0.68)
-                    .fill(Theme.accent.opacity(0.05))
-                    .frame(width: 150, height: 150)
+                    .fill(Theme.accent.opacity(0.025))
+                    .frame(width: 128, height: 128)
 
                 VStack(spacing: Theme.Space.sm) {
                     // النص الشرعي — حبريّ مهيب بخطّ النسخ، لا صبغة عليه

@@ -12,6 +12,7 @@ struct AppearanceView: View {
                 VStack(spacing: 24) {
                     if !AppConfig.arabicOnly { languagePicker }
                     themes
+                    backgroundPicker
                     appearanceMode
                     tabBar
                 }
@@ -111,6 +112,53 @@ struct AppearanceView: View {
             Text(theme.title)
                 .font(Theme.display(12, weight: on ? .semibold : .regular))
                 .foregroundStyle(on ? accent : Theme.inkSoft)
+        }
+        .scaleEffect(on ? 1.03 : 1)
+    }
+
+    // MARK: الخلفية
+
+    private var backgroundPicker: some View {
+        VStack(spacing: 10) {
+            SectionHeader(title: loc("خلفية التطبيق"), tint: Theme.accent(for: "sea"))
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 84), spacing: 12)], spacing: 12) {
+                ForEach(BackgroundPattern.allCases) { pattern in
+                    Button {
+                        withAnimation(Motion.gentle) { store.backgroundPattern = pattern }
+                        Haptics.tap(enabled: store.hapticsEnabled)
+                    } label: {
+                        patternSwatch(pattern)
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+    }
+
+    private func patternSwatch(_ pattern: BackgroundPattern) -> some View {
+        let on = store.backgroundPattern == pattern
+        return VStack(spacing: 7) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Theme.canvas)
+                // معاينة النقش نفسه، بشدّة أعلى ليُرى في المربّع الصغير
+                PaperMotif(tint: Theme.accent, pattern: pattern, intensity: 9)
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                if on {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundStyle(Theme.accent)
+                        .background(Circle().fill(Theme.surface).padding(2))
+                }
+            }
+            .frame(height: 74)
+            .overlay(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .strokeBorder(on ? Theme.accent : Theme.hairline.opacity(0.6), lineWidth: on ? 2.5 : 1)
+            )
+            .shadow(color: on ? Theme.accent.opacity(0.22) : .clear, radius: 8, y: 3)
+            Text(pattern.title)
+                .font(Theme.display(12, weight: on ? .semibold : .regular))
+                .foregroundStyle(on ? Theme.accent : Theme.inkSoft)
         }
         .scaleEffect(on ? 1.03 : 1)
     }

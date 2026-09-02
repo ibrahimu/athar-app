@@ -37,33 +37,67 @@ struct AtharBackground: View {
 
 // MARK: - نقش الورق (تبليط هندسي محفور، ناعم ومموّه)
 
-/// نجمات ثمانية مملوءة باهتة جدًا ومموّهة قليلًا — نسيج ورق مصحفي محفور ناعم،
-/// يُحسّ ولا يُقرأ. التعبئة (لا الخطوط الرفيعة) والتمويه يمنعان أي «تبكسل».
+/// نقش الورق — يتبع اختيار المستخدم (نجوم/سادة/موج/تعريشة). كله باهت جدًا
+/// ومموّه قليلًا، «يُحسّ لا يُقرأ»، ويُرسم مرّة عبر Canvas بلا تبكسل.
 struct PaperMotif: View {
     var tint: Color = Theme.ink
+    var pattern: BackgroundPattern = BackgroundPattern.current
+    var intensity: Double = 1        // مضاعف للمعاينات في الإعدادات
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
-        let op = scheme == .dark ? 0.028 : 0.020
-        Canvas { ctx, size in
-            let cell: CGFloat = 96           // وحدات أكبر وأندر = أهدأ
-            let r: CGFloat = 20
-            let color = tint.opacity(op)
-            var row = 0
-            var y: CGFloat = -cell / 2
-            while y < size.height + cell {
-                let offset: CGFloat = row.isMultiple(of: 2) ? 0 : cell / 2
-                var x: CGFloat = -cell / 2 + offset
-                while x < size.width + cell {
-                    let rect = CGRect(x: x - r, y: y - r, width: r * 2, height: r * 2)
-                    ctx.fill(EightPointStar(innerRatio: 0.64).path(in: rect), with: .color(color))
-                    x += cell
+        let op = (scheme == .dark ? 0.028 : 0.020) * intensity
+        Group {
+            switch pattern {
+            case .plain:
+                Color.clear
+            case .stars:
+                Canvas { ctx, size in
+                    let cell: CGFloat = 96, r: CGFloat = 20
+                    let color = tint.opacity(op)
+                    var row = 0; var y: CGFloat = -cell / 2
+                    while y < size.height + cell {
+                        let off: CGFloat = row.isMultiple(of: 2) ? 0 : cell / 2
+                        var x: CGFloat = -cell / 2 + off
+                        while x < size.width + cell {
+                            let rect = CGRect(x: x - r, y: y - r, width: r * 2, height: r * 2)
+                            ctx.fill(EightPointStar(innerRatio: 0.64).path(in: rect), with: .color(color))
+                            x += cell
+                        }
+                        y += cell * 0.86; row += 1
+                    }
                 }
-                y += cell * 0.86
-                row += 1
+                .blur(radius: 0.6)
+            case .waves:
+                Canvas { ctx, size in
+                    // حلقات أثر القطرة من الزاوية العليا اليمنى (هوية «أثر»)
+                    let c = CGPoint(x: size.width * 0.9, y: size.height * 0.12)
+                    let color = tint.opacity(op * 0.9)
+                    var r: CGFloat = 40
+                    while r < size.width * 1.7 {
+                        let rect = CGRect(x: c.x - r, y: c.y - r, width: r * 2, height: r * 2)
+                        ctx.stroke(Path(ellipseIn: rect), with: .color(color), lineWidth: 1.2)
+                        r += 46
+                    }
+                }
+                .blur(radius: 0.5)
+            case .lattice:
+                Canvas { ctx, size in
+                    // تعريشة قُطرية متشابكة
+                    let step: CGFloat = 52
+                    let color = tint.opacity(op * 0.85)
+                    var d: CGFloat = -size.height
+                    while d < size.width + size.height {
+                        var p1 = Path(); p1.move(to: CGPoint(x: d, y: 0)); p1.addLine(to: CGPoint(x: d + size.height, y: size.height))
+                        ctx.stroke(p1, with: .color(color), lineWidth: 0.9)
+                        var p2 = Path(); p2.move(to: CGPoint(x: d, y: 0)); p2.addLine(to: CGPoint(x: d - size.height, y: size.height))
+                        ctx.stroke(p2, with: .color(color), lineWidth: 0.9)
+                        d += step
+                    }
+                }
+                .blur(radius: 0.5)
             }
         }
-        .blur(radius: 0.6)               // تنعيم لطيف يذهب بالحواف الحادّة
     }
 }
 

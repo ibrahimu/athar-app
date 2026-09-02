@@ -242,8 +242,8 @@ struct HifzView: View {
                 .overlay { shape.fill(acc.opacity(0.04)) }
                 .overlay {
                     EightPointStar(innerRatio: 0.66)
-                        .fill(acc.opacity(0.03))
-                        .frame(width: 230, height: 230)
+                        .fill(acc.opacity(0.016))
+                        .frame(width: 180, height: 180)
                 }
                 .overlay(alignment: .top) {
                     Rectangle().fill(acc).frame(height: 2)

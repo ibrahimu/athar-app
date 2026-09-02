@@ -47,6 +47,7 @@ extension AtharStore {
         static let theme      = "athar.theme"
         static let appearance = "athar.appearance"
         static let language   = "athar.language"
+        static let bgPattern  = "athar.bgPattern"
     }
 
     /// التبويبات الظاهرة بترتيب المستخدم.
@@ -90,6 +91,19 @@ extension AtharStore {
         set { defaults.set(newValue.rawValue, forKey: TKey.language); objectWillChange.send() }
     }
 
-    /// تُستدعى مرة عند الإقلاع لمزامنة الطابع مع Theme.
-    func applyStoredTheme() { Theme.current = appTheme }
+    /// نقش خلفية التطبيق.
+    var backgroundPattern: BackgroundPattern {
+        get { BackgroundPattern(rawValue: defaults.string(forKey: TKey.bgPattern) ?? "") ?? .stars }
+        set {
+            defaults.set(newValue.rawValue, forKey: TKey.bgPattern)
+            BackgroundPattern.current = newValue
+            objectWillChange.send()
+        }
+    }
+
+    /// تُستدعى مرة عند الإقلاع لمزامنة الطابع والنقش مع الحالة العامة.
+    func applyStoredTheme() {
+        Theme.current = appTheme
+        BackgroundPattern.current = backgroundPattern
+    }
 }
