@@ -54,15 +54,11 @@ struct SurahReaderView: View {
                                 .padding(.vertical, 20)
                         }
 
-                        ForEach(1...(surah?.ayahCount ?? 1), id: \.self) { n in
-                            let ref = AyahRef(surah: surahId, ayah: n)
-                            AyahBlock(ref: ref, palette: palette,
-                                      scale: store.mushafFontScale,
-                                      bookmarked: store.isBookmarked(ref),
-                                      onTap: { selected = ref })
-                                .id(ref)
-                                .onAppear { store.lastRead = ref }
-                        }
+                        MushafPage(surahId: surahId, palette: palette,
+                                   scale: store.mushafFontScale,
+                                   bookmarks: Set(store.bookmarks),
+                                   onTapAyah: { selected = $0 },
+                                   onVisible: { store.lastRead = $0 })
 
                         endOfSurah
                     }
@@ -139,54 +135,84 @@ struct SurahReaderView: View {
     }
 }
 
-// MARK: - كتلة الآية
+// MARK: - صفحة المصحف
 
-struct AyahBlock: View {
-    let ref: AyahRef
+/// نص متصل كصفحة المصحف المطبوع: الآيات تتلو بعضها في فقرة واحدة،
+/// وفاصلة كل آية ميدالية ملوّنة، مع علامة ۩ لمواضع السجود.
+struct MushafPage: View {
+    let surahId: Int
     let palette: ReadingPalette
     let scale: Double
-    let bookmarked: Bool
-    let onTap: () -> Void
+    let bookmarks: Set<AyahRef>
+    let onTapAyah: (AyahRef) -> Void
+    let onVisible: (AyahRef) -> Void
+
+    private var surah: Surah? { Quran.surah(surahId) }
 
     var body: some View {
-        Text(styled)
-            .lineSpacing(16 * scale)
-            .multilineTextAlignment(.leading)
-            .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.vertical, 10)
-        .overlay(alignment: .topTrailing) {
-            if bookmarked {
-                Image(systemName: "bookmark.fill")
-                    .font(.system(size: 11))
-                    .foregroundStyle(palette.accent.opacity(0.8))
-                    .padding(.top, 6)
+        VStack(alignment: .center, spacing: 26) {
+            ForEach(chunks, id: \.first) { group in
+                Text(attributed(for: group))
+                    .lineSpacing(15 * scale)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
+                    .onAppear { if let f = group.first { onVisible(f) } }
+                    .overlay(alignment: .topLeading) {
+                        if group.contains(where: { bookmarks.contains($0) }) {
+                            Image(systemName: "bookmark.fill")
+                                .font(.system(size: 10))
+                                .foregroundStyle(palette.accent.opacity(0.7))
+                                .offset(x: -6, y: -4)
+                        }
+                    }
+                    .contentShape(Rectangle())
+                    .onTapGesture { if let f = group.first { onTapAyah(f) } }
             }
         }
-        .contentShape(Rectangle())
-        .onTapGesture(perform: onTap)
+        .padding(.top, 8)
     }
 
-    /// نص الآية ثم فاصلتها، بلونين مختلفين في نص واحد.
-    private var styled: AttributedString {
-        var body = AttributedString(Quran.text(ref) ?? "")
-        body.font = Theme.dhikrFont(size: 23, scale: scale)
-        body.foregroundColor = palette.ink
-
-        var mark = AttributedString("  " + ayahMarker)
-        mark.font = .system(size: 17 * scale)
-        mark.foregroundColor = palette.accent
-
-        return body + mark
-    }
-
-    /// فاصلة الآية بالأرقام العربية داخل الميدالية.
-    private var ayahMarker: String {
-        let ar = "٠١٢٣٤٥٦٧٨٩"
-        let digits = String(ref.ayah).compactMap { c -> Character? in
-            guard let d = c.wholeNumberValue else { return nil }
-            return Array(ar)[d]
+    /// تُقسَّم السورة إلى مجموعات صغيرة ليبقى التمرير سلسًا في السور الطويلة،
+    /// ولتُعرف الآية الظاهرة لحفظ آخر موضع.
+    private var chunks: [[AyahRef]] {
+        guard let s = surah else { return [] }
+        let refs = (1...s.ayahCount).map { AyahRef(surah: surahId, ayah: $0) }
+        return stride(from: 0, to: refs.count, by: 5).map {
+            Array(refs[$0..<min($0 + 5, refs.count)])
         }
-        return "﴿\(String(digits))﴾"
+    }
+
+    private func attributed(for group: [AyahRef]) -> AttributedString {
+        var out = AttributedString("")
+        for ref in group {
+            var body = AttributedString(Quran.text(ref) ?? "")
+            body.font = Theme.dhikrFont(size: 23, scale: scale)
+            body.foregroundColor = palette.ink
+            out += body
+
+            if Quran.isSajdah(ref) {
+                var sj = AttributedString(" ۩")
+                sj.font = .system(size: 19 * scale)
+                sj.foregroundColor = palette.accent
+                out += sj
+            }
+
+            var mark = AttributedString(" \(medallion(ref.ayah)) ")
+            mark.font = .system(size: 18 * scale)
+            mark.foregroundColor = palette.accent
+            out += mark
+        }
+        return out
+    }
+
+    /// رقم الآية بالأرقام العربية داخل قوسي زخرفة.
+    private func medallion(_ n: Int) -> String {
+        let ar = Array("٠١٢٣٤٥٦٧٨٩")
+        let digits = String(String(n).compactMap { c -> Character? in
+            guard let d = c.wholeNumberValue else { return nil }
+            return ar[d]
+        })
+        return "﴿\(digits)﴾"
     }
 }
 

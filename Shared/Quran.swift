@@ -40,6 +40,7 @@ private struct QuranFile: Codable {
         let basmalah: String
     }
     let meta: Meta
+    let sajdahPositions: [[Int]]?
     let surahs: [Surah]
 }
 
@@ -51,6 +52,15 @@ enum Quran {
     static let source: String = file?.meta.source ?? ""
 
     static let totalAyahs = 6236
+
+    /// مواضع سجود التلاوة الخمسة عشر.
+    static let sajdahPositions: Set<AyahRef> = {
+        Set((file?.sajdahPositions ?? []).compactMap {
+            $0.count == 2 ? AyahRef(surah: $0[0], ayah: $0[1]) : nil
+        })
+    }()
+
+    static func isSajdah(_ ref: AyahRef) -> Bool { sajdahPositions.contains(ref) }
 
     static func surah(_ id: Int) -> Surah? {
         guard id >= 1, id <= surahs.count else { return nil }
