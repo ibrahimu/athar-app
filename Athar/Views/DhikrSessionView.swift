@@ -38,6 +38,8 @@ struct DhikrSessionView: View {
                     }
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
+                // الأذكار عربية دائمًا، فسحب الصفحات يبقى RTL (التالي يسارًا)
+                // مهما كانت لغة الواجهة.
                 .environment(\.layoutDirection, .rightToLeft)
 
                 bottomBar
