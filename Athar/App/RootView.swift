@@ -25,7 +25,7 @@ struct RootView: View {
         }
         .task {
             if prayerMatIcon == nil { prayerMatIcon = AtharIconRenderer.templateImage(PrayerMatShape()) }
-            if kaabaIcon == nil { kaabaIcon = AtharIconRenderer.coloredImage(KaabaMark(), size: 26) }
+            if kaabaIcon == nil { kaabaIcon = AtharIconRenderer.templateImage(KaabaShape()) }
         }
         .onChange(of: store.visibleTabs) { _, tabs in
             // لو حُذف التبويب المختار، ارجع لليوم (موجود دائمًا) بدل شاشة فارغة.

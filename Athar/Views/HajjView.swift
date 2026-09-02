@@ -53,11 +53,17 @@ struct HajjView: View {
             AtharCard(padding: 20, elevation: .e2, tint: tint) {
                 VStack(alignment: .leading, spacing: 14) {
                     HStack(alignment: .top) {
-                        // الكعبة على دائرة محايدة هادئة (تُقرأ بلا تنازع ألوان)
-                        KaabaMark()
-                            .padding(13)
-                            .frame(width: 58, height: 58)
-                            .background(Circle().fill(Theme.surfaceAlt))
+                        // رمز مختلف لكل نسك، بلون واحد على دائرة صبغته
+                        ZStack {
+                            Circle().fill(tint.opacity(0.13))
+                            if badge == loc("العمرة") {
+                                KaabaMark(color: tint).padding(15)      // العمرة: الكعبة
+                            } else {
+                                Image(systemName: "mountain.2.fill")     // الحج: عرفة
+                                    .font(.system(size: 26)).foregroundStyle(tint)
+                            }
+                        }
+                        .frame(width: 58, height: 58)
                         Spacer()
                         Text(badge)
                             .font(Theme.display(13, weight: .bold))
