@@ -108,15 +108,54 @@ struct AppearanceView: View {
 
     private var tabBar: some View {
         VStack(spacing: 8) {
-            HStack {
+            HStack(spacing: 10) {
                 SettingsGroupTitle(text: "الشريط السفلي")
                 Spacer()
-                Button(editing ? "تم" : "ترتيب") {
-                    withAnimation(.smooth) { editing.toggle() }
+                if editing && !isDefaultOrder {
+                    Button { resetTabs() } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "arrow.counterclockwise")
+                                .font(.system(size: 10, weight: .semibold))
+                            Text("الأساسي")
+                        }
+                        .font(Theme.display(12, weight: .semibold))
+                        .foregroundStyle(Theme.inkSoft)
+                        .padding(.horizontal, 11).padding(.vertical, 6)
+                        .background(Capsule().fill(Theme.surfaceAlt))
+                    }
+                    .buttonStyle(.plain)
+                    .transition(.scale.combined(with: .opacity))
                 }
-                .font(Theme.display(13, weight: .semibold))
-                .foregroundStyle(Theme.accent)
+                Button {
+                    withAnimation(.smooth) { editing.toggle() }
+                    Haptics.tap(enabled: store.hapticsEnabled)
+                } label: {
+                    Text(editing ? "تم" : "ترتيب")
+                        .font(Theme.display(12, weight: .semibold))
+                        .foregroundStyle(editing ? .white : Theme.accent)
+                        .padding(.horizontal, 13).padding(.vertical, 6)
+                        .background(Capsule().fill(editing ? Theme.accent : Theme.accentSoft))
+                }
+                .buttonStyle(.plain)
             }
+
+            // شرح ما يفعله الوضع، بدل أن يخمّنه المستخدم
+            HStack(alignment: .top, spacing: 8) {
+                Image(systemName: editing ? "hand.tap.fill" : "info.circle.fill")
+                    .font(.system(size: 12))
+                    .foregroundStyle(editing ? Theme.accent : Theme.inkFaint)
+                    .padding(.top, 1)
+                Text(editing
+                     ? "استعمل الأسهم لتغيير الترتيب، و⊖ لإخفاء تبويب. «اليوم» ثابت لا يُخفى."
+                     : "هذه التبويبات تظهر في أسفل الشاشة. اضغط «ترتيب» لتغيّرها.")
+                    .font(Theme.display(12))
+                    .foregroundStyle(Theme.inkSoft)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding(.horizontal, 12).padding(.vertical, 10)
+            .background(RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .fill(editing ? Theme.accentSoft : Theme.surfaceAlt))
+            .animation(.smooth(duration: 0.2), value: editing)
 
             SettingsCard {
                 ForEach(Array(store.visibleTabs.enumerated()), id: \.element) { i, tab in
@@ -127,6 +166,12 @@ struct AppearanceView: View {
                             .frame(width: 30, height: 30)
                             .background(Circle().fill(Theme.accentSoft))
 
+                        if editing {
+                            Text("\((i + 1).counterText)")
+                                .font(.system(size: 12, weight: .bold, design: .rounded))
+                                .foregroundStyle(Theme.inkFaint)
+                                .frame(width: 18)
+                        }
                         Text(tab.title).font(Theme.display(15)).foregroundStyle(Theme.ink)
                         if tab.isPinned {
                             Text("ثابت").font(Theme.display(10))
@@ -184,7 +229,7 @@ struct AppearanceView: View {
                 }
             }
 
-            Text("أقصى عدد ٥ تبويبات. «اليوم» ثابت لا يُحذف.")
+            Text("\(store.visibleTabs.count.counterText) من \(AppTab.maxVisible.counterText) تبويبات")
                 .font(Theme.display(11)).foregroundStyle(Theme.inkFaint)
                 .frame(maxWidth: .infinity)
                 .padding(.top, 2)
@@ -201,6 +246,13 @@ struct AppearanceView: View {
         }
         .buttonStyle(.plain)
         .disabled(!enabled)
+    }
+
+    private var isDefaultOrder: Bool { store.visibleTabs == AppTab.defaultOrder }
+
+    private func resetTabs() {
+        withAnimation(.smooth(duration: 0.25)) { store.visibleTabs = AppTab.defaultOrder }
+        Haptics.done(enabled: store.hapticsEnabled)
     }
 
     private func move(_ i: Int, _ delta: Int) {
