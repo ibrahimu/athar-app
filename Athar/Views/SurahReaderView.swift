@@ -55,6 +55,15 @@ struct SurahReaderView: View {
                                 .padding(.vertical, 20)
                         }
 
+                        if store.readingMode == .ayah {
+                            AyahListPage(surahId: surahId, palette: palette,
+                                         scale: store.mushafFontScale,
+                                         bookmarks: Set(store.bookmarks),
+                                         highlights: store.highlights,
+                                         isDark: store.readingTheme == .night,
+                                         onTapAyah: { selected = $0 },
+                                         onVisible: { store.lastRead = $0 })
+                        } else {
                         MushafPage(surahId: surahId, palette: palette,
                                    scale: store.mushafFontScale,
                                    bookmarks: Set(store.bookmarks),
@@ -63,6 +72,7 @@ struct SurahReaderView: View {
                                    isDark: store.readingTheme == .night,
                                    onTapAyah: { selected = $0 },
                                    onVisible: { store.lastRead = $0 })
+                        }
 
                         endOfSurah
                     }
@@ -180,6 +190,7 @@ struct MushafPage: View {
         let ref: AyahRef
         let isMarker: Bool
         let isSajdah: Bool
+        var number: Int = 0
     }
 
     private func tokens(of group: [AyahRef]) -> [Token] {
@@ -194,8 +205,8 @@ struct MushafPage: View {
                 out.append(Token(id: "\(ref.id)-sj", text: "۩", ref: ref,
                                  isMarker: false, isSajdah: true))
             }
-            out.append(Token(id: "\(ref.id)-m", text: medallion(ref.ayah), ref: ref,
-                             isMarker: true, isSajdah: false))
+            out.append(Token(id: "\(ref.id)-m", text: "", ref: ref,
+                             isMarker: true, isSajdah: false, number: ref.ayah))
         }
         return out
     }
@@ -205,10 +216,15 @@ struct MushafPage: View {
         let hl = highlights[t.ref.id].flatMap(HighlightColor.init(rawValue:))
         let isSelected = selected == t.ref
 
-        Text(t.text)
-            .font(t.isMarker ? .system(size: 18 * scale)
-                             : Theme.dhikrFont(size: 23, scale: scale))
-            .foregroundStyle(t.isMarker || t.isSajdah ? palette.accent : palette.ink)
+        Group {
+            if t.isMarker {
+                AyahMedallion(number: t.number, size: 26 * scale, tint: palette.accent)
+            } else {
+                Text(t.text)
+                    .font(Theme.dhikrFont(size: 23, scale: scale))
+                    .foregroundStyle(t.isSajdah ? palette.accent : palette.ink)
+            }
+        }
             .padding(.horizontal, 2)
             .padding(.vertical, 3)
             .background(
@@ -247,14 +263,6 @@ struct MushafPage: View {
         }
     }
 
-    private func medallion(_ n: Int) -> String {
-        let ar = Array("٠١٢٣٤٥٦٧٨٩")
-        let digits = String(String(n).compactMap { c -> Character? in
-            guard let d = c.wholeNumberValue else { return nil }
-            return ar[d]
-        })
-        return "﴿\(digits)﴾"
-    }
 }
 
 // MARK: - ضوابط القراءة
@@ -291,6 +299,30 @@ struct ReaderControls: View {
                         .padding(.vertical, 14)
                         .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Theme.surfaceAlt))
                         .animation(Motion.snappy, value: store.mushafFontScale)
+                }
+
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("طريقة العرض").font(Theme.display(15, weight: .semibold)).foregroundStyle(Theme.ink)
+                    HStack(spacing: 10) {
+                        ForEach(ReadingMode.allCases) { mode in
+                            let on = store.readingMode == mode
+                            Button {
+                                store.readingMode = mode
+                                Haptics.tap(enabled: store.hapticsEnabled)
+                            } label: {
+                                HStack(spacing: 7) {
+                                    Image(systemName: mode.icon).font(.system(size: 14))
+                                    Text(mode.title).font(Theme.display(14, weight: on ? .semibold : .regular))
+                                }
+                                .foregroundStyle(on ? .white : Theme.inkSoft)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 12)
+                                .background(RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                    .fill(on ? Theme.accent : Theme.surfaceAlt))
+                            }
+                            .pressable()
+                        }
+                    }
                 }
 
                 VStack(alignment: .leading, spacing: 10) {
@@ -463,5 +495,65 @@ struct AyahActions: View {
             .padding(.horizontal, 20)
             .padding(.bottom, 16)
         }
+    }
+}
+
+// MARK: - عرض آية آية
+
+/// كل آية في بطاقتها — أوضح للقراءة المتأنّية والتدبّر والتظليل.
+struct AyahListPage: View {
+    let surahId: Int
+    let palette: ReadingPalette
+    let scale: Double
+    let bookmarks: Set<AyahRef>
+    let highlights: [String: String]
+    let isDark: Bool
+    let onTapAyah: (AyahRef) -> Void
+    let onVisible: (AyahRef) -> Void
+
+    private var surah: Surah? { Quran.surah(surahId) }
+
+    var body: some View {
+        LazyVStack(spacing: 12) {
+            ForEach(1...(surah?.ayahCount ?? 1), id: \.self) { n in
+                let ref = AyahRef(surah: surahId, ayah: n)
+                let hl = highlights[ref.id].flatMap(HighlightColor.init(rawValue:))
+
+                HStack(alignment: .top, spacing: 12) {
+                    AyahMedallion(number: n, size: 30 * min(scale, 1.3), tint: palette.accent)
+                        .padding(.top, 4)
+
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text(Quran.text(ref) ?? "")
+                            .font(Theme.dhikrFont(size: 23, scale: scale))
+                            .foregroundStyle(palette.ink)
+                            .lineSpacing(14 * scale)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+
+                        if Quran.isSajdah(ref) {
+                            Label("موضع سجدة", systemImage: "figure.and.child.holdinghands")
+                                .font(Theme.display(11, weight: .medium))
+                                .foregroundStyle(palette.accent)
+                        }
+                    }
+
+                    if bookmarks.contains(ref) {
+                        Image(systemName: "bookmark.fill")
+                            .font(.system(size: 11))
+                            .foregroundStyle(palette.accent)
+                            .padding(.top, 6)
+                    }
+                }
+                .padding(14)
+                .background(
+                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                        .fill(hl?.color(dark: isDark) ?? palette.ink.opacity(0.03))
+                )
+                .contentShape(Rectangle())
+                .onTapGesture { onTapAyah(ref) }
+                .onAppear { onVisible(ref) }
+            }
+        }
+        .padding(.top, 8)
     }
 }

@@ -28,10 +28,9 @@ struct FlowLayout: Layout {
         var y = bounds.minY
 
         for line in lines {
-            // توسيط السطر أفقيًا يعطي مظهر الصفحة المتراصّة
-            var x = rightToLeft
-                ? bounds.maxX - (bounds.width - line.width) / 2
-                : bounds.minX + (bounds.width - line.width) / 2
+            // محاذاة من حافة السطر لا توسيط: التوسيط يجعل بدايات الأسطر
+            // متفاوتة فتتشتّت العين ويبدو الترتيب مضطربًا.
+            var x = rightToLeft ? bounds.maxX : bounds.minX
 
             for i in line.indices {
                 let size = subviews[i].sizeThatFits(.unspecified)

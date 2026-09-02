@@ -77,6 +77,7 @@ extension AtharStore {
         static let wirdEnabled   = "athar.wird.enabled"
         static let wirdMinutes   = "athar.wird.reminderMinutes"
         static let highlights    = "athar.mushaf.highlights"
+        static let readingMode   = "athar.mushaf.readingMode"
     }
 
     /// عدد الأيام منذ مرجع ثابت — أساس جدولة المراجعة.
@@ -136,6 +137,12 @@ extension AtharStore {
         var b = bookmarks
         if let i = b.firstIndex(of: ref) { b.remove(at: i) } else { b.append(ref) }
         bookmarks = b
+    }
+
+    /// نمط عرض المصحف: صفحة متصلة أو آية آية.
+    var readingMode: ReadingMode {
+        get { ReadingMode(rawValue: defaults.string(forKey: MKey.readingMode) ?? "") ?? .page }
+        set { defaults.set(newValue.rawValue, forKey: MKey.readingMode); objectWillChange.send() }
     }
 
     // MARK: التظليل
@@ -283,4 +290,15 @@ enum HighlightColor: String, CaseIterable, Identifiable {
         }
         return Color(hex: hex).opacity(dark ? 0.26 : 0.42)
     }
+}
+
+
+/// نمطا عرض المصحف — بطلب المستخدم: الخياران معًا.
+enum ReadingMode: String, CaseIterable, Identifiable {
+    case page   // نص متصل كصفحة المصحف المطبوع
+    case ayah   // كل آية في سطرها، أوضح للقراءة والتدبّر
+
+    var id: String { rawValue }
+    var title: String { self == .page ? "صفحة" : "آية آية" }
+    var icon: String { self == .page ? "book.pages.fill" : "list.bullet" }
 }

@@ -343,3 +343,47 @@ struct SurahMedallion: View {
         .frame(width: size, height: size)
     }
 }
+
+// MARK: - فاصلة الآية
+
+/// ميدالية نهاية الآية — دائرة مزخرفة بالرقم داخلها، كما في المصحف المطبوع.
+/// (القوسان ﴿﴾ للاقتباس في النص العادي، لا لترقيم الآي.)
+struct AyahMedallion: View {
+    let number: Int
+    var size: CGFloat = 26
+    var tint: Color = Theme.gold
+
+    private var arabicDigits: String {
+        let ar = Array("٠١٢٣٤٥٦٧٨٩")
+        return String(String(number).compactMap { c in
+            c.wholeNumberValue.map { ar[$0] }
+        })
+    }
+
+    var body: some View {
+        ZStack {
+            // إطار خارجي بأشعة دقيقة — زخرفة المصاحف المعتادة
+            ForEach(0..<12, id: \.self) { i in
+                Capsule()
+                    .fill(tint.opacity(0.5))
+                    .frame(width: size * 0.055, height: size * 0.13)
+                    .offset(y: -size * 0.435)
+                    .rotationEffect(.degrees(Double(i) * 30))
+            }
+            Circle()
+                .stroke(tint.opacity(0.85), lineWidth: max(0.8, size * 0.035))
+                .frame(width: size * 0.76, height: size * 0.76)
+            Circle()
+                .fill(tint.opacity(0.10))
+                .frame(width: size * 0.76, height: size * 0.76)
+            Text(arabicDigits)
+                .font(.system(size: size * 0.36, weight: .medium))
+                .foregroundStyle(tint)
+                .minimumScaleFactor(0.5)
+                .lineLimit(1)
+                .frame(width: size * 0.64)
+        }
+        .frame(width: size, height: size)
+        .accessibilityLabel("الآية \(number)")
+    }
+}

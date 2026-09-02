@@ -46,6 +46,10 @@ final class AtharStore: ObservableObject {
         static let calcMethod        = "athar.calcMethod"
         static let asrMethod         = "athar.asrMethod"
         static let athanAlerts       = "athar.athanAlerts"
+        static let didOnboard        = "athar.didOnboard"
+        static let istighfarAlerts   = "athar.istighfarAlerts"
+        static let istighfarEvery    = "athar.istighfarEveryHours"
+        static let qiyamAlert        = "athar.qiyamAlert"
         static let countTapArea      = "athar.countTapArea"
         static let placeTimeZone     = "athar.placeTimeZone"
     }
@@ -75,6 +79,9 @@ final class AtharStore: ObservableObject {
             Key.calcMethod: CalculationMethod.ummAlQura.rawValue,
             Key.asrMethod: AsrMethod.standard.rawValue,
             Key.athanAlerts: false,
+            Key.istighfarAlerts: false,
+            Key.istighfarEvery: 3,
+            Key.qiyamAlert: false,
             Key.countTapArea: CountTapArea.screen.rawValue
         ])
     }
@@ -229,6 +236,29 @@ final class AtharStore: ObservableObject {
     var athanAlerts: Bool {
         get { defaults.bool(forKey: Key.athanAlerts) }
         set { defaults.set(newValue, forKey: Key.athanAlerts); objectWillChange.send() }
+    }
+
+    /// هل عُرضت شاشة الترحيب؟
+    var didOnboard: Bool {
+        get { defaults.bool(forKey: Key.didOnboard) }
+        set { defaults.set(newValue, forKey: Key.didOnboard); objectWillChange.send() }
+    }
+
+    /// تذكير الاستغفار كل بضع ساعات.
+    var istighfarAlerts: Bool {
+        get { defaults.bool(forKey: Key.istighfarAlerts) }
+        set { defaults.set(newValue, forKey: Key.istighfarAlerts); objectWillChange.send() }
+    }
+
+    var istighfarEveryHours: Int {
+        get { max(1, defaults.integer(forKey: Key.istighfarEvery) == 0 ? 3 : defaults.integer(forKey: Key.istighfarEvery)) }
+        set { defaults.set(max(1, newValue), forKey: Key.istighfarEvery); objectWillChange.send() }
+    }
+
+    /// تنبيه قيام الليل عند دخول الثلث الأخير.
+    var qiyamAlert: Bool {
+        get { defaults.bool(forKey: Key.qiyamAlert) }
+        set { defaults.set(newValue, forKey: Key.qiyamAlert); objectWillChange.send() }
     }
 
     func setCity(_ city: City) {

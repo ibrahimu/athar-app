@@ -8,6 +8,8 @@ struct SettingsView: View {
     @EnvironmentObject private var store: AtharStore
     @State private var showResetConfirm = false
     @State private var permissionDenied = false
+    @State private var scheduledAlerts = 0
+    @State private var testSent = false
 
     private var morningBinding: Binding<Date> {
         Binding(
@@ -49,6 +51,7 @@ struct SettingsView: View {
             }
             .navigationTitle("الإعدادات")
             .navigationBarTitleDisplayMode(.inline)
+            .task { scheduledAlerts = await Reminders.scheduledAthanCount() }
             .confirmationDialog("هل تريد تصفير كل الإحصائيات؟", isPresented: $showResetConfirm, titleVisibility: .visible) {
                 Button("تصفير", role: .destructive) {
                     store.resetAllProgress()
@@ -136,6 +139,28 @@ struct SettingsView: View {
                         }
                     ))
                     .labelsHidden()
+                }
+
+                if store.athanAlerts {
+                    SettingsDivider()
+                    Button {
+                        Task {
+                            testSent = await Reminders.sendTestAlert()
+                            if !testSent { permissionDenied = true }
+                        }
+                    } label: {
+                        SettingsRow(icon: testSent ? "checkmark.circle.fill" : "bell.badge.waveform.fill",
+                                    tint: testSent ? Theme.accent : Theme.gold,
+                                    title: testSent ? "أُرسل — سيصلك خلال ٥ ثوانٍ" : "جرّب التنبيه الآن",
+                                    subtitle: scheduledAlerts > 0
+                                        ? "\(scheduledAlerts.counterText) تنبيهًا مجدولًا للأيام القادمة"
+                                        : "اضغط لتتأكد أن الإشعارات تعمل") {
+                            Image(systemName: "chevron.left")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(Theme.inkFaint)
+                        }
+                    }
+                    .pressable()
                 }
 
                 SettingsDivider()
