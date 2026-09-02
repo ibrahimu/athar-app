@@ -3,6 +3,17 @@ Athar is a calm daily companion for Islamic remembrance (adhkar) and prayer time
 No ads. No subscriptions. No accounts. No internet required.
 
 
+LOCK SCREEN AND HOME SCREEN WIDGETS
+
+Three widgets that put remembrance in front of you without opening the app:
+
+- "ذِكر" — a dhikr that refreshes through the day. Every size: small, medium and large on the Home Screen; circular, rectangular and inline on the Lock Screen.
+- "أوقات الصلاة" — the next prayer with a live countdown.
+- "أثري" — your daily streak and total count.
+
+On the Lock Screen: long-press → Customise → pick "أثر".
+
+
 ADHKAR
 
 108 adhkar across 10 collections: morning, evening, before sleep, on waking, after prayer, for distress and worry, seeking forgiveness, sending peace upon the Prophet صلى الله عليه وسلم, the lasting good deeds, and adhkar for the day and night.
@@ -31,14 +42,6 @@ A compass pointing to the Kaaba from where you are, with the bearing in degrees 
 TASBIH
 
 A counter with 33 / 100 / 500 / 1000 targets, eight ready phrases, gentle haptics on each count, and completed-round tracking.
-
-
-WIDGETS
-
-For the Home Screen and the Lock Screen:
-- A dhikr that refreshes through the day
-- The next prayer and time remaining
-- Your daily streak and total count
 
 
 REMINDERS
