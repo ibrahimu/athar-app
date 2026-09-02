@@ -34,6 +34,7 @@ struct SurahReaderView: View {
     @EnvironmentObject private var store: AtharStore
     @State private var showControls = false
     @State private var selected: AyahRef? = nil
+    @State private var currentRef: AyahRef?
 
     private var surah: Surah? { Quran.surah(surahId) }
     private var palette: ReadingPalette { .of(store.readingTheme) }
@@ -62,7 +63,7 @@ struct SurahReaderView: View {
                                          highlights: store.highlights,
                                          isDark: store.readingTheme == .night,
                                          onTapAyah: { selected = $0 },
-                                         onVisible: { store.lastRead = $0 })
+                                         onVisible: { store.lastRead = $0; currentRef = $0 })
                         } else {
                         MushafPage(surahId: surahId, palette: palette,
                                    scale: store.mushafFontScale,
@@ -71,7 +72,7 @@ struct SurahReaderView: View {
                                    selected: selected,
                                    isDark: store.readingTheme == .night,
                                    onTapAyah: { selected = $0 },
-                                   onVisible: { store.lastRead = $0 })
+                                   onVisible: { store.lastRead = $0; currentRef = $0 })
                         }
 
                         endOfSurah
@@ -90,6 +91,7 @@ struct SurahReaderView: View {
                 }
             }
         }
+        .overlay(alignment: .bottom) { positionBar }
         .navigationTitle(surah.map { "سورة \($0.name)" } ?? "")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.hidden, for: .tabBar)
@@ -107,6 +109,32 @@ struct SurahReaderView: View {
             AyahActions(ref: ref).presentationDetents([.height(420)])
         }
         .toolbarColorScheme(store.readingTheme == .night ? .dark : .light, for: .navigationBar)
+        // القارئ يُمسك المصحف دقائق دون لمس — لا تنطفئ الشاشة عليه.
+        .onAppear { UIApplication.shared.isIdleTimerDisabled = true }
+        .onDisappear { UIApplication.shared.isIdleTimerDisabled = false }
+    }
+
+    /// شريط الموضع: الصفحة والجزء ونسبة التقدّم في المصحف كله.
+    private var positionBar: some View {
+        let ref = currentRef ?? AyahRef(surah: surahId, ayah: 1)
+        let page = Quran.page(of: ref)
+        let juz = Quran.juz(of: ref)
+        let pct = Int((Double(page) / Double(Quran.pageCount) * 100).rounded())
+        return HStack(spacing: 10) {
+            Text("الجزء \(juz.counterText)")
+            Rectangle().fill(palette.faint.opacity(0.4)).frame(width: 1, height: 12)
+            Text("صفحة \(page.counterText) من \(Quran.pageCount.counterText)")
+            Rectangle().fill(palette.faint.opacity(0.4)).frame(width: 1, height: 12)
+            Text("\(pct.counterText)٪")
+        }
+        .font(.system(size: 12, weight: .medium, design: .rounded))
+        .foregroundStyle(palette.faint)
+        .monospacedDigit()
+        .padding(.horizontal, 16).padding(.vertical, 9)
+        .background(Capsule().fill(palette.paper.opacity(0.94)))
+        .overlay(Capsule().stroke(palette.hairline, lineWidth: 1))
+        .padding(.bottom, 8)
+        .animation(Motion.snappy, value: page)
     }
 
     private var header: some View {
@@ -175,6 +203,11 @@ struct MushafPage: View {
                         tokenView(token)
                     }
                 }
+                // جوهري: FlowLayout يرصّ من اليمين يدويًا، وSwiftUI يعكس
+                // الإحداثيات تلقائيًا في بيئة RTL — فيلزم تثبيت LTR هنا
+                // وإلا انقلب ترتيب الكلمات (حدث فعلًا). هكذا يصحّ الرصّ
+                // مهما كانت لغة الجهاز واتجاهه.
+                .environment(\.layoutDirection, .leftToRight)
                 .onAppear { if let f = group.first { onVisible(f) } }
             }
         }

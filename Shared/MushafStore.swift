@@ -78,6 +78,10 @@ extension AtharStore {
         static let wirdMinutes   = "athar.wird.reminderMinutes"
         static let highlights    = "athar.mushaf.highlights"
         static let readingMode   = "athar.mushaf.readingMode"
+        static let khatmahDays   = "athar.khatmah.totalDays"
+        static let khatmahStart  = "athar.khatmah.startDay"
+        static let khatmahDone   = "athar.khatmah.pagesDone"
+        static let khatmahMode   = "athar.khatmah.mode"
     }
 
     /// عدد الأيام منذ مرجع ثابت — أساس جدولة المراجعة.
@@ -231,6 +235,67 @@ extension AtharStore {
         set { defaults.set(max(1, newValue), forKey: MKey.repeatCount); objectWillChange.send() }
     }
 
+    // MARK: تحدي الختمة
+
+    /// خطة ختمة نشطة؟ صفر أيام = لا خطة.
+    var khatmahTotalDays: Int {
+        get { defaults.integer(forKey: MKey.khatmahDays) }
+        set { defaults.set(max(0, newValue), forKey: MKey.khatmahDays); objectWillChange.send() }
+    }
+
+    var khatmahStartDay: Int {
+        get { defaults.integer(forKey: MKey.khatmahStart) }
+        set { defaults.set(newValue, forKey: MKey.khatmahStart); objectWillChange.send() }
+    }
+
+    /// صفحات قُرئت من أول المصحف — الختمة تتقدّم بالترتيب.
+    var khatmahPagesDone: Int {
+        get { min(Quran.pageCount, defaults.integer(forKey: MKey.khatmahDone)) }
+        set { defaults.set(min(Quran.pageCount, max(0, newValue)), forKey: MKey.khatmahDone); objectWillChange.send() }
+    }
+
+    var khatmahMode: KhatmahMode {
+        get { KhatmahMode(rawValue: defaults.string(forKey: MKey.khatmahMode) ?? "") ?? .open }
+        set { defaults.set(newValue.rawValue, forKey: MKey.khatmahMode); objectWillChange.send() }
+    }
+
+    var khatmahActive: Bool { khatmahTotalDays > 0 }
+
+    func startKhatmah(days: Int, mode: KhatmahMode) {
+        khatmahTotalDays = days
+        khatmahStartDay = Self.dayNumber()
+        khatmahPagesDone = 0
+        khatmahMode = mode
+    }
+
+    func cancelKhatmah() {
+        khatmahTotalDays = 0
+        khatmahPagesDone = 0
+    }
+
+    /// صفحات كل يوم — تقسيم ٦٠٤ على الأيام مع رفع الكسر.
+    var khatmahPagesPerDay: Int {
+        guard khatmahTotalDays > 0 else { return 0 }
+        return Int((Double(Quran.pageCount) / Double(khatmahTotalDays)).rounded(.up))
+    }
+
+    /// اليوم الحالي في الخطة (١ فأعلى).
+    var khatmahDayIndex: Int {
+        max(1, Self.dayNumber() - khatmahStartDay + 1)
+    }
+
+    /// مدى صفحات اليوم: من آخر ما قُرئ إلى هدف اليوم.
+    var khatmahTodayRange: ClosedRange<Int> {
+        let target = min(Quran.pageCount, khatmahDayIndex * khatmahPagesPerDay)
+        let from = min(khatmahPagesDone + 1, Quran.pageCount)
+        return from...max(from, target)
+    }
+
+    /// موجب = متقدّم على الخطة، سالب = متأخّر عنها.
+    var khatmahDelta: Int {
+        khatmahPagesDone - min(Quran.pageCount, khatmahDayIndex * khatmahPagesPerDay)
+    }
+
     // MARK: الورد اليومي
 
     var wirdTarget: Int {
@@ -301,4 +366,33 @@ enum ReadingMode: String, CaseIterable, Identifiable {
     var id: String { rawValue }
     var title: String { self == .page ? "صفحة" : "آية آية" }
     var icon: String { self == .page ? "book.pages.fill" : "list.bullet" }
+}
+
+
+/// كيف يوزّع القارئ ورد يومه — عرض إرشادي داخل الشاشة.
+enum KhatmahMode: String, CaseIterable, Identifiable {
+    case open, prayers, morningEvening
+
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .open:           return "مفتوح"
+        case .prayers:        return "مع الصلوات"
+        case .morningEvening: return "صباح ومساء"
+        }
+    }
+    var detail: String {
+        switch self {
+        case .open:           return "اقرأ وردك متى تيسّر لك"
+        case .prayers:        return "قسّم الورد على الصلوات الخمس"
+        case .morningEvening: return "نصف بعد الفجر ونصف بعد المغرب"
+        }
+    }
+    var slotNames: [String] {
+        switch self {
+        case .open:           return []
+        case .prayers:        return ["الفجر", "الظهر", "العصر", "المغرب", "العشاء"]
+        case .morningEvening: return ["الصباح", "المساء"]
+        }
+    }
 }

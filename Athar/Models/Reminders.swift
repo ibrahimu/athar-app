@@ -9,6 +9,9 @@ enum Reminders {
     private static let wirdId = "athar.reminder.wird"
     private static let istighfarPrefix = "athar.istighfar."
     private static let qiyamPrefix = "athar.qiyam."
+    private static let jumuahId = "athar.jumuah"
+    private static let fastingPrefix = "athar.fasting."
+    private static let whitePrefix = "athar.white."
 
     static func requestAuthorization() async -> Bool {
         (try? await UNUserNotificationCenter.current()
@@ -139,6 +142,59 @@ enum Reminders {
         }
     }
 
+    /// تذكيرات السنن الأسبوعية والشهرية.
+    static func rescheduleSunan(store: AtharStore) async {
+        let center = UNUserNotificationCenter.current()
+        let pending = await center.pendingNotificationRequests()
+        center.removePendingNotificationRequests(withIdentifiers:
+            pending.map(\.identifier).filter {
+                $0 == jumuahId || $0.hasPrefix(fastingPrefix) || $0.hasPrefix(whitePrefix)
+            })
+
+        // الجمعة ٩ صباحًا: الكهف والصلاة على النبي (weekday 6 = الجمعة)
+        if store.jumuahAlert {
+            let c = UNMutableNotificationContent()
+            c.title = "جمعة مباركة"
+            c.body = "سورة الكهف نورٌ بين الجمعتين، وأكثِر من الصلاة على النبي ﷺ."
+            c.sound = .default
+            var dc = DateComponents(); dc.weekday = 6; dc.hour = 9
+            try? await center.add(UNNotificationRequest(identifier: jumuahId, content: c,
+                trigger: UNCalendarNotificationTrigger(dateMatching: dc, repeats: true)))
+        }
+
+        // ليلة الاثنين والخميس ٩ مساءً (الأحد ١ والأربعاء ٤)
+        if store.fastingAlert {
+            for (wd, day) in [(1, "الاثنين"), (4, "الخميس")] {
+                let c = UNMutableNotificationContent()
+                c.title = "غدًا \(day)"
+                c.body = "«تُعرض الأعمال يوم الاثنين والخميس، فأحب أن يُعرض عملي وأنا صائم» — انوِ الصيام."
+                c.sound = .default
+                var dc = DateComponents(); dc.weekday = wd; dc.hour = 21
+                try? await center.add(UNNotificationRequest(identifier: "\(fastingPrefix)\(wd)",
+                    content: c, trigger: UNCalendarNotificationTrigger(dateMatching: dc, repeats: true)))
+            }
+        }
+
+        // الأيام البيض: مساء ١٢ هجري للأشهر الثلاثة القادمة
+        if store.whiteDaysAlert {
+            let hijri = Calendar(identifier: .islamicUmmAlQura)
+            var cursor = Date()
+            for i in 0..<3 {
+                guard let eve = hijri.nextDate(after: cursor,
+                        matching: DateComponents(day: 12, hour: 20), matchingPolicy: .nextTime)
+                else { break }
+                cursor = eve.addingTimeInterval(86400 * 3)
+                let c = UNMutableNotificationContent()
+                c.title = "الأيام البيض"
+                c.body = "غدًا ١٣ من الشهر الهجري — صيام ١٣ و١٤ و١٥ كصيام الدهر."
+                c.sound = .default
+                let dc = Calendar.current.dateComponents([.year, .month, .day, .hour], from: eve)
+                try? await center.add(UNNotificationRequest(identifier: "\(whitePrefix)\(i)",
+                    content: c, trigger: UNCalendarNotificationTrigger(dateMatching: dc, repeats: false)))
+            }
+        }
+    }
+
     /// يعيد جدولة كل التذكيرات دفعة واحدة.
     static func rescheduleAll(store: AtharStore) async {
         await reschedule(store: store)
@@ -146,6 +202,7 @@ enum Reminders {
         await rescheduleWird(store: store)
         await rescheduleIstighfar(store: store)
         await rescheduleQiyam(store: store)
+        await rescheduleSunan(store: store)
     }
 
     /// تنبيه تجريبي بعد ٥ ثوانٍ — ليتأكد المستخدم أن الإشعارات تعمل

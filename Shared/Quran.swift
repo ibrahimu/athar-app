@@ -62,6 +62,48 @@ enum Quran {
 
     static func isSajdah(_ ref: AyahRef) -> Bool { sajdahPositions.contains(ref) }
 
+    // MARK: صفحات مصحف المدينة وأجزاؤه
+
+    /// بيانات مواضع بدايات الصفحات (٦٠٤) والأجزاء (٣٠) — من تنزيل، متحقَّق منها
+    /// على مراسٍ معلومة (آل عمران تبدأ ص٥٠، الجزء ٣٠ يبدأ بالنبأ...).
+    private struct MetaFile: Codable { let pageStarts: [[Int]]; let juzStarts: [[Int]] }
+    private static let metaFile: MetaFile? = {
+        for b in [Bundle.main] + Bundle.allBundles {
+            if let u = b.url(forResource: "quran_meta", withExtension: "json"),
+               let d = try? Data(contentsOf: u),
+               let f = try? JSONDecoder().decode(MetaFile.self, from: d) { return f }
+        }
+        return nil
+    }()
+
+    static let pageCount = 604
+
+    /// رقم صفحة الآية في مصحف المدينة (١ إلى ٦٠٤).
+    static func page(of ref: AyahRef) -> Int {
+        position(of: ref, in: metaFile?.pageStarts ?? [[1, 1]])
+    }
+
+    /// رقم جزء الآية (١ إلى ٣٠).
+    static func juz(of ref: AyahRef) -> Int {
+        position(of: ref, in: metaFile?.juzStarts ?? [[1, 1]])
+    }
+
+    /// أول آية في صفحة معيّنة — للانتقال إلى موضع ورد الختمة.
+    static func firstAyah(ofPage page: Int) -> AyahRef {
+        let starts = metaFile?.pageStarts ?? [[1, 1]]
+        let i = min(max(page, 1), starts.count) - 1
+        return AyahRef(surah: starts[i][0], ayah: starts[i][1])
+    }
+
+    private static func position(of ref: AyahRef, in starts: [[Int]]) -> Int {
+        var result = 1
+        for (i, st) in starts.enumerated() {
+            let s = AyahRef(surah: st[0], ayah: st[1])
+            if s <= ref { result = i + 1 } else { break }
+        }
+        return result
+    }
+
     static func surah(_ id: Int) -> Surah? {
         guard id >= 1, id <= surahs.count else { return nil }
         return surahs[id - 1]

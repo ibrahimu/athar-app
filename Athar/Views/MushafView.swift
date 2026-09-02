@@ -114,7 +114,7 @@ struct MushafView: View {
                             Text("تابع القراءة")
                                 .font(Theme.display(12, weight: .semibold))
                                 .foregroundStyle(Theme.accent)
-                            Text("سورة \(s.name) · الآية \(last.ayah.counterText)")
+                            Text("سورة \(s.name) · ص \(Quran.page(of: last).counterText) · الجزء \(Quran.juz(of: last).counterText)")
                                 .font(Theme.display(16, weight: .semibold))
                                 .foregroundStyle(Theme.ink)
                         }
@@ -142,10 +142,12 @@ struct MushafView: View {
             }
             .pressable()
 
-            NavigationLink { WirdView() } label: {
-                toolTile("calendar.badge.clock", Theme.gold, "الورد اليومي",
-                         "\(store.wirdDoneToday.counterText) من \(store.wirdTarget.counterText)",
-                         badge: false)
+            NavigationLink { KhatmahView() } label: {
+                toolTile("book.closed.fill", Theme.gold, "الختمة",
+                         store.khatmahActive
+                            ? "\(Int((Double(store.khatmahPagesDone) / Double(Quran.pageCount) * 100).rounded()).counterText)٪ — اليوم \(store.khatmahDayIndex.counterText)"
+                            : "ابدأ تحدي الختم",
+                         badge: store.khatmahActive && store.khatmahDelta < 0)
             }
             .pressable()
         }

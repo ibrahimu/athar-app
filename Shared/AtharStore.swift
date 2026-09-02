@@ -50,6 +50,9 @@ final class AtharStore: ObservableObject {
         static let istighfarAlerts   = "athar.istighfarAlerts"
         static let istighfarEvery    = "athar.istighfarEveryHours"
         static let qiyamAlert        = "athar.qiyamAlert"
+        static let jumuahAlert       = "athar.jumuahAlert"
+        static let fastingAlert      = "athar.fastingAlert"
+        static let whiteDaysAlert    = "athar.whiteDaysAlert"
         static let countTapArea      = "athar.countTapArea"
         static let placeTimeZone     = "athar.placeTimeZone"
     }
@@ -82,6 +85,9 @@ final class AtharStore: ObservableObject {
             Key.istighfarAlerts: false,
             Key.istighfarEvery: 3,
             Key.qiyamAlert: false,
+            Key.jumuahAlert: false,
+            Key.fastingAlert: false,
+            Key.whiteDaysAlert: false,
             Key.countTapArea: CountTapArea.screen.rawValue
         ])
     }
@@ -259,6 +265,24 @@ final class AtharStore: ObservableObject {
     var qiyamAlert: Bool {
         get { defaults.bool(forKey: Key.qiyamAlert) }
         set { defaults.set(newValue, forKey: Key.qiyamAlert); objectWillChange.send() }
+    }
+
+    /// تذكير الجمعة: الكهف والصلاة على النبي.
+    var jumuahAlert: Bool {
+        get { defaults.bool(forKey: Key.jumuahAlert) }
+        set { defaults.set(newValue, forKey: Key.jumuahAlert); objectWillChange.send() }
+    }
+
+    /// تذكير صيام الاثنين والخميس (ليلة الصيام).
+    var fastingAlert: Bool {
+        get { defaults.bool(forKey: Key.fastingAlert) }
+        set { defaults.set(newValue, forKey: Key.fastingAlert); objectWillChange.send() }
+    }
+
+    /// تذكير الأيام البيض (١٣ و١٤ و١٥ من كل شهر هجري).
+    var whiteDaysAlert: Bool {
+        get { defaults.bool(forKey: Key.whiteDaysAlert) }
+        set { defaults.set(newValue, forKey: Key.whiteDaysAlert); objectWillChange.send() }
     }
 
     func setCity(_ city: City) {

@@ -36,6 +36,7 @@ struct SettingsView: View {
                 ScrollView {
                     VStack(spacing: 30) {
                         reminders
+                        sunanReminders
                         prayer
                         display
                         stats
@@ -113,6 +114,52 @@ struct SettingsView: View {
             }
         }
         .animation(Motion.smooth, value: store.remindersEnabled)
+    }
+
+    // MARK: تنويع التذكيرات
+
+    private func alertToggle(_ get: @escaping () -> Bool, _ set: @escaping (Bool) -> Void) -> Binding<Bool> {
+        Binding(get: get, set: { on in
+            set(on)
+            Task {
+                if on, await !Reminders.requestAuthorization() {
+                    set(false); permissionDenied = true; return
+                }
+                await Reminders.rescheduleAll(store: store)
+            }
+        })
+    }
+
+    private var sunanReminders: some View {
+        VStack(spacing: 8) {
+            SettingsGroupTitle(text: "تنويع التذكيرات")
+            SettingsCard {
+                SettingsRow(icon: "sparkles", tint: Theme.gold, title: "الجمعة",
+                            subtitle: "الكهف والصلاة على النبي ﷺ") {
+                    Toggle("", isOn: alertToggle({ store.jumuahAlert }, { store.jumuahAlert = $0 })).labelsHidden()
+                }
+                SettingsDivider()
+                SettingsRow(icon: "fork.knife", tint: Theme.accent(for: "sea"), title: "صيام الاثنين والخميس",
+                            subtitle: "تذكير ليلة الصيام") {
+                    Toggle("", isOn: alertToggle({ store.fastingAlert }, { store.fastingAlert = $0 })).labelsHidden()
+                }
+                SettingsDivider()
+                SettingsRow(icon: "moon.circle.fill", tint: Theme.accent(for: "dusk"), title: "الأيام البيض",
+                            subtitle: "١٣ و١٤ و١٥ من كل شهر هجري") {
+                    Toggle("", isOn: alertToggle({ store.whiteDaysAlert }, { store.whiteDaysAlert = $0 })).labelsHidden()
+                }
+                SettingsDivider()
+                SettingsRow(icon: "moon.stars.fill", tint: Theme.accent(for: "night"), title: "قيام الليل",
+                            subtitle: "عند دخول الثلث الأخير") {
+                    Toggle("", isOn: alertToggle({ store.qiyamAlert }, { store.qiyamAlert = $0 })).labelsHidden()
+                }
+                SettingsDivider()
+                SettingsRow(icon: "drop.fill", tint: Theme.accent(for: "sea"), title: "الاستغفار والتسبيح",
+                            subtitle: "على مدار اليوم") {
+                    Toggle("", isOn: alertToggle({ store.istighfarAlerts }, { store.istighfarAlerts = $0 })).labelsHidden()
+                }
+            }
+        }
     }
 
     // MARK: الصلاة
