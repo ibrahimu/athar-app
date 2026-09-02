@@ -158,7 +158,7 @@ struct MushafPage: View {
     private var surah: Surah? { Quran.surah(surahId) }
 
     var body: some View {
-        LazyVStack(alignment: .center, spacing: 20) {
+        LazyVStack(alignment: .center, spacing: 14 * scale) {
             ForEach(chunks, id: \.first) { group in
                 FlowLayout(lineSpacing: 14 * scale, wordSpacing: 5 * scale) {
                     ForEach(tokens(of: group)) { token in
@@ -234,12 +234,16 @@ struct MushafPage: View {
         return .clear
     }
 
-    /// مقاطع من خمس آيات: تبقي التمرير سلسًا وتحدّ من عدد العناصر المرسومة.
+    /// مقاطع من عشرين آية.
+    ///
+    /// كل مقطع يبدأ سطرًا جديدًا، فكلما صغُر المقطع كثُرت الأسطر المقطوعة
+    /// وظهرت كلمات يتيمة في سطر وحدها — وهذا يكسر مظهر الصفحة المتصلة.
+    /// عشرون توازن بين اتصال النص وبين إبقاء التمرير كسولًا وسلسًا.
     private var chunks: [[AyahRef]] {
         guard let s = surah else { return [] }
         let refs = (1...s.ayahCount).map { AyahRef(surah: surahId, ayah: $0) }
-        return stride(from: 0, to: refs.count, by: 5).map {
-            Array(refs[$0..<min($0 + 5, refs.count)])
+        return stride(from: 0, to: refs.count, by: 20).map {
+            Array(refs[$0..<min($0 + 20, refs.count)])
         }
     }
 
