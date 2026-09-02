@@ -21,7 +21,7 @@ final class AtharStore: ObservableObject {
     static let appGroup = "group.com.ibrahim.athar"
     static let shared = AtharStore()
 
-    private let defaults: UserDefaults
+    let defaults: UserDefaults
 
     private enum Key {
         static let totalDhikrCount   = "athar.totalDhikrCount"

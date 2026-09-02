@@ -4,7 +4,7 @@ struct RootView: View {
     @EnvironmentObject private var store: AtharStore
     @State private var selection: Tab = .home
 
-    enum Tab: Hashable { case home, adhkar, prayer, tasbih, settings }
+    enum Tab: Hashable { case home, mushaf, adhkar, prayer, tasbih }
 
     var body: some View {
         TabView(selection: $selection) {
@@ -12,8 +12,12 @@ struct RootView: View {
                 .tabItem { Label("اليوم", systemImage: "sun.horizon.fill") }
                 .tag(Tab.home)
 
+            MushafView()
+                .tabItem { Label("المصحف", systemImage: "book.pages.fill") }
+                .tag(Tab.mushaf)
+
             AdhkarIndexView()
-                .tabItem { Label("الأذكار", systemImage: "book.closed.fill") }
+                .tabItem { Label("الأذكار", systemImage: "text.book.closed.fill") }
                 .tag(Tab.adhkar)
 
             PrayerView(store: store)
@@ -24,9 +28,6 @@ struct RootView: View {
                 .tabItem { Label("المسبحة", systemImage: "circle.hexagongrid.fill") }
                 .tag(Tab.tasbih)
 
-            SettingsView()
-                .tabItem { Label("الإعدادات", systemImage: "gearshape.fill") }
-                .tag(Tab.settings)
         }
     }
 }

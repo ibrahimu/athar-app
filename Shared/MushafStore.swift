@@ -1,0 +1,221 @@
+import Foundation
+
+// MARK: - سِمة القراءة
+
+/// «الوضع الليلي يصير عكس: الكلام أبيض والورق داكن» — بطلب المستخدم.
+enum ReadingTheme: String, CaseIterable, Identifiable {
+    case paper      // ورق فاتح وحبر داكن
+    case sepia      // ورق دافئ يريح في الإضاءة الخافتة
+    case night      // ورق أزرق داكن وحبر أبيض
+
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .paper: return "ورق"
+        case .sepia: return "دافئ"
+        case .night: return "ليلي"
+        }
+    }
+    var shortTitle: String { title }
+    var detail: String {
+        switch self {
+        case .paper: return "حبر داكن على ورق فاتح"
+        case .sepia: return "أدفأ للعين في الإضاءة الخافتة"
+        case .night: return "حبر أبيض على ورق أزرق داكن"
+        }
+    }
+}
+
+// MARK: - حالة الحفظ لآية
+
+/// صناديق ليتنر: كلما ثبتت الآية ارتفع صندوقها وطال موعد مراجعتها،
+/// وإذا تعثّر فيها رجعت إلى الصندوق الأول لتعود سريعًا.
+struct MemoryCard: Codable, Hashable {
+    var box: Int              // ٠ = جديدة، ثم ١..٥
+    var dueDay: Int           // اليوم المطلق للمراجعة القادمة
+    var lapses: Int           // كم مرة تعثّر فيها
+    var reps: Int             // كم مرة راجعها بنجاح
+
+    static let intervals = [0, 1, 3, 7, 16, 35]   // بالأيام لكل صندوق
+
+    static func new(today: Int) -> MemoryCard {
+        MemoryCard(box: 0, dueDay: today, lapses: 0, reps: 0)
+    }
+
+    /// نجح في الاسترجاع: ارفع الصندوق وباعد الموعد.
+    mutating func passed(today: Int) {
+        box = min(box + 1, Self.intervals.count - 1)
+        reps += 1
+        dueDay = today + Self.intervals[box]
+    }
+
+    /// تعثّر: أرجعها للبداية لتتكرر عليه اليوم نفسه.
+    mutating func stumbled(today: Int) {
+        box = 0
+        lapses += 1
+        dueDay = today
+    }
+
+    var isMemorized: Bool { box >= 3 }
+}
+
+// MARK: - المخزن
+
+extension AtharStore {
+
+    private enum MKey {
+        static let lastRead      = "athar.mushaf.lastRead"
+        static let bookmarks     = "athar.mushaf.bookmarks"
+        static let theme         = "athar.mushaf.theme"
+        static let fontScale     = "athar.mushaf.fontScale"
+        static let cards         = "athar.hifz.cards"
+        static let repeatCount   = "athar.hifz.repeatCount"
+        static let wirdTarget    = "athar.wird.ayahsPerDay"
+        static let wirdDone      = "athar.wird.doneToday"
+        static let wirdDay       = "athar.wird.dayStamp"
+        static let wirdEnabled   = "athar.wird.enabled"
+        static let wirdMinutes   = "athar.wird.reminderMinutes"
+    }
+
+    /// عدد الأيام منذ مرجع ثابت — أساس جدولة المراجعة.
+    static func dayNumber(_ date: Date = Date()) -> Int {
+        Int(Calendar.current.startOfDay(for: date).timeIntervalSince1970 / 86400)
+    }
+
+    // MARK: القراءة
+
+    var lastRead: AyahRef? {
+        get {
+            guard let d = defaults.data(forKey: MKey.lastRead) else { return nil }
+            return try? JSONDecoder().decode(AyahRef.self, from: d)
+        }
+        set {
+            if let v = newValue, let d = try? JSONEncoder().encode(v) {
+                defaults.set(d, forKey: MKey.lastRead)
+            } else {
+                defaults.removeObject(forKey: MKey.lastRead)
+            }
+            objectWillChange.send()
+        }
+    }
+
+    var readingTheme: ReadingTheme {
+        get { ReadingTheme(rawValue: defaults.string(forKey: MKey.theme) ?? "") ?? .paper }
+        set { defaults.set(newValue.rawValue, forKey: MKey.theme); objectWillChange.send() }
+    }
+
+    var mushafFontScale: Double {
+        get {
+            let v = defaults.double(forKey: MKey.fontScale)
+            return v == 0 ? 1.0 : max(0.7, min(2.2, v))
+        }
+        set { defaults.set(max(0.7, min(2.2, newValue)), forKey: MKey.fontScale); objectWillChange.send() }
+    }
+
+    // MARK: العلامات
+
+    var bookmarks: [AyahRef] {
+        get {
+            guard let d = defaults.data(forKey: MKey.bookmarks),
+                  let v = try? JSONDecoder().decode([AyahRef].self, from: d) else { return [] }
+            return v
+        }
+        set {
+            if let d = try? JSONEncoder().encode(newValue.sorted()) {
+                defaults.set(d, forKey: MKey.bookmarks)
+            }
+            objectWillChange.send()
+        }
+    }
+
+    func isBookmarked(_ ref: AyahRef) -> Bool { bookmarks.contains(ref) }
+
+    func toggleBookmark(_ ref: AyahRef) {
+        var b = bookmarks
+        if let i = b.firstIndex(of: ref) { b.remove(at: i) } else { b.append(ref) }
+        bookmarks = b
+    }
+
+    // MARK: الحفظ
+
+    var memoryCards: [String: MemoryCard] {
+        get {
+            guard let d = defaults.data(forKey: MKey.cards),
+                  let v = try? JSONDecoder().decode([String: MemoryCard].self, from: d) else { return [:] }
+            return v
+        }
+        set {
+            if let d = try? JSONEncoder().encode(newValue) { defaults.set(d, forKey: MKey.cards) }
+            objectWillChange.send()
+        }
+    }
+
+    func card(for ref: AyahRef) -> MemoryCard? { memoryCards[ref.id] }
+
+    func recordReview(_ ref: AyahRef, passed: Bool) {
+        let today = Self.dayNumber()
+        var all = memoryCards
+        var c = all[ref.id] ?? .new(today: today)
+        if passed { c.passed(today: today) } else { c.stumbled(today: today) }
+        all[ref.id] = c
+        memoryCards = all
+    }
+
+    func forget(_ ref: AyahRef) {
+        var all = memoryCards
+        all.removeValue(forKey: ref.id)
+        memoryCards = all
+    }
+
+    /// الآيات المستحقة للمراجعة اليوم، الأقدم استحقاقًا أولًا.
+    var dueForReview: [AyahRef] {
+        let today = Self.dayNumber()
+        return memoryCards
+            .filter { $0.value.dueDay <= today }
+            .sorted { ($0.value.dueDay, $0.key) < ($1.value.dueDay, $1.key) }
+            .compactMap { key, _ in
+                let p = key.split(separator: ":")
+                guard p.count == 2, let s = Int(p[0]), let a = Int(p[1]) else { return nil }
+                return AyahRef(surah: s, ayah: a)
+            }
+    }
+
+    var memorizedCount: Int { memoryCards.values.filter(\.isMemorized).count }
+
+    /// كم مرة تتكرر الآية أثناء التلقين قبل الاختبار.
+    var hifzRepeatCount: Int {
+        get { max(1, defaults.integer(forKey: MKey.repeatCount) == 0 ? 5 : defaults.integer(forKey: MKey.repeatCount)) }
+        set { defaults.set(max(1, newValue), forKey: MKey.repeatCount); objectWillChange.send() }
+    }
+
+    // MARK: الورد اليومي
+
+    var wirdTarget: Int {
+        get { max(1, defaults.integer(forKey: MKey.wirdTarget) == 0 ? 10 : defaults.integer(forKey: MKey.wirdTarget)) }
+        set { defaults.set(max(1, newValue), forKey: MKey.wirdTarget); objectWillChange.send() }
+    }
+
+    var wirdDoneToday: Int {
+        get {
+            guard defaults.string(forKey: MKey.wirdDay) == Self.dayStamp() else { return 0 }
+            return defaults.integer(forKey: MKey.wirdDone)
+        }
+        set {
+            defaults.set(Self.dayStamp(), forKey: MKey.wirdDay)
+            defaults.set(newValue, forKey: MKey.wirdDone)
+            objectWillChange.send()
+        }
+    }
+
+    func advanceWird(by n: Int = 1) { wirdDoneToday += n }
+
+    var wirdEnabled: Bool {
+        get { defaults.bool(forKey: MKey.wirdEnabled) }
+        set { defaults.set(newValue, forKey: MKey.wirdEnabled); objectWillChange.send() }
+    }
+
+    var wirdReminderMinutes: Int {
+        get { defaults.integer(forKey: MKey.wirdMinutes) == 0 ? 20 * 60 : defaults.integer(forKey: MKey.wirdMinutes) }
+        set { defaults.set(newValue, forKey: MKey.wirdMinutes); objectWillChange.send() }
+    }
+}

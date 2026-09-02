@@ -43,6 +43,11 @@ struct HomeView: View {
                 ToolbarItem(placement: .principal) {
                     Text("أثر").font(Theme.display(18, weight: .bold)).foregroundStyle(Theme.ink)
                 }
+                ToolbarItem(placement: .topBarLeading) {
+                    NavigationLink { SettingsSheet() } label: {
+                        Image(systemName: "gearshape.fill")
+                    }
+                }
             }
         }
         .onReceive(ticker) { now = $0 }

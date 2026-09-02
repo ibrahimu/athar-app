@@ -6,6 +6,7 @@ enum Reminders {
     private static let morningId = "athar.reminder.morning"
     private static let eveningId = "athar.reminder.evening"
     private static let athanPrefix = "athar.athan."
+    private static let wirdId = "athar.reminder.wird"
 
     static func requestAuthorization() async -> Bool {
         (try? await UNUserNotificationCenter.current()
@@ -67,6 +68,17 @@ enum Reminders {
                 try? await center.add(request)
             }
         }
+    }
+
+    /// تذكير الورد اليومي من القرآن.
+    static func rescheduleWird(store: AtharStore) async {
+        let center = UNUserNotificationCenter.current()
+        center.removePendingNotificationRequests(withIdentifiers: [wirdId])
+        guard store.wirdEnabled else { return }
+        await add(id: wirdId,
+                  title: "وردك من القرآن",
+                  body: "\(store.wirdTarget) آية تكفيك اليوم — «أحبُّ الأعمال إلى الله أدومها».",
+                  minutes: store.wirdReminderMinutes)
     }
 
     private static func add(id: String, title: String, body: String, minutes: Int) async {

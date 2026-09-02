@@ -2,6 +2,9 @@ import SwiftUI
 import WidgetKit
 
 struct SettingsView: View {
+    /// حين تُعرض داخل مكدّس تنقّل قائم، لا نغلّفها بمكدّس آخر.
+    var embedded = false
+
     @EnvironmentObject private var store: AtharStore
     @State private var showResetConfirm = false
     @State private var permissionDenied = false
@@ -21,7 +24,11 @@ struct SettingsView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        if embedded { content } else { NavigationStack { content } }
+    }
+
+    private var content: some View {
+        Group {
             ZStack {
                 AtharBackground()
                 ScrollView {

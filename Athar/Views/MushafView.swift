@@ -1,0 +1,245 @@
+import SwiftUI
+
+struct MushafView: View {
+    @EnvironmentObject private var store: AtharStore
+    @State private var query = ""
+
+    private var filtered: [Surah] {
+        let q = query.trimmingCharacters(in: .whitespaces)
+        guard !q.isEmpty else { return Quran.surahs }
+        let n = q.strippedForSearch
+        return Quran.surahs.filter {
+            $0.name.strippedForSearch.contains(n)
+            || $0.nameSimple.lowercased().contains(q.lowercased())
+            || String($0.id) == q
+        }
+    }
+
+    private var searchHits: [AyahRef] {
+        let q = query.trimmingCharacters(in: .whitespaces)
+        guard q.count >= 3, filtered.isEmpty || q.count >= 4 else { return [] }
+        return Quran.search(q, limit: 25)
+    }
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                AtharBackground()
+                ScrollView {
+                    LazyVStack(spacing: 14) {
+                        if query.isEmpty {
+                            continueCard
+                            toolsRow
+                            if !store.bookmarks.isEmpty { bookmarksCard }
+                            SettingsGroupTitle(text: "السور")
+                        }
+
+                        ForEach(filtered) { surah in
+                            NavigationLink { SurahReaderView(surahId: surah.id) } label: {
+                                SurahRow(surah: surah)
+                            }
+                            .buttonStyle(.plain)
+                        }
+
+                        if !searchHits.isEmpty {
+                            SettingsGroupTitle(text: "آيات مطابقة")
+                            ForEach(searchHits) { ref in
+                                NavigationLink { SurahReaderView(surahId: ref.surah, scrollTo: ref) } label: {
+                                    SearchHitRow(ref: ref, query: query)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+
+                        if filtered.isEmpty && searchHits.isEmpty && !query.isEmpty {
+                            ContentUnavailableView("لا توجد نتائج", systemImage: "magnifyingglass",
+                                                   description: Text("جرّب اسم سورة أو جزءًا من آية"))
+                                .padding(.top, 50)
+                        }
+                    }
+                    .padding(.horizontal, 18)
+                    .padding(.bottom, 30)
+                    .readableWidth(620)
+                }
+                .scrollIndicators(.hidden)
+            }
+            .navigationTitle("المصحف")
+            .navigationBarTitleDisplayMode(.inline)
+            .searchable(text: $query, prompt: "سورة أو آية")
+        }
+    }
+
+    // MARK: متابعة القراءة
+
+    @ViewBuilder
+    private var continueCard: some View {
+        if let last = store.lastRead, let s = Quran.surah(last.surah) {
+            NavigationLink { SurahReaderView(surahId: last.surah, scrollTo: last) } label: {
+                AtharCard(padding: 16) {
+                    HStack(spacing: 14) {
+                        Image(systemName: "book.pages.fill")
+                            .font(.system(size: 20))
+                            .foregroundStyle(Theme.accent)
+                            .frame(width: 46, height: 46)
+                            .background(Circle().fill(Theme.accentSoft))
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("تابع القراءة")
+                                .font(Theme.display(12, weight: .semibold))
+                                .foregroundStyle(Theme.accent)
+                            Text("سورة \(s.name) · الآية \(last.ayah.counterText)")
+                                .font(Theme.display(16, weight: .semibold))
+                                .foregroundStyle(Theme.ink)
+                        }
+                        Spacer()
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(Theme.inkFaint)
+                    }
+                }
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    // MARK: الحفظ والورد
+
+    private var toolsRow: some View {
+        HStack(spacing: 12) {
+            NavigationLink { HifzView() } label: {
+                toolTile("brain.head.profile", Theme.accent(for: "sea"), "الحفظ",
+                         store.dueForReview.isEmpty
+                            ? "\(store.memorizedCount.counterText) آية محفوظة"
+                            : "\(store.dueForReview.count.counterText) للمراجعة اليوم",
+                         badge: !store.dueForReview.isEmpty)
+            }
+            .buttonStyle(.plain)
+
+            NavigationLink { WirdView() } label: {
+                toolTile("calendar.badge.clock", Theme.gold, "الورد اليومي",
+                         "\(store.wirdDoneToday.counterText) من \(store.wirdTarget.counterText)",
+                         badge: false)
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    private func toolTile(_ icon: String, _ tint: Color, _ title: String, _ sub: String, badge: Bool) -> some View {
+        AtharCard(padding: 14) {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Image(systemName: icon)
+                        .font(.system(size: 18))
+                        .foregroundStyle(tint)
+                    Spacer()
+                    if badge {
+                        Circle().fill(tint).frame(width: 8, height: 8)
+                    }
+                }
+                Text(title)
+                    .font(Theme.display(15, weight: .semibold))
+                    .foregroundStyle(Theme.ink)
+                Text(sub)
+                    .font(Theme.display(11))
+                    .foregroundStyle(Theme.inkFaint)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    // MARK: العلامات
+
+    private var bookmarksCard: some View {
+        VStack(spacing: 8) {
+            SettingsGroupTitle(text: "علاماتي")
+            SettingsCard {
+                ForEach(Array(store.bookmarks.prefix(5).enumerated()), id: \.element) { i, ref in
+                    NavigationLink { SurahReaderView(surahId: ref.surah, scrollTo: ref) } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "bookmark.fill")
+                                .font(.system(size: 13))
+                                .foregroundStyle(Theme.gold)
+                                .frame(width: 28)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("\(Quran.surah(ref.surah)?.name ?? "") · \(ref.ayah.counterText)")
+                                    .font(Theme.display(15))
+                                    .foregroundStyle(Theme.ink)
+                                Text(Quran.text(ref)?.prefix(46).appending("…") ?? "")
+                                    .font(Theme.dhikrFont(size: 13))
+                                    .foregroundStyle(Theme.inkFaint)
+                                    .lineLimit(1)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.left")
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundStyle(Theme.inkFaint)
+                        }
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 11)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    if i < min(4, store.bookmarks.count - 1) { SettingsDivider() }
+                }
+            }
+        }
+    }
+}
+
+// MARK: - صف السورة
+
+struct SurahRow: View {
+    let surah: Surah
+
+    var body: some View {
+        AtharCard(padding: 14) {
+            HStack(spacing: 14) {
+                ZStack {
+                    Image(systemName: "seal")
+                        .font(.system(size: 38, weight: .ultraLight))
+                        .foregroundStyle(Theme.accent.opacity(0.35))
+                    Text(surah.id.counterText)
+                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                        .foregroundStyle(Theme.accent)
+                }
+                .frame(width: 44, height: 44)
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("سورة \(surah.name)")
+                        .font(Theme.display(17, weight: .semibold))
+                        .foregroundStyle(Theme.ink)
+                    Text("\(surah.revelation) · \(surah.ayahCount.counterText) آية")
+                        .font(Theme.display(12))
+                        .foregroundStyle(Theme.inkFaint)
+                }
+
+                Spacer()
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(Theme.inkFaint)
+            }
+        }
+    }
+}
+
+struct SearchHitRow: View {
+    let ref: AyahRef
+    let query: String
+
+    var body: some View {
+        AtharCard(padding: 14) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("\(Quran.surah(ref.surah)?.name ?? "") · \(ref.ayah.counterText)")
+                    .font(Theme.display(12, weight: .semibold))
+                    .foregroundStyle(Theme.accent)
+                Text(Quran.text(ref) ?? "")
+                    .font(Theme.dhikrFont(size: 17))
+                    .foregroundStyle(Theme.ink)
+                    .lineSpacing(8)
+                    .lineLimit(3)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+}
