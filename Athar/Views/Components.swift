@@ -301,3 +301,47 @@ struct SettingsChoiceList<T: SettingsChoice>: View {
         .toolbar(.hidden, for: .tabBar)
     }
 }
+
+// MARK: - زخرفة إسلامية
+
+/// نجمة ثمانية (رَبّ) — الشكل التقليدي حول أرقام السور في المصاحف.
+struct EightPointStar: Shape {
+    var innerRatio: CGFloat = 0.62
+
+    func path(in rect: CGRect) -> Path {
+        let c = CGPoint(x: rect.midX, y: rect.midY)
+        let R = min(rect.width, rect.height) / 2
+        let r = R * innerRatio
+        var p = Path()
+        for i in 0..<16 {
+            let radius = i.isMultiple(of: 2) ? R : r
+            let angle = (.pi / 8) * CGFloat(i) - .pi / 2
+            let pt = CGPoint(x: c.x + cos(angle) * radius, y: c.y + sin(angle) * radius)
+            if i == 0 { p.move(to: pt) } else { p.addLine(to: pt) }
+        }
+        p.closeSubpath()
+        return p
+    }
+}
+
+/// ميدالية رقم السورة: نجمة ذهبية مزدوجة الحدّ، كما في حاشية المصحف.
+struct SurahMedallion: View {
+    let number: Int
+    var size: CGFloat = 46
+
+    var body: some View {
+        ZStack {
+            EightPointStar()
+                .fill(Theme.gold.opacity(0.12))
+            EightPointStar()
+                .stroke(Theme.goldGradient, lineWidth: 1.4)
+            EightPointStar(innerRatio: 0.72)
+                .stroke(Theme.gold.opacity(0.35), lineWidth: 0.7)
+                .padding(5)
+            Text(number.counterText)
+                .font(.system(size: size * 0.28, weight: .semibold, design: .rounded))
+                .foregroundStyle(Theme.gold)
+        }
+        .frame(width: size, height: size)
+    }
+}

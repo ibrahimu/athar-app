@@ -195,15 +195,7 @@ struct SurahRow: View {
     var body: some View {
         AtharCard(padding: 14) {
             HStack(spacing: 14) {
-                ZStack {
-                    Image(systemName: "seal")
-                        .font(.system(size: 38, weight: .ultraLight))
-                        .foregroundStyle(Theme.accent.opacity(0.35))
-                    Text(surah.id.counterText)
-                        .font(.system(size: 13, weight: .semibold, design: .rounded))
-                        .foregroundStyle(Theme.accent)
-                }
-                .frame(width: 44, height: 44)
+                SurahMedallion(number: surah.id, size: 46)
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text("سورة \(surah.name)")

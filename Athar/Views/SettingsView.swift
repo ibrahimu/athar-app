@@ -298,6 +298,18 @@ struct SettingsView: View {
                 linkRow("lifepreserver.fill", Theme.accent(for: "sea"), "الدعم والتواصل",
                         "https://ibrahimu.github.io/athar-app/support.html")
                 SettingsDivider()
+                Link(destination: URL(string: "https://ehsan.sa")!) {
+                    SettingsRow(icon: "heart.fill", tint: Theme.gold,
+                                title: "تصدّق عبر إحسان",
+                                subtitle: "المنصة الوطنية للعمل الخيري") {
+                        Image(systemName: "arrow.up.forward")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(Theme.inkFaint)
+                    }
+                }
+                .buttonStyle(.plain)
+
+                SettingsDivider()
                 ShareLink(item: Self.appStoreURL,
                           message: Text("تطبيق أثر — أذكار وأوقات الصلاة ومسبحة. مجاني بلا إعلانات، ويعمل بدون إنترنت.")) {
                     SettingsRow(icon: "square.and.arrow.up.fill", tint: Theme.accent,

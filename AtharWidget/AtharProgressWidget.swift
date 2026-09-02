@@ -9,6 +9,7 @@ struct ProgressEntry: TimelineEntry {
     let total: Int
     let completedToday: Int
     let dailyGoal: Int
+    let moment: AtharStyle.Moment
 }
 
 struct ProgressProvider: TimelineProvider {
@@ -19,12 +20,13 @@ struct ProgressProvider: TimelineProvider {
             streak: store.displayStreak,
             total: store.totalDhikrCount,
             completedToday: store.completedToday.count,
-            dailyGoal: 2 // أذكار الصباح + المساء
+            dailyGoal: 2, // أذكار الصباح + المساء
+            moment: .at(date, times: store.prayerTimes(for: date))
         )
     }
 
     func placeholder(in context: Context) -> ProgressEntry {
-        ProgressEntry(date: Date(), streak: 7, total: 1240, completedToday: 1, dailyGoal: 2)
+        ProgressEntry(date: Date(), streak: 7, total: 1240, completedToday: 1, dailyGoal: 2, moment: .morning)
     }
 
     func getSnapshot(in context: Context, completion: @escaping (ProgressEntry) -> Void) {
@@ -80,27 +82,27 @@ struct ProgressWidgetView: View {
         default:
             HStack(spacing: 14) {
                 ZStack {
-                    Circle().stroke(Theme.accent.opacity(0.18), lineWidth: 9)
+                    Circle().stroke(entry.moment.ink.opacity(0.16), lineWidth: 9)
                     Circle()
                         .trim(from: 0, to: max(0.02, fraction))
-                        .stroke(Theme.accent, style: StrokeStyle(lineWidth: 9, lineCap: .round))
+                        .stroke(entry.moment.tint, style: StrokeStyle(lineWidth: 9, lineCap: .round))
                         .rotationEffect(.degrees(-90))
                     Text(entry.streak.counterText)
                         .font(.system(size: 24, weight: .bold))
-                        .foregroundStyle(Theme.ink)
+                        .foregroundStyle(entry.moment.ink)
                 }
                 .frame(width: 74, height: 74)
 
                 VStack(alignment: .leading, spacing: 5) {
                     Text("أثرك اليوم")
                         .font(.system(size: 15, weight: .bold))
-                        .foregroundStyle(Theme.ink)
+                        .foregroundStyle(entry.moment.ink)
                     Text("\(entry.completedToday.counterText) من \(entry.dailyGoal.counterText) أذكار")
                         .font(.system(size: 12))
-                        .foregroundStyle(Theme.inkSoft)
+                        .foregroundStyle(entry.moment.inkSoft)
                     Text("\(entry.total.counterText) ذكر بإذن الله")
                         .font(.system(size: 12))
-                        .foregroundStyle(Theme.accent)
+                        .foregroundStyle(entry.moment.tint)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
@@ -117,7 +119,9 @@ struct AtharProgressWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: ProgressProvider()) { entry in
             ProgressWidgetView(entry: entry)
-                .containerBackground(for: .widget) { Theme.canvas }
+                .containerBackground(for: .widget) {
+                    AtharStyle.Backdrop(moment: entry.moment, rippleScale: 0.8)
+                }
         }
         .configurationDisplayName("أثري")
         .description("تتابعك اليومي ومجموع أذكارك.")

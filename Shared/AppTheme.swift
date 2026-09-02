@@ -69,6 +69,18 @@ enum AppTheme: String, CaseIterable, Identifiable, Codable {
         }
     }
 
+    /// اللون الزخرفي — للميداليات وفواصل الآي والنجوم.
+    var ornament: (light: UInt32, dark: UInt32) {
+        switch self {
+        case .green:    return (0xA9812C, 0xD9B45F)
+        case .sand:     return (0xB07A2A, 0xE3B96A)
+        case .sea:      return (0xA08339, 0xD8BC72)
+        case .rose:     return (0xB07C46, 0xE0B584)
+        case .violet:   return (0x8E7A3E, 0xD6BE7C)
+        case .charcoal: return (0x8C7B4E, 0xC9B589)
+        }
+    }
+
     var hairline: (light: UInt32, dark: UInt32) {
         switch self {
         case .green:    return (0xE2DDD0, 0x2A352F)

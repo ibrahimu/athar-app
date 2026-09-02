@@ -9,6 +9,7 @@ struct PrayerEntry: TimelineEntry {
     let zone: TimeZone
     let upcoming: (prayer: Prayer, date: Date)?
     let today: [(prayer: Prayer, date: Date)]
+    let moment: AtharStyle.Moment
 }
 
 struct PrayerProvider: TimelineProvider {
@@ -25,7 +26,8 @@ struct PrayerProvider: TimelineProvider {
                            place: store.placeName,
                            zone: store.placeTimeZone,
                            upcoming: upcoming,
-                           today: today?.ordered ?? [])
+                           today: today?.ordered ?? [],
+                           moment: .at(date, times: today))
     }
 
     func placeholder(in context: Context) -> PrayerEntry {
@@ -118,83 +120,135 @@ struct PrayerWidgetView: View {
             .environment(\.layoutDirection, .rightToLeft)
 
         case .systemSmall:
-            VStack(alignment: .leading, spacing: 6) {
+            ZStack {
                 if let up = entry.upcoming {
-                    HStack(spacing: 5) {
-                        Image(systemName: up.prayer.icon)
-                            .font(.system(size: 13))
-                            .foregroundStyle(Theme.accent)
-                        Text(up.prayer.title)
-                            .font(.system(size: 17, weight: .bold))
-                            .foregroundStyle(Theme.ink)
-                        Spacer()
+                    VStack(alignment: .leading, spacing: 0) {
+                        HStack(spacing: 5) {
+                            Image(systemName: up.prayer.icon)
+                                .font(.system(size: 12, weight: .medium))
+                            Text(up.prayer.title)
+                                .font(.system(size: 17, weight: .bold))
+                        }
+                        .foregroundStyle(entry.moment.ink)
+
+                        Text(time(up.date))
+                            .font(.system(size: 27, weight: .bold, design: .rounded))
+                            .foregroundStyle(entry.moment.tint)
+                            .minimumScaleFactor(0.6)
+                            .lineLimit(1)
+                            .padding(.top, 1)
+
+                        Text(up.date, style: .timer)
+                            .font(.system(size: 12, weight: .medium, design: .rounded))
+                            .foregroundStyle(entry.moment.inkSoft)
+                            .monospacedDigit()
+
+                        Spacer(minLength: 0)
+
+                        DayArc(entry: entry).frame(height: 22)
+
+                        Text(entry.place)
+                            .font(.system(size: 10))
+                            .foregroundStyle(entry.moment.inkSoft)
+                            .lineLimit(1)
+                            .padding(.top, 5)
                     }
-                    Text(time(up.date))
-                        .font(.system(size: 24, weight: .bold, design: .rounded))
-                        .foregroundStyle(Theme.accent)
-                        .minimumScaleFactor(0.7)
-                        .lineLimit(1)
-                    Text(up.date, style: .timer)
-                        .font(.system(size: 12, weight: .medium, design: .rounded))
-                        .foregroundStyle(Theme.inkSoft)
-                        .monospacedDigit()
-                    Spacer(minLength: 0)
-                    Text(entry.place)
-                        .font(.system(size: 10))
-                        .foregroundStyle(Theme.inkFaint)
-                        .lineLimit(1)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
             .environment(\.layoutDirection, .rightToLeft)
 
         default: // systemMedium
-            VStack(spacing: 8) {
-                HStack {
+            VStack(spacing: 9) {
+                HStack(alignment: .firstTextBaseline, spacing: 7) {
                     if let up = entry.upcoming {
                         Image(systemName: up.prayer.icon)
                             .font(.system(size: 13))
-                            .foregroundStyle(Theme.accent)
+                            .foregroundStyle(entry.moment.tint)
                         Text(up.prayer.title)
-                            .font(.system(size: 15, weight: .bold))
-                            .foregroundStyle(Theme.ink)
+                            .font(.system(size: 19, weight: .bold))
+                            .foregroundStyle(entry.moment.ink)
                         Text(time(up.date))
-                            .font(.system(size: 15, weight: .semibold, design: .rounded))
-                            .foregroundStyle(Theme.accent)
+                            .font(.system(size: 19, weight: .semibold, design: .rounded))
+                            .foregroundStyle(entry.moment.tint)
+                        Text(up.date, style: .timer)
+                            .font(.system(size: 12, weight: .medium, design: .rounded))
+                            .foregroundStyle(entry.moment.inkSoft)
+                            .monospacedDigit()
                     }
                     Spacer()
                     Text(entry.place)
                         .font(.system(size: 11))
-                        .foregroundStyle(Theme.inkFaint)
+                        .foregroundStyle(entry.moment.inkSoft)
                         .lineLimit(1)
                 }
 
-                HStack(spacing: 0) {
+                DayArc(entry: entry).frame(height: 26)
+
+                HStack(spacing: 5) {
                     ForEach(entry.today.filter(\.prayer.isPrayer), id: \.prayer) { item in
                         let isNext = entry.upcoming?.prayer == item.prayer
                         VStack(spacing: 3) {
                             Text(item.prayer.title)
-                                .font(.system(size: 11, weight: isNext ? .bold : .regular))
-                                .foregroundStyle(isNext ? Theme.accent : Theme.inkSoft)
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.8)
+                                .font(.system(size: 10, weight: isNext ? .bold : .regular))
+                                .foregroundStyle(isNext ? entry.moment.tint : entry.moment.inkSoft)
+                                .lineLimit(1).minimumScaleFactor(0.75)
                             Text(time(item.date))
-                                .font(.system(size: 11, weight: isNext ? .bold : .regular, design: .rounded))
-                                .foregroundStyle(isNext ? Theme.accent : Theme.ink)
-                                .lineLimit(1)
-                                .minimumScaleFactor(0.7)
+                                .font(.system(size: 11, weight: isNext ? .bold : .medium, design: .rounded))
+                                .foregroundStyle(isNext ? entry.moment.ink : entry.moment.inkSoft)
+                                .lineLimit(1).minimumScaleFactor(0.7)
                         }
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 6)
+                        .padding(.vertical, 5)
                         .background(
                             RoundedRectangle(cornerRadius: 8, style: .continuous)
-                                .fill(isNext ? Theme.accentSoft : .clear)
+                                .fill(isNext ? entry.moment.tint.opacity(0.16) : .clear)
                         )
                     }
                 }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .environment(\.layoutDirection, .rightToLeft)
+        }
+    }
+}
+
+/// قوس اليوم: خط الأوقات من الفجر إلى العشاء مع موضعك الآن عليه.
+private struct DayArc: View {
+    let entry: PrayerEntry
+
+    private var fraction: Double {
+        let pts = entry.today.filter(\.prayer.isPrayer)
+        guard let first = pts.first?.date, let last = pts.last?.date, last > first else { return 0 }
+        return min(1, max(0, entry.date.timeIntervalSince(first) / last.timeIntervalSince(first)))
+    }
+
+    var body: some View {
+        GeometryReader { g in
+            let w = g.size.width, h = g.size.height
+            ZStack(alignment: .leading) {
+                Capsule().fill(entry.moment.ink.opacity(0.13)).frame(height: 3)
+                Capsule().fill(entry.moment.tint.opacity(0.85))
+                    .frame(width: max(3, w * fraction), height: 3)
+
+                // نقاط الصلوات على الخط
+                ForEach(Array(entry.today.filter(\.prayer.isPrayer).enumerated()), id: \.element.prayer) { i, item in
+                    let pts = entry.today.filter(\.prayer.isPrayer)
+                    let f = pts.count > 1 ? Double(i) / Double(pts.count - 1) : 0
+                    let passed = item.date <= entry.date
+                    Circle()
+                        .fill(passed ? entry.moment.tint : entry.moment.ink.opacity(0.28))
+                        .frame(width: 5, height: 5)
+                        .position(x: w * f, y: h / 2)
+                }
+
+                // موضع الآن
+                Circle()
+                    .fill(entry.moment.ink)
+                    .frame(width: 8, height: 8)
+                    .overlay(Circle().stroke(entry.moment.tint, lineWidth: 2))
+                    .position(x: w * fraction, y: h / 2)
+            }
+            .frame(height: h)
         }
     }
 }
@@ -207,7 +261,7 @@ struct PrayerWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: PrayerProvider()) { entry in
             PrayerWidgetView(entry: entry)
-                .containerBackground(for: .widget) { Theme.canvas }
+                .containerBackground(for: .widget) { AtharStyle.Backdrop(moment: entry.moment) }
         }
         .configurationDisplayName("أوقات الصلاة")
         .description("الصلاة القادمة والوقت المتبقي لها — على الشاشة الرئيسية أو شاشة القفل.")

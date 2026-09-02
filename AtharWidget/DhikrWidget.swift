@@ -7,6 +7,7 @@ struct DhikrEntry: TimelineEntry {
     let date: Date
     let dhikr: Dhikr
     let categoryTitle: String
+    let moment: AtharStyle.Moment
 }
 
 struct DhikrProvider: TimelineProvider {
@@ -32,7 +33,8 @@ struct DhikrProvider: TimelineProvider {
 
     func placeholder(in context: Context) -> DhikrEntry {
         let d = dhikr(at: Date())
-        return DhikrEntry(date: Date(), dhikr: d, categoryTitle: category(for: d))
+        return DhikrEntry(date: Date(), dhikr: d, categoryTitle: category(for: d),
+                          moment: .at(Date(), times: AtharStore.shared.prayerTimes()))
     }
 
     func getSnapshot(in context: Context, completion: @escaping (DhikrEntry) -> Void) {
@@ -46,7 +48,8 @@ struct DhikrProvider: TimelineProvider {
         for offset in 0..<12 {
             let date = now.addingTimeInterval(Double(offset) * 1800)
             let d = dhikr(at: date)
-            entries.append(DhikrEntry(date: date, dhikr: d, categoryTitle: category(for: d)))
+            entries.append(DhikrEntry(date: date, dhikr: d, categoryTitle: category(for: d),
+                                      moment: .at(date, times: AtharStore.shared.prayerTimes(for: date))))
         }
         completion(Timeline(entries: entries, policy: .atEnd))
     }
@@ -97,30 +100,30 @@ struct DhikrWidgetView: View {
     }
 
     private func homeCard(textSize: CGFloat, lines: Int, showFooter: Bool) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 7) {
             HStack(spacing: 5) {
-                Image(systemName: "sparkle")
-                    .font(.system(size: 9))
-                    .foregroundStyle(Theme.gold)
+                Circle()
+                    .fill(entry.moment.tint)
+                    .frame(width: 5, height: 5)
                 Text(entry.categoryTitle)
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(Theme.accent)
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(entry.moment.tint)
                 Spacer()
             }
 
             Text(entry.dhikr.text)
                 .font(.system(size: textSize))
-                .foregroundStyle(Theme.ink)
-                .lineSpacing(6)
+                .foregroundStyle(entry.moment.ink)
+                .lineSpacing(7)
                 .lineLimit(lines)
-                .minimumScaleFactor(0.6)
+                .minimumScaleFactor(0.55)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
 
             if showFooter, entry.dhikr.hasReference {
                 Text(entry.dhikr.reference)
-                    .font(.system(size: 10))
-                    .foregroundStyle(Theme.inkFaint)
+                    .font(.system(size: 9))
+                    .foregroundStyle(entry.moment.inkSoft)
                     .lineLimit(1)
             }
         }
@@ -136,7 +139,9 @@ struct DhikrWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: DhikrProvider()) { entry in
             DhikrWidgetView(entry: entry)
-                .containerBackground(for: .widget) { Theme.canvas }
+                .containerBackground(for: .widget) {
+                    AtharStyle.Backdrop(moment: entry.moment, rippleScale: 0.75)
+                }
         }
         .configurationDisplayName("ذِكر")
         .description("ذكر يتجدّد على مدار اليوم — على الشاشة الرئيسية أو شاشة القفل.")

@@ -31,6 +31,7 @@ struct HomeView: View {
                         if let suggested { suggestionCard(suggested) }
                         if let dailyDhikr { dailyCard(dailyDhikr) }
                         quickGrid
+                        sadaqahCard
                         footerNote
                     }
                     .padding(.horizontal, 18)
@@ -271,6 +272,36 @@ struct HomeView: View {
                 }
             }
         }
+    }
+
+    /// «الصدقة تطفئ الخطيئة كما يطفئ الماء النار» — مدخل سريع لإحسان.
+    private var sadaqahCard: some View {
+        Link(destination: URL(string: "https://ehsan.sa")!) {
+            AtharCard(padding: 16) {
+                HStack(spacing: 14) {
+                    Image(systemName: "heart.fill")
+                        .font(.system(size: 19))
+                        .foregroundStyle(Theme.gold)
+                        .frame(width: 44, height: 44)
+                        .background(Circle().fill(Theme.gold.opacity(0.13)))
+
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("صدقة اليوم")
+                            .font(Theme.display(16, weight: .semibold))
+                            .foregroundStyle(Theme.ink)
+                        Text("«الصدقة تطفئ الخطيئة كما يطفئ الماء النار»")
+                            .font(Theme.display(11))
+                            .foregroundStyle(Theme.inkFaint)
+                            .lineLimit(1).minimumScaleFactor(0.8)
+                    }
+                    Spacer()
+                    Image(systemName: "arrow.up.forward")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(Theme.inkFaint)
+                }
+            }
+        }
+        .buttonStyle(.plain)
     }
 
     private var footerNote: some View {

@@ -22,7 +22,14 @@ enum Theme {
         .adaptive(light: Color(hex: current.accent.light).opacity(0.13),
                   dark:  Color(hex: current.accent.dark).opacity(0.18))
     }
-    static let gold      = Color.adaptive(light: Color(hex: 0xA9812C), dark: Color(hex: 0xD9B45F))
+    /// اللون الزخرفي — يتبع الطابع المختار.
+    static var gold: Color { .adaptive(light: Color(hex: current.ornament.light), dark: Color(hex: current.ornament.dark)) }
+
+    /// تدرّج ذهبي للزخارف والميداليات.
+    static var goldGradient: LinearGradient {
+        LinearGradient(colors: [gold.opacity(0.95), gold.opacity(0.55), gold.opacity(0.9)],
+                       startPoint: .topTrailing, endPoint: .bottomLeading)
+    }
 
     static var hairline: Color { .adaptive(light: Color(hex: current.hairline.light), dark: Color(hex: current.hairline.dark)) }
 
