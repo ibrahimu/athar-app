@@ -8,15 +8,15 @@ enum AppTab: String, CaseIterable, Identifiable, Codable {
 
     var title: String {
         switch self {
-        case .home:     return "اليوم"
-        case .mushaf:   return "المصحف"
-        case .adhkar:   return "الأذكار"
-        case .prayer:   return "الصلاة"
-        case .tasbih:   return "المسبحة"
-        case .hajj:     return "الحج والعمرة"
-        case .qibla:    return "القبلة"
-        case .hifz:     return "الحفظ"
-        case .settings: return "الإعدادات"
+        case .home:     return loc("today")
+        case .mushaf:   return loc("mushaf")
+        case .adhkar:   return loc("adhkar")
+        case .prayer:   return loc("prayer")
+        case .tasbih:   return loc("tasbih")
+        case .hajj:     return loc("hajj")
+        case .qibla:    return loc("qibla")
+        case .hifz:     return loc("hifz")
+        case .settings: return loc("settings")
         }
     }
 
@@ -46,6 +46,7 @@ extension AtharStore {
         static let tabs       = "athar.tabs.visible"
         static let theme      = "athar.theme"
         static let appearance = "athar.appearance"
+        static let language   = "athar.language"
     }
 
     /// التبويبات الظاهرة بترتيب المستخدم.
@@ -81,6 +82,12 @@ extension AtharStore {
     var appearance: AppearanceMode {
         get { AppearanceMode(rawValue: defaults.string(forKey: TKey.appearance) ?? "") ?? .system }
         set { defaults.set(newValue.rawValue, forKey: TKey.appearance); objectWillChange.send() }
+    }
+
+    /// لغة الواجهة — النص الشرعي يبقى عربيًا دائمًا.
+    var appLanguage: AppLanguage {
+        get { AppLanguage(rawValue: defaults.string(forKey: TKey.language) ?? "") ?? .system }
+        set { defaults.set(newValue.rawValue, forKey: TKey.language); objectWillChange.send() }
     }
 
     /// تُستدعى مرة عند الإقلاع لمزامنة الطابع مع Theme.

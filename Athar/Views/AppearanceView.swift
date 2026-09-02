@@ -10,6 +10,7 @@ struct AppearanceView: View {
             AtharBackground()
             ScrollView {
                 VStack(spacing: 24) {
+                    languagePicker
                     themes
                     appearanceMode
                     tabBar
@@ -21,16 +22,36 @@ struct AppearanceView: View {
             }
             .scrollIndicators(.hidden)
         }
-        .navigationTitle("المظهر")
+        .navigationTitle(loc("appearance"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.hidden, for: .tabBar)
+    }
+
+    // MARK: اللغة
+
+    private var languagePicker: some View {
+        VStack(spacing: 8) {
+            SettingsGroupTitle(text: loc("language"))
+            SettingsCard {
+                SettingsPickerRow(
+                    icon: "globe", tint: Theme.accent(for: "sea"),
+                    title: loc("language"), options: AppLanguage.allCases,
+                    selection: Binding(
+                        get: { store.appLanguage },
+                        set: { store.appLanguage = $0 }))
+            }
+            Text("﴿ بِلِسَانٍ عَرَبِيٍّ مُّبِينٍ ﴾ — القرآن والأذكار تبقى بالعربية دائمًا")
+                .font(Theme.display(11))
+                .foregroundStyle(Theme.inkFaint)
+                .frame(maxWidth: .infinity)
+        }
     }
 
     // MARK: الطابع
 
     private var themes: some View {
         VStack(spacing: 8) {
-            SettingsGroupTitle(text: "الطابع اللوني")
+            SettingsGroupTitle(text: loc("colorTheme"))
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 86), spacing: 12)], spacing: 12) {
                 ForEach(AppTheme.allCases) { theme in
                     Button {
@@ -72,7 +93,7 @@ struct AppearanceView: View {
 
     private var appearanceMode: some View {
         VStack(spacing: 8) {
-            SettingsGroupTitle(text: "الإضاءة")
+            SettingsGroupTitle(text: loc("lighting"))
             HStack(spacing: 10) {
                 ForEach(AppearanceMode.allCases) { mode in
                     Button {
@@ -109,14 +130,14 @@ struct AppearanceView: View {
     private var tabBar: some View {
         VStack(spacing: 8) {
             HStack(spacing: 10) {
-                SettingsGroupTitle(text: "الشريط السفلي")
+                SettingsGroupTitle(text: loc("bottomBar"))
                 Spacer()
                 if editing && !isDefaultOrder {
                     Button { resetTabs() } label: {
                         HStack(spacing: 4) {
                             Image(systemName: "arrow.counterclockwise")
                                 .font(.system(size: 10, weight: .semibold))
-                            Text("الأساسي")
+                            Text(loc("basicBtn"))
                         }
                         .font(Theme.display(12, weight: .semibold))
                         .foregroundStyle(Theme.inkSoft)
@@ -130,7 +151,7 @@ struct AppearanceView: View {
                     withAnimation(.smooth) { editing.toggle() }
                     Haptics.tap(enabled: store.hapticsEnabled)
                 } label: {
-                    Text(editing ? "تم" : "ترتيب")
+                    Text(editing ? loc("done") : loc("reorderBtn"))
                         .font(Theme.display(12, weight: .semibold))
                         .foregroundStyle(editing ? .white : Theme.accent)
                         .padding(.horizontal, 13).padding(.vertical, 6)

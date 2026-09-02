@@ -232,7 +232,7 @@ struct SettingsPickerRow<T: SettingsChoice>: View {
                         .font(Theme.display(15, weight: .medium))
                         .foregroundStyle(Theme.inkSoft)
                         .lineLimit(1)
-                    Image(systemName: "chevron.left")
+                    Image(systemName: "chevron.forward")
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(Theme.inkFaint)
                 }
@@ -387,3 +387,7 @@ struct AyahMedallion: View {
         .accessibilityLabel("الآية \(number)")
     }
 }
+
+/// مطابقة لغات الواجهة لبروتوكول الاختيار — هنا لأن البروتوكول في هدف
+/// التطبيق وAppLanguage في الملفات المشتركة مع الويدجت.
+extension AppLanguage: SettingsChoice {}

@@ -79,7 +79,7 @@ struct HifzPicker: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("إلغاء") { dismiss() }
+                    Button(loc("cancel")) { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("أضِف") {

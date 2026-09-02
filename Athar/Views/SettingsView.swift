@@ -50,7 +50,7 @@ struct SettingsView: View {
                 }
                 .scrollIndicators(.hidden)
             }
-            .navigationTitle("الإعدادات")
+            .navigationTitle(loc("settings"))
             .navigationBarTitleDisplayMode(.inline)
             .task { scheduledAlerts = await Reminders.scheduledAthanCount() }
             .confirmationDialog("هل تريد تصفير كل الإحصائيات؟", isPresented: $showResetConfirm, titleVisibility: .visible) {
@@ -58,7 +58,7 @@ struct SettingsView: View {
                     store.resetAllProgress()
                     WidgetCenter.shared.reloadAllTimelines()
                 }
-                Button("إلغاء", role: .cancel) {}
+                Button(loc("cancel"), role: .cancel) {}
             }
             .alert("الإشعارات موقوفة", isPresented: $permissionDenied) {
                 Button("فتح الإعدادات") {
@@ -66,7 +66,7 @@ struct SettingsView: View {
                         UIApplication.shared.open(url)
                     }
                 }
-                Button("لاحقًا", role: .cancel) {}
+                Button(loc("later"), role: .cancel) {}
             } message: {
                 Text("لتفعيل التذكير، اسمح للتطبيق بالإشعارات من إعدادات الجهاز.")
             }
@@ -77,10 +77,10 @@ struct SettingsView: View {
 
     private var reminders: some View {
         VStack(spacing: 8) {
-            SettingsGroupTitle(text: "التذكير")
+            SettingsGroupTitle(text: loc("grpReminders"))
             SettingsCard {
                 SettingsRow(icon: "bell.badge.fill", tint: Theme.gold,
-                            title: "تذكير الأذكار",
+                            title: loc("rowAdhkarRem"),
                             subtitle: store.remindersEnabled ? nil : "تنبيه لطيف للصباح والمساء") {
                     Toggle("", isOn: Binding(
                         get: { store.remindersEnabled },
@@ -101,12 +101,12 @@ struct SettingsView: View {
 
                 if store.remindersEnabled {
                     SettingsDivider()
-                    SettingsRow(icon: "sunrise.fill", tint: Theme.accent(for: "dawn"), title: "أذكار الصباح") {
+                    SettingsRow(icon: "sunrise.fill", tint: Theme.accent(for: "dawn"), title: loc("rowMorning")) {
                         DatePicker("", selection: morningBinding, displayedComponents: .hourAndMinute)
                             .labelsHidden()
                     }
                     SettingsDivider()
-                    SettingsRow(icon: "moon.stars.fill", tint: Theme.accent(for: "dusk"), title: "أذكار المساء") {
+                    SettingsRow(icon: "moon.stars.fill", tint: Theme.accent(for: "dusk"), title: loc("rowEvening")) {
                         DatePicker("", selection: eveningBinding, displayedComponents: .hourAndMinute)
                             .labelsHidden()
                     }
@@ -132,30 +132,30 @@ struct SettingsView: View {
 
     private var sunanReminders: some View {
         VStack(spacing: 8) {
-            SettingsGroupTitle(text: "تنويع التذكيرات")
+            SettingsGroupTitle(text: loc("grpSunan"))
             SettingsCard {
-                SettingsRow(icon: "sparkles", tint: Theme.gold, title: "الجمعة",
-                            subtitle: "الكهف والصلاة على النبي ﷺ") {
+                SettingsRow(icon: "sparkles", tint: Theme.gold, title: loc("rowJumuah"),
+                            subtitle: loc("subJumuah")) {
                     Toggle("", isOn: alertToggle({ store.jumuahAlert }, { store.jumuahAlert = $0 })).labelsHidden()
                 }
                 SettingsDivider()
-                SettingsRow(icon: "fork.knife", tint: Theme.accent(for: "sea"), title: "صيام الاثنين والخميس",
-                            subtitle: "تذكير ليلة الصيام") {
+                SettingsRow(icon: "fork.knife", tint: Theme.accent(for: "sea"), title: loc("rowFasting"),
+                            subtitle: loc("subFasting")) {
                     Toggle("", isOn: alertToggle({ store.fastingAlert }, { store.fastingAlert = $0 })).labelsHidden()
                 }
                 SettingsDivider()
-                SettingsRow(icon: "moon.circle.fill", tint: Theme.accent(for: "dusk"), title: "الأيام البيض",
-                            subtitle: "١٣ و١٤ و١٥ من كل شهر هجري") {
+                SettingsRow(icon: "moon.circle.fill", tint: Theme.accent(for: "dusk"), title: loc("rowWhite"),
+                            subtitle: loc("subWhite")) {
                     Toggle("", isOn: alertToggle({ store.whiteDaysAlert }, { store.whiteDaysAlert = $0 })).labelsHidden()
                 }
                 SettingsDivider()
-                SettingsRow(icon: "moon.stars.fill", tint: Theme.accent(for: "night"), title: "قيام الليل",
-                            subtitle: "عند دخول الثلث الأخير") {
+                SettingsRow(icon: "moon.stars.fill", tint: Theme.accent(for: "night"), title: loc("rowQiyam"),
+                            subtitle: loc("subQiyam")) {
                     Toggle("", isOn: alertToggle({ store.qiyamAlert }, { store.qiyamAlert = $0 })).labelsHidden()
                 }
                 SettingsDivider()
-                SettingsRow(icon: "drop.fill", tint: Theme.accent(for: "sea"), title: "الاستغفار والتسبيح",
-                            subtitle: "على مدار اليوم") {
+                SettingsRow(icon: "drop.fill", tint: Theme.accent(for: "sea"), title: loc("rowIstighfar"),
+                            subtitle: loc("subIstighfar")) {
                     Toggle("", isOn: alertToggle({ store.istighfarAlerts }, { store.istighfarAlerts = $0 })).labelsHidden()
                 }
             }
@@ -166,11 +166,11 @@ struct SettingsView: View {
 
     private var prayer: some View {
         VStack(spacing: 8) {
-            SettingsGroupTitle(text: "الصلاة")
+            SettingsGroupTitle(text: loc("grpPrayer"))
             SettingsCard {
                 SettingsRow(icon: "bell.and.waves.left.and.right.fill", tint: Theme.accent,
-                            title: "تنبيه دخول الوقت",
-                            subtitle: "إشعار عند أذان كل صلاة") {
+                            title: loc("rowAthan"),
+                            subtitle: loc("subAthan")) {
                     Toggle("", isOn: Binding(
                         get: { store.athanAlerts },
                         set: { enabled in
@@ -202,7 +202,7 @@ struct SettingsView: View {
                                     subtitle: scheduledAlerts > 0
                                         ? "\(scheduledAlerts.counterText) تنبيهًا مجدولًا للأيام القادمة"
                                         : "اضغط لتتأكد أن الإشعارات تعمل") {
-                            Image(systemName: "chevron.left")
+                            Image(systemName: "chevron.forward")
                                 .font(.system(size: 12, weight: .semibold))
                                 .foregroundStyle(Theme.inkFaint)
                         }
@@ -213,7 +213,7 @@ struct SettingsView: View {
                 SettingsDivider()
                 SettingsPickerRow(
                     icon: "slider.horizontal.3", tint: Theme.accent(for: "sea"),
-                    title: "طريقة الحساب", options: CalculationMethod.allCases,
+                    title: loc("rowCalc"), options: CalculationMethod.allCases,
                     selection: Binding(
                         get: { store.calculationMethod },
                         set: { store.calculationMethod = $0; refreshPrayers() }))
@@ -221,13 +221,13 @@ struct SettingsView: View {
                 SettingsDivider()
                 SettingsPickerRow(
                     icon: "sun.haze.fill", tint: Theme.accent(for: "dawn"),
-                    title: "وقت العصر", options: AsrMethod.allCases,
+                    title: loc("rowAsr"), options: AsrMethod.allCases,
                     selection: Binding(
                         get: { store.asrMethod },
                         set: { store.asrMethod = $0; refreshPrayers() }))
 
                 SettingsDivider()
-                SettingsRow(icon: "location.fill", tint: Theme.accent(for: "calm"), title: "الموقع") {
+                SettingsRow(icon: "location.fill", tint: Theme.accent(for: "calm"), title: loc("rowLocation")) {
                     SettingsValue(text: store.placeName)
                 }
             }
@@ -238,13 +238,13 @@ struct SettingsView: View {
 
     private var display: some View {
         VStack(spacing: 8) {
-            SettingsGroupTitle(text: "العرض")
+            SettingsGroupTitle(text: loc("grpDisplay"))
             SettingsCard {
                 NavigationLink { AppearanceView() } label: {
                     SettingsRow(icon: "paintpalette.fill", tint: Theme.accent(for: "calm"),
-                                title: "المظهر",
+                                title: loc("rowAppearance"),
                                 subtitle: "\(store.appTheme.title) · \(store.appearance.title)") {
-                        Image(systemName: "chevron.left")
+                        Image(systemName: "chevron.forward")
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundStyle(Theme.inkFaint)
                     }
@@ -259,7 +259,7 @@ struct SettingsView: View {
                             .foregroundStyle(Theme.accent(for: "sea"))
                             .frame(width: 32, height: 32)
                             .background(Circle().fill(Theme.accent(for: "sea").opacity(0.12)))
-                        Text("حجم الخط")
+                        Text(loc("rowFont"))
                             .font(Theme.display(16))
                             .foregroundStyle(Theme.ink)
                         Spacer()
@@ -298,7 +298,7 @@ struct SettingsView: View {
                         set: { store.countTapArea = $0 }))
 
                 SettingsDivider()
-                SettingsRow(icon: "hand.tap.fill", tint: Theme.gold, title: "الاهتزاز عند العدّ") {
+                SettingsRow(icon: "hand.tap.fill", tint: Theme.gold, title: loc("rowHaptics")) {
                     Toggle("", isOn: Binding(
                         get: { store.hapticsEnabled },
                         set: { store.hapticsEnabled = $0 }
@@ -313,22 +313,22 @@ struct SettingsView: View {
 
     private var stats: some View {
         VStack(spacing: 8) {
-            SettingsGroupTitle(text: "أثري")
+            SettingsGroupTitle(text: loc("grpStats"))
             SettingsCard {
                 HStack(spacing: 0) {
-                    statPill("flame.fill", Theme.gold, store.displayStreak.counterText, "يوم متتابع")
+                    statPill("flame.fill", Theme.gold, store.displayStreak.counterText, loc("statStreak"))
                     Rectangle().fill(Theme.hairline).frame(width: 1, height: 44)
-                    statPill("trophy.fill", Theme.accent(for: "dawn"), store.bestStreak.counterText, "أطول تتابع")
+                    statPill("trophy.fill", Theme.accent(for: "dawn"), store.bestStreak.counterText, loc("statBest"))
                     Rectangle().fill(Theme.hairline).frame(width: 1, height: 44)
-                    statPill("infinity", Theme.accent, store.totalDhikrCount.counterText, "مجموع الأذكار")
+                    statPill("infinity", Theme.accent, store.totalDhikrCount.counterText, loc("statTotal"))
                 }
                 .padding(.vertical, 16)
 
                 SettingsDivider()
                 Button { showResetConfirm = true } label: {
                     SettingsRow(icon: "arrow.counterclockwise", tint: Color.red.opacity(0.85),
-                                title: "تصفير الإحصائيات") {
-                        Image(systemName: "chevron.left")
+                                title: loc("rowReset")) {
+                        Image(systemName: "chevron.forward")
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundStyle(Theme.inkFaint)
                     }
@@ -358,23 +358,23 @@ struct SettingsView: View {
 
     private var about: some View {
         VStack(spacing: 8) {
-            SettingsGroupTitle(text: "عن التطبيق")
+            SettingsGroupTitle(text: loc("grpAbout"))
             SettingsCard {
-                SettingsRow(icon: "info.circle.fill", tint: Theme.inkSoft, title: "الإصدار") {
+                SettingsRow(icon: "info.circle.fill", tint: Theme.inkSoft, title: loc("rowVersion")) {
                     SettingsValue(text: appVersion)
                 }
                 SettingsDivider()
-                linkRow("hand.raised.fill", Theme.accent(for: "calm"), "سياسة الخصوصية",
+                linkRow("hand.raised.fill", Theme.accent(for: "calm"), loc("rowPrivacy"),
                         "https://ibrahimu.github.io/athar-app/privacy.html")
                 SettingsDivider()
-                linkRow("lifepreserver.fill", Theme.accent(for: "sea"), "الدعم والتواصل",
+                linkRow("lifepreserver.fill", Theme.accent(for: "sea"), loc("rowSupport"),
                         "https://ibrahimu.github.io/athar-app/support.html")
                 SettingsDivider()
                 NavigationLink { SourcesView() } label: {
                     SettingsRow(icon: "text.book.closed.fill", tint: Theme.accent(for: "sea"),
-                                title: "المصادر والحقوق",
+                                title: loc("rowSources"),
                                 subtitle: "نصوص المصحف والأذكار والخطوط") {
-                        Image(systemName: "chevron.left")
+                        Image(systemName: "chevron.forward")
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundStyle(Theme.inkFaint)
                     }
@@ -384,7 +384,7 @@ struct SettingsView: View {
                 SettingsDivider()
                 Link(destination: URL(string: "https://ehsan.sa")!) {
                     SettingsRow(icon: "heart.fill", tint: Theme.gold,
-                                title: "تصدّق عبر إحسان",
+                                title: loc("rowSadaqah"),
                                 subtitle: "المنصة الوطنية للعمل الخيري") {
                         Image(systemName: "arrow.up.forward")
                             .font(.system(size: 11, weight: .semibold))
@@ -397,8 +397,8 @@ struct SettingsView: View {
                 ShareLink(item: Self.appStoreURL,
                           message: Text("تطبيق أثر — أذكار وأوقات الصلاة ومسبحة. مجاني بلا إعلانات، ويعمل بدون إنترنت.")) {
                     SettingsRow(icon: "square.and.arrow.up.fill", tint: Theme.accent,
-                                title: "انشر التطبيق", subtitle: "دلَّ على خيرٍ فله مثل أجر فاعله") {
-                        Image(systemName: "chevron.left")
+                                title: loc("rowShare"), subtitle: "دلَّ على خيرٍ فله مثل أجر فاعله") {
+                        Image(systemName: "chevron.forward")
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundStyle(Theme.inkFaint)
                     }

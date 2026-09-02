@@ -177,7 +177,7 @@ struct SurahReaderView: View {
                     HStack(spacing: 8) {
                         Text("سورة \(next.name)")
                             .font(Theme.display(15, weight: .semibold))
-                        Image(systemName: "chevron.left").font(.system(size: 12, weight: .semibold))
+                        Image(systemName: "chevron.forward").font(.system(size: 12, weight: .semibold))
                     }
                     .foregroundStyle(palette.accent)
                     .padding(.horizontal, 18).padding(.vertical, 11)
@@ -395,7 +395,7 @@ struct ReaderControls: View {
 
                 VStack(spacing: 12) {
                     HStack {
-                        Text("حجم الخط").font(Theme.display(15, weight: .semibold)).foregroundStyle(Theme.ink)
+                        Text(loc("readerFont")).font(Theme.display(15, weight: .semibold)).foregroundStyle(Theme.ink)
                         Spacer()
                         Text(String(format: "%.0f٪", store.mushafFontScale * 100))
                             .font(Theme.display(14)).foregroundStyle(Theme.inkSoft).monospacedDigit()
@@ -418,7 +418,7 @@ struct ReaderControls: View {
                 }
 
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("طريقة العرض").font(Theme.display(15, weight: .semibold)).foregroundStyle(Theme.ink)
+                    Text(loc("displayMode")).font(Theme.display(15, weight: .semibold)).foregroundStyle(Theme.ink)
                     HStack(spacing: 10) {
                         ForEach(ReadingMode.allCases) { mode in
                             let on = store.readingMode == mode
@@ -442,7 +442,7 @@ struct ReaderControls: View {
                 }
 
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("سِمة الصفحة").font(Theme.display(15, weight: .semibold)).foregroundStyle(Theme.ink)
+                    Text(loc("pageTheme")).font(Theme.display(15, weight: .semibold)).foregroundStyle(Theme.ink)
                     HStack(spacing: 10) {
                         ForEach(ReadingTheme.allCases) { theme in
                             themeChip(theme)

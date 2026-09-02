@@ -39,7 +39,7 @@ struct OnboardingView: View {
             Button("فتح الإعدادات") {
                 if let u = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(u) }
             }
-            Button("لاحقًا", role: .cancel) { finish() }
+            Button(loc("later"), role: .cancel) { finish() }
         } message: {
             Text("لتصلك التذكيرات، اسمح للتطبيق بالإشعارات من إعدادات الجهاز. يمكنك تفعيلها لاحقًا من إعدادات أثر.")
         }
@@ -132,7 +132,7 @@ struct OnboardingView: View {
             .pressable()
             .disabled(working)
 
-            Button("لاحقًا") { finish() }
+            Button(loc("later")) { finish() }
                 .font(Theme.display(14))
                 .foregroundStyle(Theme.inkSoft)
         }

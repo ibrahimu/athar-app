@@ -382,7 +382,7 @@ enum ReadingMode: String, CaseIterable, Identifiable {
     case ayah   // كل آية في سطرها، أوضح للقراءة والتدبّر
 
     var id: String { rawValue }
-    var title: String { self == .page ? "صفحة" : "آية آية" }
+    var title: String { self == .page ? loc("modePage") : loc("modeAyah") }
     var icon: String { self == .page ? "book.pages.fill" : "list.bullet" }
 }
 

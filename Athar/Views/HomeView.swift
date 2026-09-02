@@ -73,10 +73,10 @@ struct HomeView: View {
     private var greeting: String {
         let hour = Calendar.current.component(.hour, from: now)
         switch hour {
-        case 4..<12:  return "صباح الخير"
-        case 12..<17: return "طاب يومك"
-        case 17..<21: return "مساء الخير"
-        default:      return "طابت ليلتك"
+        case 4..<12:  return loc("goodMorning")
+        case 12..<17: return loc("goodDay")
+        case 17..<21: return loc("goodEvening")
+        default:      return loc("goodNight")
         }
     }
 
@@ -150,11 +150,11 @@ struct HomeView: View {
     private var statsRow: some View {
         HStack(spacing: 12) {
             statTile(value: store.displayStreak.counterText,
-                     label: "يوم متتابع",
+                     label: loc("statStreak"),
                      icon: "flame.fill",
                      color: Theme.gold)
             statTile(value: store.totalDhikrCount.counterText,
-                     label: "ذكر بإذن الله",
+                     label: loc("statTotal"),
                      icon: "infinity",
                      color: Theme.accent)
         }
@@ -195,7 +195,7 @@ struct HomeView: View {
                             .padding(.horizontal, 10).padding(.vertical, 5)
                             .background(Capsule().fill(color.opacity(0.14)))
                         Spacer()
-                        Image(systemName: done ? "checkmark.seal.fill" : "arrow.left")
+                        Image(systemName: done ? "checkmark.seal.fill" : "arrow.forward")
                             .font(.system(size: 16, weight: .semibold))
                             .foregroundStyle(color)
                     }
@@ -228,7 +228,7 @@ struct HomeView: View {
 
     private func dailyCard(_ dhikr: Dhikr) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            SectionHeader(title: "ذكر اليوم")
+            SectionHeader(title: loc("dhikrOfDay"))
             AtharCard {
                 VStack(alignment: .leading, spacing: 12) {
                     Text(dhikr.text)
@@ -259,7 +259,7 @@ struct HomeView: View {
 
     private var quickGrid: some View {
         VStack(alignment: .leading, spacing: 10) {
-            SectionHeader(title: "ابدأ الآن") { onOpenTab(.adhkar) }
+            SectionHeader(title: loc("startNow")) { onOpenTab(.adhkar) }
             LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
                 ForEach(AdhkarLibrary.categories.prefix(6)) { category in
                     NavigationLink {

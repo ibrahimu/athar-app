@@ -10,12 +10,12 @@ enum Prayer: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .fajr:    return "الفجر"
-        case .sunrise: return "الشروق"
-        case .dhuhr:   return "الظهر"
-        case .asr:     return "العصر"
-        case .maghrib: return "المغرب"
-        case .isha:    return "العشاء"
+        case .fajr:    return loc("fajr")
+        case .sunrise: return loc("sunrise")
+        case .dhuhr:   return loc("dhuhr")
+        case .asr:     return loc("asr")
+        case .maghrib: return loc("maghrib")
+        case .isha:    return loc("isha")
         }
     }
 

@@ -32,7 +32,7 @@ struct MushafView: View {
                             continueCard
                             toolsRow
                             if !store.bookmarks.isEmpty { bookmarksCard }
-                            SettingsGroupTitle(text: "السور")
+                            SettingsGroupTitle(text: loc("suras"))
                         }
 
                         ForEach(Array(filtered.enumerated()), id: \.element.id) { i, surah in
@@ -67,9 +67,9 @@ struct MushafView: View {
                 }
                 .scrollIndicators(.hidden)
             }
-            .navigationTitle("المصحف")
+            .navigationTitle(loc("mushaf"))
             .navigationBarTitleDisplayMode(.inline)
-            .searchable(text: $query, prompt: "سورة أو آية")
+            .searchable(text: $query, prompt: Text(loc("searchMushaf")))
         }
     }
 
@@ -111,7 +111,7 @@ struct MushafView: View {
                             .frame(width: 46, height: 46)
                             .background(Circle().fill(Theme.gold.opacity(0.13)))
                         VStack(alignment: .leading, spacing: 3) {
-                            Text("وقوفي")
+                            Text(loc("myStop"))
                                 .font(Theme.display(12, weight: .semibold))
                                 .foregroundStyle(Theme.gold)
                             Text("سورة \(su.name) · آية \(mark.ayah.counterText) · ص \(Quran.page(of: mark).counterText)")
@@ -119,7 +119,7 @@ struct MushafView: View {
                                 .foregroundStyle(Theme.ink)
                         }
                         Spacer()
-                        Image(systemName: "chevron.left")
+                        Image(systemName: "chevron.forward")
                             .font(.system(size: 13, weight: .semibold))
                             .foregroundStyle(Theme.inkFaint)
                     }
@@ -143,7 +143,7 @@ struct MushafView: View {
                             .frame(width: 46, height: 46)
                             .background(Circle().fill(Theme.accentSoft))
                         VStack(alignment: .leading, spacing: 3) {
-                            Text("تابع القراءة")
+                            Text(loc("continueReading"))
                                 .font(Theme.display(12, weight: .semibold))
                                 .foregroundStyle(Theme.accent)
                             Text("سورة \(s.name) · ص \(Quran.page(of: last).counterText) · الجزء \(Quran.juz(of: last).counterText)")
@@ -151,7 +151,7 @@ struct MushafView: View {
                                 .foregroundStyle(Theme.ink)
                         }
                         Spacer()
-                        Image(systemName: "chevron.left")
+                        Image(systemName: "chevron.forward")
                             .font(.system(size: 13, weight: .semibold))
                             .foregroundStyle(Theme.inkFaint)
                     }
@@ -166,7 +166,7 @@ struct MushafView: View {
     private var toolsRow: some View {
         HStack(spacing: 12) {
             NavigationLink { HifzView() } label: {
-                toolTile("brain.head.profile", Theme.accent(for: "sea"), "الحفظ",
+                toolTile("brain.head.profile", Theme.accent(for: "sea"), loc("memorize"),
                          store.dueForReview.isEmpty
                             ? "\(store.memorizedCount.counterText) آية محفوظة"
                             : "\(store.dueForReview.count.counterText) للمراجعة اليوم",
@@ -175,10 +175,10 @@ struct MushafView: View {
             .pressable()
 
             NavigationLink { KhatmahView() } label: {
-                toolTile("book.closed.fill", Theme.gold, "الختمة",
+                toolTile("book.closed.fill", Theme.gold, loc("khatmah"),
                          store.khatmahActive
                             ? "\(Int((Double(store.khatmahPagesDone) / Double(Quran.pageCount) * 100).rounded()).counterText)٪ — اليوم \(store.khatmahDayIndex.counterText)"
-                            : "ابدأ تحدي الختم",
+                            : loc("startKhatmahSub"),
                          badge: store.khatmahActive && store.khatmahDelta < 0)
             }
             .pressable()
@@ -233,7 +233,7 @@ struct MushafView: View {
                                     .lineLimit(1)
                             }
                             Spacer()
-                            Image(systemName: "chevron.left")
+                            Image(systemName: "chevron.forward")
                                 .font(.system(size: 11, weight: .semibold))
                                 .foregroundStyle(Theme.inkFaint)
                         }
@@ -269,7 +269,7 @@ struct SurahRow: View {
                 }
 
                 Spacer()
-                Image(systemName: "chevron.left")
+                Image(systemName: "chevron.forward")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(Theme.inkFaint)
             }

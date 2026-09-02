@@ -174,7 +174,7 @@ struct PrayerView: View {
                             .foregroundStyle(Theme.inkSoft)
                     }
 
-                    Image(systemName: "chevron.left")
+                    Image(systemName: "chevron.forward")
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(Theme.inkFaint)
                 }
