@@ -4,21 +4,27 @@ import SwiftUI
 /// green accent, tuned so Arabic text stays the loudest thing on screen.
 enum Theme {
 
+    /// الطابع الفعّال. يُحدَّث من AtharStore عند التغيير، وتقرأه الألوان أدناه.
+    nonisolated(unsafe) static var current: AppTheme = .green
+
     // MARK: Core palette
 
     static let ink       = Color("Ink", bundle: nil, fallbackLight: Color(hex: 0x14201B), fallbackDark: Color(hex: 0xEFEAE0))
     static let inkSoft   = Color.adaptive(light: Color(hex: 0x4A5B52), dark: Color(hex: 0xA9B5AC))
     static let inkFaint  = Color.adaptive(light: Color(hex: 0x8A9992), dark: Color(hex: 0x76837B))
 
-    static let canvas    = Color.adaptive(light: Color(hex: 0xF7F4EC), dark: Color(hex: 0x0E1512))
-    static let surface   = Color.adaptive(light: Color(hex: 0xFFFDF8), dark: Color(hex: 0x18211D))
+    static var canvas: Color    { .adaptive(light: Color(hex: current.canvas.light),  dark: Color(hex: current.canvas.dark)) }
+    static var surface: Color   { .adaptive(light: Color(hex: current.surface.light), dark: Color(hex: current.surface.dark)) }
     static let surfaceAlt = Color.adaptive(light: Color(hex: 0xF0EDE2), dark: Color(hex: 0x212B26))
 
-    static let accent    = Color.adaptive(light: Color(hex: 0x1F6B4F), dark: Color(hex: 0x4FBF8F))
-    static let accentSoft = Color.adaptive(light: Color(hex: 0xDCEDE4), dark: Color(hex: 0x1B3129))
+    static var accent: Color { .adaptive(light: Color(hex: current.accent.light), dark: Color(hex: current.accent.dark)) }
+    static var accentSoft: Color {
+        .adaptive(light: Color(hex: current.accent.light).opacity(0.13),
+                  dark:  Color(hex: current.accent.dark).opacity(0.18))
+    }
     static let gold      = Color.adaptive(light: Color(hex: 0xA9812C), dark: Color(hex: 0xD9B45F))
 
-    static let hairline  = Color.adaptive(light: Color(hex: 0xE2DDD0), dark: Color(hex: 0x2A352F))
+    static var hairline: Color { .adaptive(light: Color(hex: current.hairline.light), dark: Color(hex: current.hairline.dark)) }
 
     // MARK: Category accents
 

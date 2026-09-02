@@ -3,7 +3,7 @@ import WidgetKit
 
 struct HomeView: View {
     @EnvironmentObject private var store: AtharStore
-    var onOpenTab: (RootView.Tab) -> Void
+    var onOpenTab: (AppTab) -> Void
 
     @State private var now = Date()
     private let ticker = Timer.publish(every: 60, on: .main, in: .common).autoconnect()

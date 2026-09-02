@@ -12,7 +12,8 @@ struct AtharApp: App {
                 .environmentObject(store)
                 .environment(\.layoutDirection, .rightToLeft)
                 .tint(Theme.accent)
-                .preferredColorScheme(nil)
+                .preferredColorScheme(store.appearance.colorScheme)
+                .onAppear { store.applyStoredTheme() }
         }
         .onChange(of: scenePhase) { _, phase in
             switch phase {

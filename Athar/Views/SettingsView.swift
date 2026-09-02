@@ -168,6 +168,18 @@ struct SettingsView: View {
         VStack(spacing: 8) {
             SettingsGroupTitle(text: "العرض")
             SettingsCard {
+                NavigationLink { AppearanceView() } label: {
+                    SettingsRow(icon: "paintpalette.fill", tint: Theme.accent(for: "calm"),
+                                title: "المظهر",
+                                subtitle: "\(store.appTheme.title) · \(store.appearance.title)") {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(Theme.inkFaint)
+                    }
+                }
+                .buttonStyle(.plain)
+
+                SettingsDivider()
                 VStack(alignment: .leading, spacing: 12) {
                     HStack(spacing: 13) {
                         Image(systemName: "textformat.size")
