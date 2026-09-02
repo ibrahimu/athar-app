@@ -11,7 +11,7 @@ settings:
   base:
     SWIFT_VERSION: "5.0"
     MARKETING_VERSION: "1.1"
-    CURRENT_PROJECT_VERSION: "4"
+    CURRENT_PROJECT_VERSION: "5"
     DEVELOPMENT_TEAM: GV9S3Z8V4G
     CODE_SIGN_STYLE: Automatic
     SWIFT_STRICT_CONCURRENCY: minimal
@@ -44,6 +44,9 @@ targets:
         SUPPORTS_MACCATALYST: NO
         SWIFT_EMIT_LOC_STRINGS: YES
 
+  # AtharWatch (تطبيق Apple Watch) — الكود جاهز في AtharWatch/، لكنه معطّل هنا
+  # لأن watchOS SDK غير مُثبَّت على جهاز البناء (يمنع الأرشفة). لتفعيله:
+  # ثبّت watchOS في Xcode ← Settings ← Components، ثم أعِد إدراج الهدف والـ embed.
   AtharWidget:
     type: app-extension
     platform: iOS
