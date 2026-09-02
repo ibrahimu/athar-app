@@ -60,12 +60,36 @@ enum AppTheme: String, CaseIterable, Identifiable, Codable {
 
     var surface: (light: UInt32, dark: UInt32) {
         switch self {
-        case .green:    return (0xFFFDF8, 0x18211D)
-        case .sand:     return (0xFFFCF5, 0x211B16)
-        case .sea:      return (0xFFFFFF, 0x141F23)
-        case .rose:     return (0xFFFAFB, 0x201820)
-        case .violet:   return (0xFFFDFF, 0x1A1722)
-        case .charcoal: return (0xFFFFFF, 0x1B1E1C)
+        case .green:    return (0xFFFDF8, 0x18241F)
+        case .sand:     return (0xFFFCF5, 0x241D16)
+        case .sea:      return (0xFDFEFF, 0x13222A)
+        case .rose:     return (0xFFFAFB, 0x241A21)
+        case .violet:   return (0xFDFCFF, 0x1E1A2B)
+        case .charcoal: return (0xFFFFFF, 0x1D211F)
+        }
+    }
+
+    /// سطح ثانوي — لخلفيات المعاينات والحقول.
+    var surfaceAlt: (light: UInt32, dark: UInt32) {
+        switch self {
+        case .green:    return (0xF0EDE2, 0x212E28)
+        case .sand:     return (0xF4EDDD, 0x2E251B)
+        case .sea:      return (0xEDF3F6, 0x1B2E38)
+        case .rose:     return (0xF9EDF0, 0x2E222A)
+        case .violet:   return (0xF2EFF9, 0x272136)
+        case .charcoal: return (0xF0F0EF, 0x272B29)
+        }
+    }
+
+    /// لون الحبر — يميل قليلًا نحو الطابع بدل الرمادي المحض.
+    var ink: (light: UInt32, dark: UInt32) {
+        switch self {
+        case .green:    return (0x14201B, 0xEDF2EF)
+        case .sand:     return (0x241B12, 0xF4EEE4)
+        case .sea:      return (0x0F1D24, 0xE9F2F6)
+        case .rose:     return (0x241119, 0xF7ECF0)
+        case .violet:   return (0x171233, 0xEFECF8)
+        case .charcoal: return (0x161917, 0xEFF1F0)
         }
     }
 

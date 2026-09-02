@@ -53,6 +53,8 @@ final class AtharStore: ObservableObject {
     init(defaults: UserDefaults? = nil) {
         self.defaults = defaults ?? UserDefaults(suiteName: AtharStore.appGroup) ?? .standard
         registerDefaults()
+        // قبل أول رسم: وإلا رُسمت الشاشات بالطابع الافتراضي ولم تُعد.
+        Theme.current = AppTheme(rawValue: self.defaults.string(forKey: "athar.theme") ?? "") ?? .green
     }
 
     private func registerDefaults() {

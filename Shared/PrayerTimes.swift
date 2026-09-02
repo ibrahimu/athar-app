@@ -232,6 +232,16 @@ struct PrayerTimes {
         Prayer.allCases.compactMap { p in times[p].map { (p, $0) } }
     }
 
+    /// ثلث الليل الآخر — أفضل أوقات القيام. الليل من المغرب إلى الفجر.
+    /// يحتاج فجر الغد لأن الليل يمتد عبر منتصف الليل.
+    func qiyam(tomorrowFajr: Date) -> (lastThird: Date, midnight: Date, end: Date)? {
+        guard let maghrib = times[.maghrib], tomorrowFajr > maghrib else { return nil }
+        let night = tomorrowFajr.timeIntervalSince(maghrib)
+        return (lastThird: maghrib.addingTimeInterval(night * 2 / 3),
+                midnight:  maghrib.addingTimeInterval(night / 2),
+                end:       tomorrowFajr)
+    }
+
     /// The next prayer today, or nil once Isha has passed.
     func next(after now: Date = Date()) -> (prayer: Prayer, date: Date)? {
         ordered.first { $0.date > now }

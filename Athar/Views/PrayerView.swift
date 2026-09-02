@@ -32,6 +32,7 @@ struct PrayerView: View {
                     VStack(spacing: 20) {
                         countdownCard
                         timesList
+                        qiyamCard
                         highLatitudeNote
                         qiblaLink
                         afterPrayerLink
@@ -194,6 +195,69 @@ struct PrayerView: View {
             }
             .buttonStyle(.plain)
         }
+    }
+
+    /// قيام الليل — ثلث الليل الآخر، وهو وقت النزول الإلهي.
+    @ViewBuilder
+    private var qiyamCard: some View {
+        if let q = qiyamWindow {
+            let inWindow = now >= q.lastThird && now < q.end
+            AtharCard(padding: 16) {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(spacing: 10) {
+                        Image(systemName: "moon.stars.fill")
+                            .font(.system(size: 18))
+                            .foregroundStyle(Theme.accent(for: "night"))
+                            .frame(width: 40, height: 40)
+                            .background(Circle().fill(Theme.accent(for: "night").opacity(0.14)))
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("قيام الليل")
+                                .font(Theme.display(16, weight: .semibold))
+                                .foregroundStyle(Theme.ink)
+                            Text(inWindow ? "أنت في ثلث الليل الآخر" : "ثلث الليل الآخر")
+                                .font(Theme.display(11))
+                                .foregroundStyle(inWindow ? Theme.accent : Theme.inkFaint)
+                        }
+                        Spacer()
+                        if inWindow {
+                            Circle().fill(Theme.accent).frame(width: 8, height: 8)
+                        }
+                    }
+
+                    HStack(spacing: 0) {
+                        qiyamSlot("منتصف الليل", q.midnight)
+                        Rectangle().fill(Theme.hairline).frame(width: 1, height: 30)
+                        qiyamSlot("الثلث الأخير", q.lastThird)
+                        Rectangle().fill(Theme.hairline).frame(width: 1, height: 30)
+                        qiyamSlot("ينتهي بالفجر", q.end)
+                    }
+
+                    Text("«ينزل ربنا إلى السماء الدنيا حين يبقى ثلث الليل الآخر» — متفق عليه")
+                        .font(Theme.display(11))
+                        .foregroundStyle(Theme.inkFaint)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+        }
+    }
+
+    private func qiyamSlot(_ label: String, _ date: Date) -> some View {
+        VStack(spacing: 3) {
+            Text(label).font(Theme.display(10)).foregroundStyle(Theme.inkFaint)
+            Text(Self.clock.string(from: date))
+                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                .foregroundStyle(Theme.ink)
+                .monospacedDigit()
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    private var qiyamWindow: (lastThird: Date, midnight: Date, end: Date)? {
+        guard let t = times,
+              let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: now),
+              let tm = store.prayerTimes(for: tomorrow), let fajr = tm[.fajr]
+        else { return nil }
+        return t.qiyam(tomorrowFajr: fajr)
     }
 
     @ViewBuilder

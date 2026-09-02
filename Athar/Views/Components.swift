@@ -29,10 +29,9 @@ struct AtharCard<Content: View>: View {
             .background(
                 RoundedRectangle(cornerRadius: Theme.corner, style: .continuous)
                     .fill(Theme.surface)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: Theme.corner, style: .continuous)
-                    .stroke(Theme.hairline, lineWidth: 1)
+                    .shadow(color: Theme.cardShadow.color,
+                            radius: Theme.cardShadow.radius,
+                            y: Theme.cardShadow.y)
             )
     }
 }
@@ -134,11 +133,10 @@ struct SettingsCard<Content: View>: View {
                 RoundedRectangle(cornerRadius: Theme.corner, style: .continuous)
                     .fill(Theme.surface)
             )
-            .overlay(
-                RoundedRectangle(cornerRadius: Theme.corner, style: .continuous)
-                    .stroke(Theme.hairline, lineWidth: 1)
-            )
             .clipShape(RoundedRectangle(cornerRadius: Theme.corner, style: .continuous))
+            .shadow(color: Theme.cardShadow.color,
+                    radius: Theme.cardShadow.radius,
+                    y: Theme.cardShadow.y)
     }
 }
 
@@ -146,8 +144,8 @@ struct SettingsCard<Content: View>: View {
 struct SettingsDivider: View {
     var body: some View {
         Rectangle()
-            .fill(Theme.hairline)
-            .frame(height: 1)
+            .fill(Theme.hairline.opacity(0.55))
+            .frame(height: 0.7)
             .padding(.leading, 60)
     }
 }
@@ -183,8 +181,8 @@ struct SettingsRow<Trailing: View>: View {
             Spacer(minLength: 8)
             trailing
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 12)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
         .contentShape(Rectangle())
     }
 }

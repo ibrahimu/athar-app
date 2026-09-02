@@ -26,7 +26,7 @@ struct MushafView: View {
             ZStack {
                 AtharBackground()
                 ScrollView {
-                    LazyVStack(spacing: 14) {
+                    LazyVStack(spacing: 16) {
                         if query.isEmpty {
                             continueCard
                             toolsRow

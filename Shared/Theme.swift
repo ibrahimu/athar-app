@@ -9,13 +9,17 @@ enum Theme {
 
     // MARK: Core palette
 
-    static let ink       = Color("Ink", bundle: nil, fallbackLight: Color(hex: 0x14201B), fallbackDark: Color(hex: 0xEFEAE0))
-    static let inkSoft   = Color.adaptive(light: Color(hex: 0x4A5B52), dark: Color(hex: 0xA9B5AC))
-    static let inkFaint  = Color.adaptive(light: Color(hex: 0x8A9992), dark: Color(hex: 0x76837B))
+    static var ink: Color { .adaptive(light: Color(hex: current.ink.light), dark: Color(hex: current.ink.dark)) }
+    static var inkSoft: Color {
+        .adaptive(light: Color(hex: current.ink.light).opacity(0.68), dark: Color(hex: current.ink.dark).opacity(0.72))
+    }
+    static var inkFaint: Color {
+        .adaptive(light: Color(hex: current.ink.light).opacity(0.45), dark: Color(hex: current.ink.dark).opacity(0.45))
+    }
 
     static var canvas: Color    { .adaptive(light: Color(hex: current.canvas.light),  dark: Color(hex: current.canvas.dark)) }
     static var surface: Color   { .adaptive(light: Color(hex: current.surface.light), dark: Color(hex: current.surface.dark)) }
-    static let surfaceAlt = Color.adaptive(light: Color(hex: 0xF0EDE2), dark: Color(hex: 0x212B26))
+    static var surfaceAlt: Color { .adaptive(light: Color(hex: current.surfaceAlt.light), dark: Color(hex: current.surfaceAlt.dark)) }
 
     static var accent: Color { .adaptive(light: Color(hex: current.accent.light), dark: Color(hex: current.accent.dark)) }
     static var accentSoft: Color {
@@ -59,7 +63,12 @@ enum Theme {
         .system(size: size, weight: weight)
     }
 
-    static let corner: CGFloat = 20
+    static let corner: CGFloat = 24
+
+    /// ظل ناعم يرفع البطاقة عن الخلفية بلا حدّ صلب — أخفّ على العين من الإطار.
+    static var cardShadow: (color: Color, radius: CGFloat, y: CGFloat) {
+        (Color(hex: current.ink.light).opacity(0.055), 14, 5)
+    }
 }
 
 // MARK: - Color helpers

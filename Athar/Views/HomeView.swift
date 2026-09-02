@@ -24,7 +24,7 @@ struct HomeView: View {
             ZStack {
                 AtharBackground()
                 ScrollView {
-                    VStack(alignment: .leading, spacing: 22) {
+                    VStack(alignment: .leading, spacing: 26) {
                         header
                         prayerStrip
                         statsRow

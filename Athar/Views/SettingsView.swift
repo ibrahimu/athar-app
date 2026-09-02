@@ -32,7 +32,7 @@ struct SettingsView: View {
             ZStack {
                 AtharBackground()
                 ScrollView {
-                    VStack(spacing: 26) {
+                    VStack(spacing: 30) {
                         reminders
                         prayer
                         display
