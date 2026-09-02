@@ -52,6 +52,30 @@ enum CalculationMethod: String, CaseIterable, Identifiable {
         }
     }
 
+    /// اسم مختصر يصلح للعرض داخل صف ضيق.
+    var shortTitle: String {
+        switch self {
+        case .ummAlQura: return "أم القرى"
+        case .mwl:       return "رابطة العالم الإسلامي"
+        case .egypt:     return "الهيئة المصرية"
+        case .karachi:   return "كراتشي"
+        case .isna:      return "ISNA"
+        case .dubai:     return "الإمارات"
+        }
+    }
+
+    /// شرح يظهر تحت الاسم في شاشة الاختيار.
+    var detail: String {
+        switch self {
+        case .ummAlQura: return "المعتمدة في السعودية · الفجر ١٨٫٥° والعشاء بعد المغرب ٩٠ دقيقة"
+        case .mwl:       return "الفجر ١٨° والعشاء ١٧°"
+        case .egypt:     return "الفجر ١٩٫٥° والعشاء ١٧٫٥°"
+        case .karachi:   return "الفجر والعشاء ١٨°"
+        case .isna:      return "الفجر والعشاء ١٥°"
+        case .dubai:     return "الفجر والعشاء ١٨٫٢°"
+        }
+    }
+
     var fajrAngle: Double {
         switch self {
         case .ummAlQura: return 18.5
@@ -85,6 +109,12 @@ enum AsrMethod: String, CaseIterable, Identifiable {
     case standard, hanafi
     var id: String { rawValue }
     var title: String { self == .standard ? "الجمهور (الشافعي والمالكي والحنبلي)" : "الحنفي" }
+    var shortTitle: String { self == .standard ? "الجمهور" : "الحنفي" }
+    var detail: String {
+        self == .standard
+            ? "يدخل العصر إذا صار ظل الشيء مثله"
+            : "يدخل العصر إذا صار ظل الشيء مثليه"
+    }
     var shadowFactor: Double { self == .standard ? 1 : 2 }
 }
 
