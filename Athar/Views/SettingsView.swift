@@ -32,17 +32,18 @@ struct SettingsView: View {
     private var content: some View {
         Group {
             ZStack {
-                AtharBackground()
+                AtharBackground(tint: Theme.accent, secondary: Theme.gold)
+                settingsAura
                 ScrollView {
                     VStack(spacing: 30) {
-                        if !AppConfig.arabicOnly { languageRow }
-                        reminders
-                        sunanReminders
-                        prayer
-                        display
-                        stats
-                        about
-                        blessing
+                        if !AppConfig.arabicOnly { languageRow.appearStagger(0) }
+                        reminders.appearStagger(1)
+                        sunanReminders.appearStagger(2)
+                        prayer.appearStagger(3)
+                        display.appearStagger(4)
+                        stats.appearStagger(5)
+                        about.appearStagger(6)
+                        blessing.appearStagger(7)
                     }
                     .padding(.horizontal, 18)
                     .padding(.top, 6)
@@ -74,13 +75,31 @@ struct SettingsView: View {
         }
     }
 
+    /// طبقات ضوئية ناعمة فوق الخلفية: توهّج لوني علوي، بركة ذهبية سفلية،
+    /// وشريط نقش باهت جدًا خلف البطاقات — عمق بلا ضجيج ولا منافسة للنص.
+    private var settingsAura: some View {
+        ZStack {
+            RadialGradient(colors: [Theme.accent.opacity(0.10), .clear],
+                           center: .topTrailing, startRadius: 0, endRadius: 380)
+            RadialGradient(colors: [Theme.gold.opacity(0.06), .clear],
+                           center: UnitPoint(x: 0.16, y: 0.62), startRadius: 0, endRadius: 320)
+            PaperMotif(tint: Theme.accent)
+                .frame(height: 260)
+                .mask(LinearGradient(colors: [.clear, .black, .clear],
+                                     startPoint: .top, endPoint: .bottom))
+                .opacity(0.6)
+        }
+        .allowsHitTesting(false)
+        .ignoresSafeArea()
+    }
+
     // MARK: التذكير
 
     private var reminders: some View {
         VStack(spacing: 8) {
-            SettingsGroupTitle(text: loc("grpReminders"))
+            SettingsGroupTitle(text: loc("grpReminders"), tint: Theme.gold)
             SettingsCard {
-                SettingsRow(icon: "bell.badge.fill", tint: Theme.gold,
+                SettingsScreenRow(icon: "bell.badge.fill", tint: Theme.gold,
                             title: loc("rowAdhkarRem"),
                             subtitle: store.remindersEnabled ? nil : loc("تنبيه لطيف للصباح والمساء")) {
                     Toggle("", isOn: Binding(
@@ -102,12 +121,12 @@ struct SettingsView: View {
 
                 if store.remindersEnabled {
                     SettingsDivider()
-                    SettingsRow(icon: "sunrise.fill", tint: Theme.accent(for: "dawn"), title: loc("rowMorning")) {
+                    SettingsScreenRow(icon: "sunrise.fill", tint: Theme.accent(for: "dawn"), title: loc("rowMorning")) {
                         DatePicker("", selection: morningBinding, displayedComponents: .hourAndMinute)
                             .labelsHidden()
                     }
                     SettingsDivider()
-                    SettingsRow(icon: "moon.stars.fill", tint: Theme.accent(for: "dusk"), title: loc("rowEvening")) {
+                    SettingsScreenRow(icon: "moon.stars.fill", tint: Theme.accent(for: "dusk"), title: loc("rowEvening")) {
                         DatePicker("", selection: eveningBinding, displayedComponents: .hourAndMinute)
                             .labelsHidden()
                     }
@@ -123,7 +142,7 @@ struct SettingsView: View {
         VStack(spacing: 8) {
             SettingsGroupTitle(text: loc("language"))
             SettingsCard {
-                SettingsPickerRow(
+                SettingsScreenPickerRow(
                     icon: "globe", tint: Theme.accent(for: "sea"),
                     title: loc("language"), options: AppLanguage.allCases,
                     selection: Binding(get: { store.appLanguage },
@@ -148,29 +167,29 @@ struct SettingsView: View {
 
     private var sunanReminders: some View {
         VStack(spacing: 8) {
-            SettingsGroupTitle(text: loc("grpSunan"))
+            SettingsGroupTitle(text: loc("grpSunan"), tint: Theme.accent(for: "dusk"))
             SettingsCard {
-                SettingsRow(icon: "sparkles", tint: Theme.gold, title: loc("rowJumuah"),
+                SettingsScreenRow(icon: "sparkles", tint: Theme.gold, title: loc("rowJumuah"),
                             subtitle: loc("subJumuah")) {
                     Toggle("", isOn: alertToggle({ store.jumuahAlert }, { store.jumuahAlert = $0 })).labelsHidden()
                 }
                 SettingsDivider()
-                SettingsRow(icon: "fork.knife", tint: Theme.accent(for: "sea"), title: loc("rowFasting"),
+                SettingsScreenRow(icon: "fork.knife", tint: Theme.accent(for: "sea"), title: loc("rowFasting"),
                             subtitle: loc("subFasting")) {
                     Toggle("", isOn: alertToggle({ store.fastingAlert }, { store.fastingAlert = $0 })).labelsHidden()
                 }
                 SettingsDivider()
-                SettingsRow(icon: "moon.circle.fill", tint: Theme.accent(for: "dusk"), title: loc("rowWhite"),
+                SettingsScreenRow(icon: "moon.circle.fill", tint: Theme.accent(for: "dusk"), title: loc("rowWhite"),
                             subtitle: loc("subWhite")) {
                     Toggle("", isOn: alertToggle({ store.whiteDaysAlert }, { store.whiteDaysAlert = $0 })).labelsHidden()
                 }
                 SettingsDivider()
-                SettingsRow(icon: "moon.stars.fill", tint: Theme.accent(for: "night"), title: loc("rowQiyam"),
+                SettingsScreenRow(icon: "moon.stars.fill", tint: Theme.accent(for: "night"), title: loc("rowQiyam"),
                             subtitle: loc("subQiyam")) {
                     Toggle("", isOn: alertToggle({ store.qiyamAlert }, { store.qiyamAlert = $0 })).labelsHidden()
                 }
                 SettingsDivider()
-                SettingsRow(icon: "drop.fill", tint: Theme.accent(for: "sea"), title: loc("rowIstighfar"),
+                SettingsScreenRow(icon: "drop.fill", tint: Theme.accent(for: "sea"), title: loc("rowIstighfar"),
                             subtitle: loc("subIstighfar")) {
                     Toggle("", isOn: alertToggle({ store.istighfarAlerts }, { store.istighfarAlerts = $0 })).labelsHidden()
                 }
@@ -182,9 +201,9 @@ struct SettingsView: View {
 
     private var prayer: some View {
         VStack(spacing: 8) {
-            SettingsGroupTitle(text: loc("grpPrayer"))
+            SettingsGroupTitle(text: loc("grpPrayer"), tint: Theme.accent(for: "green"))
             SettingsCard {
-                SettingsRow(icon: "bell.and.waves.left.and.right.fill", tint: Theme.accent,
+                SettingsScreenRow(icon: "bell.and.waves.left.and.right.fill", tint: Theme.accent,
                             title: loc("rowAthan"),
                             subtitle: loc("subAthan")) {
                     Toggle("", isOn: Binding(
@@ -212,7 +231,7 @@ struct SettingsView: View {
                             if !testSent { permissionDenied = true }
                         }
                     } label: {
-                        SettingsRow(icon: testSent ? "checkmark.circle.fill" : "bell.badge.waveform.fill",
+                        SettingsScreenRow(icon: testSent ? "checkmark.circle.fill" : "bell.badge.waveform.fill",
                                     tint: testSent ? Theme.accent : Theme.gold,
                                     title: testSent ? loc("أُرسل — سيصلك خلال ٥ ثوانٍ") : loc("جرّب التنبيه الآن"),
                                     subtitle: scheduledAlerts > 0
@@ -227,7 +246,7 @@ struct SettingsView: View {
                 }
 
                 SettingsDivider()
-                SettingsPickerRow(
+                SettingsScreenPickerRow(
                     icon: "slider.horizontal.3", tint: Theme.accent(for: "sea"),
                     title: loc("rowCalc"), options: CalculationMethod.allCases,
                     selection: Binding(
@@ -235,7 +254,7 @@ struct SettingsView: View {
                         set: { store.calculationMethod = $0; refreshPrayers() }))
 
                 SettingsDivider()
-                SettingsPickerRow(
+                SettingsScreenPickerRow(
                     icon: "sun.haze.fill", tint: Theme.accent(for: "dawn"),
                     title: loc("rowAsr"), options: AsrMethod.allCases,
                     selection: Binding(
@@ -243,7 +262,7 @@ struct SettingsView: View {
                         set: { store.asrMethod = $0; refreshPrayers() }))
 
                 SettingsDivider()
-                SettingsRow(icon: "location.fill", tint: Theme.accent(for: "calm"), title: loc("rowLocation")) {
+                SettingsScreenRow(icon: "location.fill", tint: Theme.accent(for: "calm"), title: loc("rowLocation")) {
                     SettingsValue(text: store.placeName)
                 }
             }
@@ -254,10 +273,10 @@ struct SettingsView: View {
 
     private var display: some View {
         VStack(spacing: 8) {
-            SettingsGroupTitle(text: loc("grpDisplay"))
+            SettingsGroupTitle(text: loc("grpDisplay"), tint: Theme.accent(for: "calm"))
             SettingsCard {
                 NavigationLink { AppearanceView() } label: {
-                    SettingsRow(icon: "paintpalette.fill", tint: Theme.accent(for: "calm"),
+                    SettingsScreenRow(icon: "paintpalette.fill", tint: Theme.accent(for: "calm"),
                                 title: loc("rowAppearance"),
                                 subtitle: "\(store.appTheme.title) · \(store.appearance.title)") {
                         Image(systemName: "chevron.forward")
@@ -270,11 +289,7 @@ struct SettingsView: View {
                 SettingsDivider()
                 VStack(alignment: .leading, spacing: 12) {
                     HStack(spacing: 13) {
-                        Image(systemName: "textformat.size")
-                            .font(.system(size: 14, weight: .medium))
-                            .foregroundStyle(Theme.accent(for: "sea"))
-                            .frame(width: 32, height: 32)
-                            .background(Circle().fill(Theme.accent(for: "sea").opacity(0.12)))
+                        SettingsScreenChip(icon: "textformat.size", tint: Theme.accent(for: "sea"))
                         Text(loc("rowFont"))
                             .font(Theme.display(16))
                             .foregroundStyle(Theme.ink)
@@ -306,7 +321,7 @@ struct SettingsView: View {
                 .padding(14)
 
                 SettingsDivider()
-                SettingsPickerRow(
+                SettingsScreenPickerRow(
                     icon: "hand.point.up.left.fill", tint: Theme.accent(for: "calm"),
                     title: loc("منطقة العدّ"), options: CountTapArea.allCases,
                     selection: Binding(
@@ -314,7 +329,7 @@ struct SettingsView: View {
                         set: { store.countTapArea = $0 }))
 
                 SettingsDivider()
-                SettingsRow(icon: "hand.tap.fill", tint: Theme.gold, title: loc("rowHaptics")) {
+                SettingsScreenRow(icon: "hand.tap.fill", tint: Theme.gold, title: loc("rowHaptics")) {
                     Toggle("", isOn: Binding(
                         get: { store.hapticsEnabled },
                         set: { store.hapticsEnabled = $0 }
@@ -329,7 +344,7 @@ struct SettingsView: View {
 
     private var stats: some View {
         VStack(spacing: 8) {
-            SettingsGroupTitle(text: loc("grpStats"))
+            SettingsGroupTitle(text: loc("grpStats"), tint: Theme.accent(for: "dawn"))
             SettingsCard {
                 HStack(spacing: 0) {
                     statPill("flame.fill", Theme.gold, store.displayStreak.counterText, loc("statStreak"))
@@ -342,7 +357,7 @@ struct SettingsView: View {
 
                 SettingsDivider()
                 Button { showResetConfirm = true } label: {
-                    SettingsRow(icon: "arrow.counterclockwise", tint: Color.red.opacity(0.85),
+                    SettingsScreenRow(icon: "arrow.counterclockwise", tint: Color.red.opacity(0.85),
                                 title: loc("rowReset")) {
                         Image(systemName: "chevron.forward")
                             .font(.system(size: 12, weight: .semibold))
@@ -356,10 +371,16 @@ struct SettingsView: View {
 
     private func statPill(_ icon: String, _ tint: Color, _ value: String, _ label: String) -> some View {
         VStack(spacing: 5) {
-            Image(systemName: icon).font(.system(size: 13)).foregroundStyle(tint)
+            Image(systemName: icon)
+                .font(.system(size: 13))
+                .foregroundStyle(tint)
+                .background(
+                    Circle().fill(tint.opacity(0.22)).frame(width: 26, height: 26).blur(radius: 7)
+                )
             Text(value)
                 .font(.system(size: 21, weight: .bold, design: .rounded))
-                .foregroundStyle(Theme.ink)
+                .foregroundStyle(LinearGradient(colors: [tint, tint.opacity(0.7)],
+                                                startPoint: .top, endPoint: .bottom))
                 .contentTransition(.numericText())
             Text(label)
                 .font(Theme.display(11))
@@ -374,9 +395,9 @@ struct SettingsView: View {
 
     private var about: some View {
         VStack(spacing: 8) {
-            SettingsGroupTitle(text: loc("grpAbout"))
+            SettingsGroupTitle(text: loc("grpAbout"), tint: Theme.accent(for: "sea"))
             SettingsCard {
-                SettingsRow(icon: "info.circle.fill", tint: Theme.inkSoft, title: loc("rowVersion")) {
+                SettingsScreenRow(icon: "info.circle.fill", tint: Theme.inkSoft, title: loc("rowVersion")) {
                     SettingsValue(text: appVersion)
                 }
                 SettingsDivider()
@@ -387,7 +408,7 @@ struct SettingsView: View {
                         "https://ibrahimu.github.io/athar-app/support.html")
                 SettingsDivider()
                 NavigationLink { SourcesView() } label: {
-                    SettingsRow(icon: "text.book.closed.fill", tint: Theme.accent(for: "sea"),
+                    SettingsScreenRow(icon: "text.book.closed.fill", tint: Theme.accent(for: "sea"),
                                 title: loc("rowSources"),
                                 subtitle: loc("نصوص المصحف والأذكار والخطوط")) {
                         Image(systemName: "chevron.forward")
@@ -399,7 +420,7 @@ struct SettingsView: View {
 
                 SettingsDivider()
                 Link(destination: URL(string: "https://ehsan.sa")!) {
-                    SettingsRow(icon: "heart.fill", tint: Theme.gold,
+                    SettingsScreenRow(icon: "heart.fill", tint: Theme.gold,
                                 title: loc("rowSadaqah"),
                                 subtitle: loc("المنصة الوطنية للعمل الخيري")) {
                         Image(systemName: "arrow.up.forward")
@@ -412,7 +433,7 @@ struct SettingsView: View {
                 SettingsDivider()
                 ShareLink(item: Self.appStoreURL,
                           message: Text(loc("تطبيق أثر — أذكار وأوقات الصلاة ومسبحة. مجاني بلا إعلانات، ويعمل بدون إنترنت."))) {
-                    SettingsRow(icon: "square.and.arrow.up.fill", tint: Theme.accent,
+                    SettingsScreenRow(icon: "square.and.arrow.up.fill", tint: Theme.accent,
                                 title: loc("rowShare"), subtitle: loc("دلَّ على خيرٍ فله مثل أجر فاعله")) {
                         Image(systemName: "chevron.forward")
                             .font(.system(size: 12, weight: .semibold))
@@ -426,7 +447,7 @@ struct SettingsView: View {
 
     private func linkRow(_ icon: String, _ tint: Color, _ title: String, _ url: String) -> some View {
         Link(destination: URL(string: url)!) {
-            SettingsRow(icon: icon, tint: tint, title: title) {
+            SettingsScreenRow(icon: icon, tint: tint, title: title) {
                 Image(systemName: "arrow.up.forward")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(Theme.inkFaint)
@@ -438,10 +459,21 @@ struct SettingsView: View {
     // MARK: الخاتمة
 
     private var blessing: some View {
-        VStack(spacing: 10) {
-            Image(systemName: "drop.fill")
-                .font(.system(size: 15))
-                .foregroundStyle(Theme.gold.opacity(0.7))
+        VStack(spacing: 12) {
+            HStack(spacing: 12) {
+                Rectangle()
+                    .fill(LinearGradient(colors: [.clear, Theme.gold.opacity(0.45)],
+                                         startPoint: .leading, endPoint: .trailing))
+                    .frame(height: 1)
+                EightPointStar()
+                    .fill(Theme.goldGradient)
+                    .frame(width: 15, height: 15)
+                Rectangle()
+                    .fill(LinearGradient(colors: [Theme.gold.opacity(0.45), .clear],
+                                         startPoint: .leading, endPoint: .trailing))
+                    .frame(height: 1)
+            }
+            .frame(maxWidth: 240)
             Text("﴿ وَمَا تُقَدِّمُوا لِأَنفُسِكُم مِّنْ خَيْرٍ تَجِدُوهُ عِندَ اللَّهِ ﴾")
                 .font(Theme.dhikrFont(size: 15))
                 .foregroundStyle(Theme.inkSoft)
@@ -481,5 +513,98 @@ struct SettingsView: View {
     private static func minutes(from date: Date) -> Int {
         let c = Calendar.current.dateComponents([.hour, .minute], from: date)
         return (c.hour ?? 0) * 60 + (c.minute ?? 0)
+    }
+}
+
+// MARK: - لبنات مرئية خاصة بشاشة الإعدادات
+//
+// مبنيّة محليًا (ببادئة اسم الشاشة) حتى لا تُعدَّل اللبنات المشتركة، ولا تتصادم
+// أسماؤها مع شاشاتٍ تُحرَّر بالتوازي. رقاقة أيقونة أرقى + صفوف تعتمدها.
+
+/// رقاقة الأيقونة: مربّع ناعم الحواف بتعبئة متدرّجة بلون الصف، حلقة شعرية
+/// دقيقة، وظلّ لوني خفيف يرفعها عن سطح البطاقة.
+struct SettingsScreenChip: View {
+    let icon: String
+    var tint: Color = Theme.accent
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous)
+        return Image(systemName: icon)
+            .font(.system(size: 14, weight: .medium))
+            .foregroundStyle(tint)
+            .frame(width: 32, height: 32)
+            .background(
+                shape.fill(LinearGradient(colors: [tint.opacity(0.18), tint.opacity(0.08)],
+                                          startPoint: .topTrailing, endPoint: .bottomLeading))
+            )
+            .overlay(shape.strokeBorder(tint.opacity(0.25), lineWidth: 0.5))
+            .shadow(color: tint.opacity(0.15), radius: 4, y: 2)
+    }
+}
+
+/// صف إعداد بنفس سلوك SettingsRow المشترك تمامًا، لكن برقاقة أيقونة أرقى.
+struct SettingsScreenRow<Trailing: View>: View {
+    let icon: String
+    var tint: Color = Theme.accent
+    let title: String
+    var subtitle: String? = nil
+    @ViewBuilder var trailing: Trailing
+
+    var body: some View {
+        HStack(spacing: 13) {
+            SettingsScreenChip(icon: icon, tint: tint)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(Theme.display(16, weight: .regular))
+                    .foregroundStyle(Theme.ink)
+                if let subtitle {
+                    Text(subtitle)
+                        .font(Theme.display(12))
+                        .foregroundStyle(Theme.inkFaint)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+
+            Spacer(minLength: 8)
+            trailing
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .contentShape(Rectangle())
+    }
+}
+
+extension SettingsScreenRow where Trailing == EmptyView {
+    init(icon: String, tint: Color = Theme.accent, title: String, subtitle: String? = nil) {
+        self.init(icon: icon, tint: tint, title: title, subtitle: subtitle) { EmptyView() }
+    }
+}
+
+/// صف اختيار بنفس سلوك SettingsPickerRow المشترك، لكن يعتمد صف الشاشة الأرقى.
+struct SettingsScreenPickerRow<T: SettingsChoice>: View {
+    let icon: String
+    var tint: Color = Theme.accent
+    let title: String
+    let options: [T]
+    @Binding var selection: T
+
+    var body: some View {
+        NavigationLink {
+            SettingsChoiceList(title: title, options: options, selection: $selection)
+        } label: {
+            SettingsScreenRow(icon: icon, tint: tint, title: title) {
+                HStack(spacing: 6) {
+                    Text(selection.shortTitle)
+                        .font(Theme.display(15, weight: .medium))
+                        .foregroundStyle(Theme.inkSoft)
+                        .lineLimit(1)
+                    Image(systemName: "chevron.forward")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(Theme.inkFaint)
+                }
+            }
+        }
+        .buttonStyle(.plain)
     }
 }

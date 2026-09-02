@@ -133,7 +133,8 @@ struct PrayerWidgetView: View {
 
                         Text(time(up.date))
                             .font(.system(size: 27, weight: .bold, design: .rounded))
-                            .foregroundStyle(entry.moment.tint)
+                            .foregroundStyle(LinearGradient(colors: [entry.moment.tint, entry.moment.tint.opacity(0.68)],
+                                                            startPoint: .top, endPoint: .bottom))
                             .minimumScaleFactor(0.6)
                             .lineLimit(1)
                             .padding(.top, 1)

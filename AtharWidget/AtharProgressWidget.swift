@@ -83,13 +83,18 @@ struct ProgressWidgetView: View {
             HStack(spacing: 14) {
                 ZStack {
                     Circle().stroke(entry.moment.ink.opacity(0.16), lineWidth: 9)
-                    Circle()
+                    let arc = Circle()
                         .trim(from: 0, to: max(0.02, fraction))
-                        .stroke(entry.moment.tint, style: StrokeStyle(lineWidth: 9, lineCap: .round))
+                        .stroke(AngularGradient(colors: [entry.moment.tint, entry.moment.tint.opacity(0.55), entry.moment.tint],
+                                                center: .center, angle: .degrees(-90)),
+                                style: StrokeStyle(lineWidth: 9, lineCap: .round))
                         .rotationEffect(.degrees(-90))
+                    arc.blur(radius: 5).opacity(0.35 + 0.4 * fraction)
+                    arc
                     Text(entry.streak.counterText)
                         .font(.system(size: 24, weight: .bold))
-                        .foregroundStyle(entry.moment.ink)
+                        .foregroundStyle(LinearGradient(colors: [entry.moment.ink, entry.moment.tint],
+                                                        startPoint: .top, endPoint: .bottom))
                 }
                 .frame(width: 74, height: 74)
 

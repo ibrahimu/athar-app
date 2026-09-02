@@ -10,6 +10,9 @@ struct WirdView: View {
     }
     private var done: Bool { store.wirdDoneToday >= store.wirdTarget }
 
+    /// هوية الشاشة: فجريّ كهرماني.
+    private var dawn: Color { Theme.accent(for: "dawn") }
+
     private var reminderBinding: Binding<Date> {
         Binding(
             get: { Calendar.current.date(bySettingHour: store.wirdReminderMinutes / 60,
@@ -25,13 +28,13 @@ struct WirdView: View {
 
     var body: some View {
         ZStack {
-            AtharBackground()
+            AtharBackground(tint: dawn, secondary: Theme.gold)
             ScrollView {
                 VStack(spacing: 22) {
-                    ring
-                    actions
-                    settings
-                    note
+                    ring.appearStagger(0)
+                    actions.appearStagger(1)
+                    settings.appearStagger(2)
+                    note.appearStagger(3)
                 }
                 .padding(.horizontal, 20)
                 .padding(.top, 10)
@@ -46,25 +49,32 @@ struct WirdView: View {
     }
 
     private var ring: some View {
-        ZStack {
-            ProgressRing(progress: progress, color: done ? Theme.accent : Theme.gold, lineWidth: 13)
+        // القوس فجريّ كهرماني أثناء الورد، ويتحوّل إلى لون الإنجاز عند الإتمام
+        // مع توهّج يشتدّ قرب الاكتمال، وعلامات خافتة بعدد آيات اليوم كوجه الساعة.
+        let ringColor = done ? Theme.accent : dawn
+        return ZStack {
+            if done { CelebrationHalo(tint: dawn) }
+            ProgressRing(progress: progress, color: ringColor, lineWidth: 13,
+                         gradient: true, ticks: store.wirdTarget, glow: true)
             VStack(spacing: 4) {
                 Text(store.wirdDoneToday.counterText)
                     .font(.system(size: 46, weight: .bold, design: .rounded))
-                    .foregroundStyle(Theme.ink)
+                    .foregroundStyle(LinearGradient(colors: [ringColor, ringColor.opacity(0.7)],
+                                                    startPoint: .top, endPoint: .bottom))
                     .contentTransition(.numericText())
                 Text(loc("من %1$@ آية", store.wirdTarget.counterText))
                     .font(Theme.display(13)).foregroundStyle(Theme.inkFaint)
                 if done {
                     Text(loc("تمّ وردك اليوم"))
                         .font(Theme.display(12, weight: .semibold))
-                        .foregroundStyle(Theme.accent)
+                        .foregroundStyle(dawn)
                         .padding(.top, 2)
                 }
             }
         }
         .frame(width: 210, height: 210)
         .padding(.top, 8)
+        .animation(Motion.smooth, value: done)
     }
 
     private var actions: some View {
@@ -75,11 +85,9 @@ struct WirdView: View {
             } label: {
                 Label(loc("قرأت آية"), systemImage: "plus")
                     .font(Theme.display(15, weight: .semibold))
-                    .foregroundStyle(Theme.onAccent)
-                    .frame(maxWidth: .infinity).padding(.vertical, 14)
-                    .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Theme.accent))
+                    .gradientButton(Theme.gradient(for: "dawn"), glow: dawn)
             }
-            .buttonStyle(.plain)
+            .pressable()
 
             Button {
                 store.wirdDoneToday = 0
@@ -89,36 +97,41 @@ struct WirdView: View {
                     .font(.system(size: 15, weight: .medium))
                     .foregroundStyle(Theme.inkSoft)
                     .frame(width: 52).padding(.vertical, 14)
-                    .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Theme.surface))
-                    .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).stroke(Theme.hairline))
+                    .background(RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous).fill(Theme.surface))
+                    .overlay(RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous).stroke(Theme.hairline))
             }
-            .buttonStyle(.plain)
+            .pressable()
         }
     }
 
     private var settings: some View {
         VStack(spacing: 8) {
-            SettingsGroupTitle(text: loc("الإعداد"))
+            SettingsGroupTitle(text: loc("الإعداد"), tint: dawn)
             SettingsCard {
-                SettingsRow(icon: "target", tint: Theme.accent(for: "sea"), title: loc("ورد اليوم")) {
-                    HStack(spacing: 8) {
+                SettingsRow(icon: "target", tint: dawn, title: loc("ورد اليوم")) {
+                    HStack(spacing: 7) {
                         ForEach([5, 10, 20, 50], id: \.self) { n in
+                            let on = store.wirdTarget == n
                             Button {
                                 store.wirdTarget = n
                                 Haptics.tap(enabled: store.hapticsEnabled)
                             } label: {
                                 Text(n.counterText)
-                                    .font(Theme.display(13, weight: store.wirdTarget == n ? .bold : .regular))
-                                    .foregroundStyle(store.wirdTarget == n ? .white : Theme.inkSoft)
-                                    .frame(width: 34, height: 30)
+                                    .font(.system(size: 14, weight: on ? .bold : .medium, design: .rounded))
+                                    .foregroundStyle(on ? Theme.onAccent : Theme.inkSoft)
+                                    .frame(width: 36, height: 32)
                                     .background(
-                                        RoundedRectangle(cornerRadius: 9, style: .continuous)
-                                            .fill(store.wirdTarget == n ? Theme.accent : Theme.surfaceAlt)
+                                        RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous)
+                                            .fill(on ? AnyShapeStyle(Theme.gradient(for: "dawn"))
+                                                     : AnyShapeStyle(Theme.surfaceAlt))
                                     )
+                                    .shadow(color: on ? dawn.opacity(0.35) : .clear,
+                                            radius: on ? 6 : 0, y: on ? 3 : 0)
                             }
                             .buttonStyle(.plain)
                         }
                     }
+                    .animation(Motion.press, value: store.wirdTarget)
                 }
 
                 SettingsDivider()
@@ -150,10 +163,17 @@ struct WirdView: View {
     }
 
     private var note: some View {
-        Text("«أحبُّ الأعمال إلى الله أدومها وإن قلّ»\nالقليل الدائم خير من الكثير المنقطع.")
-            .font(Theme.display(12))
-            .foregroundStyle(Theme.inkFaint)
-            .multilineTextAlignment(.center)
-            .frame(maxWidth: .infinity)
+        // النص الشرعي بخطّ النسخ ولون الحبر (لا صبغة)، والشرح تحته بخطّ الواجهة الخافت.
+        VStack(spacing: 6) {
+            Text("«أحبُّ الأعمال إلى الله أدومها وإن قلّ»")
+                .font(Theme.naskhFont(size: 14, scale: store.fontScale))
+                .foregroundStyle(Theme.inkSoft)
+            Text(loc("القليل الدائم خير من الكثير المنقطع."))
+                .font(Theme.display(11.5))
+                .foregroundStyle(Theme.inkFaint)
+        }
+        .multilineTextAlignment(.center)
+        .frame(maxWidth: .infinity)
+        .padding(.top, 4)
     }
 }

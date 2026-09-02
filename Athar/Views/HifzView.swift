@@ -22,9 +22,44 @@ struct HifzView: View {
 
     private var current: AyahRef? { index < queue.count ? queue[index] : nil }
 
+    // لون القسم البحري، وترتيب المراحل ولون كلٍّ منها — مصدر واحد لصبغة الشاشة.
+    private var sea: Color { Theme.accent(for: "hifz") }
+    private let stageOrder: [HifzStage] = [.reading, .hinted, .testing, .revealed]
+    private var currentStageIndex: Int { stageOrder.firstIndex(of: stage) ?? 0 }
+    private var currentAccent: Color { stageAccent(stage) }
+
+    /// لون كل مرحلة: قراءة بحري، تلميح ذهبي، استرجاع أخضر، كشف كهرماني.
+    private func stageAccent(_ s: HifzStage) -> Color {
+        switch s {
+        case .reading:  return Theme.accent(for: "hifz")
+        case .hinted:   return Theme.gold
+        case .testing:  return Theme.success
+        case .revealed: return Theme.accent(for: "fajr")
+        }
+    }
+
+    /// تدرّج المرحلة — لأزرارها وخيطها العلوي وحبّتها في الشريط.
+    private func stageGradient(_ s: HifzStage) -> LinearGradient {
+        switch s {
+        case .reading:  return Theme.gradient(for: "hifz")
+        case .hinted:   return Theme.gradient(for: "gold")
+        case .testing:  return Theme.gradient(for: "success")
+        case .revealed: return Theme.gradient(for: "fajr")
+        }
+    }
+
+    private func stageLabel(_ s: HifzStage) -> String {
+        switch s {
+        case .reading:  return loc("اقرأ")
+        case .hinted:   return loc("لمّح")
+        case .testing:  return loc("استرجع")
+        case .revealed: return loc("راجع")
+        }
+    }
+
     var body: some View {
         ZStack {
-            AtharBackground()
+            AtharBackground(tint: sea)
             if queue.isEmpty {
                 emptyState
             } else if let ref = current {
@@ -57,41 +92,28 @@ struct HifzView: View {
     private func session(_ ref: AyahRef) -> some View {
         VStack(spacing: 0) {
             progressBar
+            stageRail
 
             ScrollView {
                 VStack(spacing: 20) {
                     Text("\(Quran.surah(ref.surah)?.name ?? "") · الآية \(ref.ayah.counterText)")
                         .font(Theme.display(13, weight: .semibold))
-                        .foregroundStyle(Theme.accent)
+                        .foregroundStyle(sea)
+                        .padding(.horizontal, 12).padding(.vertical, 5)
+                        .background(Capsule().fill(sea.opacity(0.10)))
                         .padding(.top, 8)
 
-                    AtharCard(padding: 22) {
-                        Group {
-                            switch stage {
-                            case .reading, .revealed:
-                                Text(Quran.text(ref) ?? "")
-                            case .hinted:
-                                Text(hint(for: ref))
-                            case .testing:
-                                Text("· · ·")
-                                    .foregroundStyle(Theme.inkFaint)
-                            }
-                        }
-                        .font(Theme.dhikrFont(size: 23, scale: store.mushafFontScale))
-                        .foregroundStyle(stage == .revealed ? Theme.accent : Theme.ink)
-                        .lineSpacing(15)
-                        .multilineTextAlignment(.center)
-                        .frame(maxWidth: .infinity, minHeight: 150)
-                        .animation(Motion.snappy, value: stage)
-                    }
+                    ayahCard(ref)
 
                     stageHint
 
                     if let card = store.card(for: ref), card.lapses > 0 {
                         Label(loc("تعثّرت فيها %1$@ مرة — كرّرها", card.lapses.counterText),
                               systemImage: "arrow.trianglehead.counterclockwise")
-                            .font(Theme.display(12))
+                            .font(Theme.display(12, weight: .medium))
                             .foregroundStyle(Theme.gold)
+                            .padding(.horizontal, 12).padding(.vertical, 6)
+                            .background(Capsule().fill(Theme.gold.opacity(0.12)))
                     }
                 }
                 .padding(.horizontal, 20)
@@ -104,17 +126,32 @@ struct HifzView: View {
         }
     }
 
+    // MARK: شريط التقدّم — تعبئة متدرّجة وحافة مدوّرة ونجمات أرباع تُذهَّب
+
     private var progressBar: some View {
-        VStack(spacing: 8) {
+        let frac = Double(index) / Double(max(1, queue.count))
+        return VStack(spacing: 10) {
             GeometryReader { g in
+                let w = g.size.width
                 ZStack(alignment: .leading) {
-                    Capsule().fill(Theme.accent.opacity(0.15))
-                    Capsule().fill(Theme.accent)
-                        .frame(width: max(4, g.size.width * Double(index) / Double(max(1, queue.count))))
+                    Capsule().fill(sea.opacity(0.14))
+                    Capsule()
+                        .fill(Theme.gradient(for: "hifz"))
+                        .frame(width: max(6, w * frac))
                         .animation(Motion.smooth, value: index)
+
+                    // علامات الأرباع: نجمة ثمانية تُذهَّب حين تتجاوزها التعبئة.
+                    ForEach([0.25, 0.5, 0.75, 1.0], id: \.self) { m in
+                        Color.clear
+                            .frame(width: max(1, w * m))
+                            .overlay(alignment: .trailing) {
+                                milestoneStar(lit: frac >= m - 0.0001)
+                            }
+                    }
                 }
             }
             .frame(height: 6)
+
             HStack {
                 Text("\((index + 1).counterText) من \(queue.count.counterText)")
                 Spacer()
@@ -128,6 +165,94 @@ struct HifzView: View {
         }
         .padding(.horizontal, 20)
         .padding(.top, 8)
+    }
+
+    private func milestoneStar(lit: Bool) -> some View {
+        EightPointStar(innerRatio: 0.5)
+            .fill(lit ? AnyShapeStyle(Theme.goldGradient) : AnyShapeStyle(sea.opacity(0.28)))
+            .frame(width: 9, height: 9)
+            .scaleEffect(lit ? 1 : 0.82)
+            .animation(Motion.press, value: lit)
+    }
+
+    // MARK: شريط المراحل — أربع حبّات ملوّنة (اقرأ/لمّح/استرجع/راجع)
+
+    private var stageRail: some View {
+        HStack(spacing: 8) {
+            ForEach(Array(stageOrder.enumerated()), id: \.offset) { i, s in
+                let acc = stageAccent(s)
+                let active = s == stage
+                let passed = i < currentStageIndex
+
+                Text(stageLabel(s))
+                    .font(Theme.display(11.5, weight: active ? .bold : .medium))
+                    .foregroundStyle(active ? Theme.onAccent : (passed ? acc : Theme.inkFaint))
+                    .lineLimit(1).minimumScaleFactor(0.8)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 7)
+                    .background(
+                        Capsule()
+                            .fill(active ? AnyShapeStyle(stageGradient(s))
+                                  : passed ? AnyShapeStyle(acc.opacity(0.18))
+                                           : AnyShapeStyle(Theme.surfaceAlt))
+                            .overlay(
+                                Capsule().strokeBorder(
+                                    (active || passed) ? Color.clear : Theme.hairline.opacity(0.6),
+                                    lineWidth: 0.6)
+                            )
+                    )
+                    .shadow(color: active ? acc.opacity(0.35) : .clear,
+                            radius: active ? 8 : 0, y: active ? 3 : 0)
+                    .scaleEffect(active ? 1.04 : 1)
+                    .animation(Motion.press, value: stage)
+            }
+        }
+        .animation(Motion.snappy, value: stage)
+        .padding(.horizontal, 20)
+        .padding(.top, 12)
+        .padding(.bottom, 2)
+    }
+
+    // MARK: بطاقة الآية — سطح مصبوغ بلون المرحلة، خيط علويّ، ونجمة مائية خلف النص
+
+    private func ayahCard(_ ref: AyahRef) -> some View {
+        let acc = currentAccent
+        let shape = RoundedRectangle(cornerRadius: Theme.Radius.lg, style: .continuous)
+        return Group {
+            switch stage {
+            case .reading, .revealed:
+                Text(Quran.text(ref) ?? "")
+            case .hinted:
+                Text(hint(for: ref))
+            case .testing:
+                Text("· · ·")
+                    .foregroundStyle(Theme.inkFaint)
+            }
+        }
+        .font(Theme.dhikrFont(size: 23, scale: store.mushafFontScale))
+        .foregroundStyle(Theme.ink)
+        .lineSpacing(15)
+        .multilineTextAlignment(.center)
+        .frame(maxWidth: .infinity, minHeight: 150)
+        .animation(Motion.snappy, value: stage)
+        .padding(22)
+        .background {
+            shape
+                .fill(Theme.surfaceGradient)
+                .overlay { shape.fill(acc.opacity(0.04)) }
+                .overlay {
+                    EightPointStar(innerRatio: 0.66)
+                        .fill(acc.opacity(0.03))
+                        .frame(width: 230, height: 230)
+                }
+                .overlay(alignment: .top) {
+                    Rectangle().fill(acc).frame(height: 2)
+                }
+                .animation(Motion.gentle, value: stage)   // تلاشٍ متقاطع للصبغة مع تبدّل المرحلة
+                .clipShape(shape)
+                .overlay(shape.strokeBorder(Theme.hairline.opacity(0.5), lineWidth: 0.5))
+                .atharElevation(.e2)
+        }
     }
 
     @ViewBuilder
@@ -146,41 +271,60 @@ struct HifzView: View {
                 .font(Theme.display(13)).foregroundStyle(Theme.inkSoft)
         case .revealed:
             Text(loc("لا بأس — اقرأها مرة أخرى، وستعود عليك قريبًا"))
-                .font(Theme.display(13)).foregroundStyle(Theme.gold)
+                .font(Theme.display(13)).foregroundStyle(stageAccent(.revealed))
         }
     }
+
+    // MARK: أزرار التحكّم
 
     private func controls(_ ref: AyahRef) -> some View {
         VStack(spacing: 10) {
             switch stage {
             case .reading:
-                bigButton(repeatsLeft > 0 ? loc("قرأتها") : loc("التالي"), Theme.accent) {
+                bigButton(repeatsLeft > 0 ? loc("قرأتها") : loc("التالي"),
+                          icon: repeatsLeft > 0 ? "checkmark" : "arrow.forward",
+                          gradient: stageGradient(.reading), glow: stageAccent(.reading)) {
                     Haptics.step(enabled: store.hapticsEnabled)
                     if repeatsLeft > 1 { repeatsLeft -= 1 }
                     else { repeatsLeft = 0; stage = .hinted }
                 }
             case .hinted:
-                bigButton(loc("أخفِ الكل"), Theme.accent) {
+                bigButton(loc("أخفِ الكل"), icon: "eye.slash",
+                          gradient: stageGradient(.hinted), glow: stageAccent(.hinted)) {
                     Haptics.step(enabled: store.hapticsEnabled)
                     stage = .testing
                 }
             case .testing:
                 HStack(spacing: 10) {
-                    smallButton(loc("علقت"), Theme.gold) {
+                    // علقت — زر ذهبي ناعم بسهم عكسي.
+                    Button {
                         Haptics.tap(enabled: store.hapticsEnabled)
                         store.recordReview(ref, passed: false)
                         sessionStumbled += 1
                         stage = .revealed
+                    } label: {
+                        Label(loc("علقت"), systemImage: "arrow.counterclockwise")
+                            .font(Theme.display(16, weight: .semibold))
+                            .softButton(Theme.gold)
                     }
-                    smallButton(loc("تذكرتها"), Theme.accent) {
+                    .pressable()
+
+                    // تذكرتها — زر أخضر متدرّج بعلامة صحّ.
+                    Button {
                         Haptics.done(enabled: store.hapticsEnabled)
                         store.recordReview(ref, passed: true)
                         sessionPassed += 1
                         advance()
+                    } label: {
+                        Label(loc("تذكرتها"), systemImage: "checkmark.circle.fill")
+                            .font(Theme.display(16, weight: .semibold))
+                            .gradientButton(Theme.gradient(for: "success"), glow: Theme.success)
                     }
+                    .pressable()
                 }
             case .revealed:
-                bigButton(loc("أعِدها الآن"), Theme.gold) {
+                bigButton(loc("أعِدها الآن"), icon: "arrow.counterclockwise",
+                          gradient: stageGradient(.revealed), glow: stageAccent(.revealed)) {
                     // «إذا علق يعيدها» — ترجع الآية نفسها من أولها.
                     repeatsLeft = store.hifzRepeatCount
                     stage = .reading
@@ -191,31 +335,18 @@ struct HifzView: View {
         .padding(.bottom, 18)
     }
 
-    private func bigButton(_ title: String, _ tint: Color, _ action: @escaping () -> Void) -> some View {
+    private func bigButton(_ title: String, icon: String? = nil,
+                           gradient: LinearGradient, glow: Color,
+                           _ action: @escaping () -> Void) -> some View {
         Button(action: action) {
-            Text(title)
-                .font(Theme.display(16, weight: .semibold))
-                .foregroundStyle(Theme.onAccent)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 15)
-                .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(tint))
+            Group {
+                if let icon { Label(title, systemImage: icon) }
+                else { Text(title) }
+            }
+            .font(Theme.display(16, weight: .semibold))
+            .gradientButton(gradient, glow: glow)
         }
-        .buttonStyle(.plain)
-    }
-
-    private func smallButton(_ title: String, _ tint: Color, _ action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Text(title)
-                .font(Theme.display(16, weight: .semibold))
-                .foregroundStyle(tint == Theme.accent ? .white : tint)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 15)
-                .background(
-                    RoundedRectangle(cornerRadius: 14, style: .continuous)
-                        .fill(tint == Theme.accent ? tint : tint.opacity(0.14))
-                )
-        }
-        .buttonStyle(.plain)
+        .pressable()
     }
 
     // MARK: الحالات
@@ -224,37 +355,50 @@ struct HifzView: View {
         VStack(spacing: 18) {
             Image(systemName: "brain.head.profile")
                 .font(.system(size: 52))
-                .foregroundStyle(Theme.accent.opacity(0.5))
+                .foregroundStyle(Theme.gradient(for: "hifz"))
+                .frame(width: 120, height: 120)
+                .background(
+                    EightPointStar(innerRatio: 0.66)
+                        .fill(sea.opacity(0.04))
+                )
+                .appearStagger(0)
             Text(loc("ابدأ حفظك"))
                 .font(Theme.display(22, weight: .bold))
                 .foregroundStyle(Theme.ink)
+                .appearStagger(1)
             Text(loc("اختر سورة أو مدى من الآيات، ونلقّنك إياها بالتكرار ثم التلميح ثم الاسترجاع.\nوما تعثّرت فيه يعود عليك حتى يثبت."))
                 .font(Theme.display(14))
                 .foregroundStyle(Theme.inkSoft)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 34)
-            Button { showPicker = true } label: {
-                Label(loc("اختر ما تحفظ"), systemImage: "plus")
-                    .font(Theme.display(16, weight: .semibold))
-                    .foregroundStyle(Theme.onAccent)
-                    .padding(.horizontal, 26).padding(.vertical, 14)
-                    .background(Capsule().fill(Theme.accent))
+                .appearStagger(2)
+            AtharPrimaryButton(title: loc("اختر ما تحفظ"), icon: "plus",
+                               gradient: Theme.gradient(for: "hifz"), glowTint: sea) {
+                showPicker = true
             }
-            .buttonStyle(.plain)
+            .frame(maxWidth: 300)
+            .padding(.horizontal, 40)
+            .appearStagger(3)
 
             if store.memorizedCount > 0 {
                 Text("\(store.memorizedCount.counterText) آية ثبتت معك")
                     .font(Theme.display(12))
                     .foregroundStyle(Theme.inkFaint)
                     .padding(.top, 6)
+                    .appearStagger(4)
             }
         }
     }
 
     private var finished: some View {
         VStack(spacing: 16) {
-            Image(systemName: "checkmark.seal.fill")
-                .font(.system(size: 56)).foregroundStyle(Theme.accent)
+            ZStack {
+                CelebrationHalo(tint: Theme.gold)
+                Image(systemName: "checkmark.seal.fill")
+                    .font(.system(size: 56))
+                    .foregroundStyle(Theme.gradient(for: "hifz"))
+            }
+            .frame(height: 130)
             Text(loc("أتممت مراجعة اليوم"))
                 .font(Theme.display(22, weight: .bold)).foregroundStyle(Theme.ink)
             Text(loc("ثبت %1$@ · تعثّر %2$@", sessionPassed.counterText, sessionStumbled.counterText))
@@ -264,7 +408,7 @@ struct HifzView: View {
                 .multilineTextAlignment(.center).padding(.horizontal, 40)
             Button { loadQueue() } label: {
                 Text(loc("تحديث"))
-                    .font(Theme.display(15, weight: .semibold)).foregroundStyle(Theme.accent)
+                    .font(Theme.display(15, weight: .semibold)).foregroundStyle(sea)
             }
             .buttonStyle(.plain).padding(.top, 4)
         }

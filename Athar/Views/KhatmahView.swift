@@ -2,12 +2,15 @@ import SwiftUI
 
 /// تحدي الختمة: يختار المستخدم مدة الختمة أو مقدار اليوم، والتطبيق يحسب
 /// الباقي ويوزّع ورد كل يوم، ويريه أهو متقدّم أم متأخّر عن خطته.
+///
+/// الهوية اللونية: أخضر ← ذهبي. الأخضر للتقدّم والخطة، والذهبي لِذُرى الإنجاز
+/// (حلقة الإتمام والهالة). الزخرفة تحت النص لا تنافسه أبدًا.
 struct KhatmahView: View {
     @EnvironmentObject private var store: AtharStore
 
     var body: some View {
         ZStack {
-            AtharBackground()
+            AtharBackground(tint: Theme.accent, secondary: Theme.gold)
             ScrollView {
                 Group {
                     if store.khatmahActive { active } else { setup }
@@ -33,10 +36,16 @@ struct KhatmahView: View {
 
     private var setup: some View {
         VStack(spacing: 24) {
+            // مقدّمة: نجمة خضراء باهتة خلف الأيقونة الذهبية
             VStack(spacing: 10) {
-                Image(systemName: "book.closed.fill")
-                    .font(.system(size: 44))
-                    .foregroundStyle(Theme.gold.opacity(0.8))
+                ZStack {
+                    EightPointStar()
+                        .fill(Theme.accent.opacity(0.04))
+                        .frame(width: 96, height: 96)
+                    Image(systemName: "book.closed.fill")
+                        .font(.system(size: 44))
+                        .foregroundStyle(Theme.goldGradient)
+                }
                 Text(loc("ابدأ ختمتك"))
                     .font(Theme.display(24, weight: .bold))
                     .foregroundStyle(Theme.ink)
@@ -46,6 +55,7 @@ struct KhatmahView: View {
                     .multilineTextAlignment(.center)
             }
             .padding(.top, 10)
+            .appearStagger(0)
 
             VStack(spacing: 8) {
                 SettingsGroupTitle(text: loc("أختمها في"))
@@ -61,13 +71,14 @@ struct KhatmahView: View {
                                     .font(.system(size: 19, weight: .bold, design: .rounded))
                                 Text(loc("يوم")).font(Theme.display(10))
                             }
-                            .foregroundStyle(on ? .white : Theme.inkSoft)
+                            .foregroundStyle(on ? Theme.onAccent : Theme.inkSoft)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 12)
-                            .background(RoundedRectangle(cornerRadius: 13, style: .continuous)
-                                .fill(on ? Theme.accent : Theme.surface))
+                            .background(dayChipBackground(on))
+                            .scaleEffect(on ? 1.03 : 1)
                         }
                         .pressable()
+                        .animation(Motion.press, value: days)
                     }
                 }
                 Text(planSummary)
@@ -75,6 +86,7 @@ struct KhatmahView: View {
                     .foregroundStyle(Theme.inkFaint)
                     .frame(maxWidth: .infinity)
             }
+            .appearStagger(1)
 
             VStack(spacing: 8) {
                 SettingsGroupTitle(text: loc("توزيع الورد"))
@@ -102,6 +114,7 @@ struct KhatmahView: View {
                     }
                 }
             }
+            .appearStagger(2)
 
             Button {
                 store.startKhatmah(days: days, mode: mode)
@@ -109,12 +122,24 @@ struct KhatmahView: View {
             } label: {
                 Text(loc("ابدأ التحدي"))
                     .font(Theme.display(17, weight: .semibold))
-                    .foregroundStyle(Theme.onAccent)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 15)
-                    .background(RoundedRectangle(cornerRadius: 15, style: .continuous).fill(Theme.accent))
+                    .gradientButton(Theme.gradient(for: "green"), glow: Theme.accent)
             }
             .pressable()
+            .appearStagger(3)
+        }
+    }
+
+    /// خلفية رقاقة اليوم: المختار تعبئة خضراء متدرّجة بظلّ ملوّن ونبض؛ غير المختار
+    /// سطح ثانوي بحدّ شعري.
+    @ViewBuilder
+    private func dayChipBackground(_ on: Bool) -> some View {
+        let shape = RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous)
+        if on {
+            shape.fill(Theme.accentGradient)
+                .shadow(color: Theme.accent.opacity(0.25), radius: 9, y: 5)
+        } else {
+            shape.fill(Theme.surfaceAlt)
+                .overlay(shape.strokeBorder(Theme.hairline.opacity(0.6), lineWidth: 0.5))
         }
     }
 
@@ -129,81 +154,165 @@ struct KhatmahView: View {
 
     private var active: some View {
         VStack(spacing: 22) {
-            ring
-            statusLine
-            todayCard
-            if !store.khatmahMode.slotNames.isEmpty { slots }
-            actions
-            cancelButton
+            ringSection.appearStagger(0)
+            statusLine.appearStagger(1)
+            todayCard.appearStagger(2)
+            if !store.khatmahMode.slotNames.isEmpty { slots.appearStagger(3) }
+            actions.appearStagger(4)
+            cancelButton.appearStagger(5)
         }
     }
 
     private var progress: Double { Double(store.khatmahPagesDone) / Double(Quran.pageCount) }
+    private var isComplete: Bool { store.khatmahPagesDone >= Quran.pageCount }
 
-    private var ring: some View {
+    /// أرقام «الجوهرة»: تعبئة خضراء متدرّجة، وتتحوّل ذهبية عند الإتمام.
+    private var percentJewel: LinearGradient {
+        isComplete
+            ? Theme.goldGradient
+            : LinearGradient(colors: [Theme.accent, Theme.accent2], startPoint: .top, endPoint: .bottom)
+    }
+
+    private var ringSection: some View {
         ZStack {
-            ProgressRing(progress: progress, color: Theme.accent, lineWidth: 13)
-            VStack(spacing: 3) {
-                Text("\(Int((progress * 100).rounded()).counterText)٪")
-                    .font(.system(size: 40, weight: .bold, design: .rounded))
-                    .foregroundStyle(Theme.ink)
-                    .contentTransition(.numericText())
-                Text("\(store.khatmahPagesDone.counterText) من \(Quran.pageCount.counterText) صفحة")
-                    .font(Theme.display(12)).foregroundStyle(Theme.inkFaint)
-                Text(loc("اليوم %1$@ من %2$@", store.khatmahDayIndex.counterText, store.khatmahTotalDays.counterText))
-                    .font(Theme.display(11)).foregroundStyle(Theme.inkFaint)
+            // هالة الاحتفاء الذهبية عند ختم القرآن — ذروة الإنجاز فقط
+            if isComplete {
+                CelebrationHalo(tint: Theme.gold)
+                    .frame(width: 240, height: 240)
             }
+            ZStack {
+                KhatmahRing(progress: progress, lineWidth: 13, glow: true)
+                VStack(spacing: 3) {
+                    Text("\(Int((progress * 100).rounded()).counterText)٪")
+                        .font(.system(size: 40, weight: .bold, design: .rounded))
+                        .foregroundStyle(percentJewel)
+                        .contentTransition(.numericText())
+                    Text(loc("%1$@ من %2$@ صفحة", store.khatmahPagesDone.counterText, Quran.pageCount.counterText))
+                        .font(Theme.display(12)).foregroundStyle(Theme.inkFaint)
+                    Text(loc("اليوم %1$@ من %2$@", store.khatmahDayIndex.counterText, store.khatmahTotalDays.counterText))
+                        .font(Theme.display(11)).foregroundStyle(Theme.inkFaint)
+                }
+            }
+            .frame(width: 200, height: 200)
         }
-        .frame(width: 200, height: 200)
         .padding(.top, 6)
     }
 
     @ViewBuilder
     private var statusLine: some View {
         let d = store.khatmahDelta
-        if d >= 0 {
-            Label(d == 0 ? loc("على الخطة تمامًا") : loc("متقدّم بـ%1$@ صفحة — ما شاء الله", d.counterText),
-                  systemImage: "checkmark.seal.fill")
-                .font(Theme.display(13, weight: .semibold))
-                .foregroundStyle(Theme.accent)
-        } else {
-            Label(loc("متأخّر بـ%1$@ صفحة — عوّضها على مهل", (-d).counterText),
-                  systemImage: "arrow.counterclockwise")
-                .font(Theme.display(13, weight: .semibold))
-                .foregroundStyle(Theme.gold)
+        Group {
+            if d >= 0 {
+                Label(d == 0 ? loc("على الخطة تمامًا") : loc("متقدّم بـ%1$@ صفحة — ما شاء الله", d.counterText),
+                      systemImage: "checkmark.seal.fill")
+                    .foregroundStyle(Theme.accent)
+            } else {
+                Label(loc("متأخّر بـ%1$@ صفحة — عوّضها على مهل", (-d).counterText),
+                      systemImage: "arrow.counterclockwise")
+                    .foregroundStyle(Theme.gold)
+            }
         }
+        .font(Theme.display(13, weight: .semibold))
+        .padding(.horizontal, 12).padding(.vertical, 7)
+        .background(Capsule().fill((d >= 0 ? Theme.accent : Theme.gold).opacity(0.12)))
     }
+
+    // MARK: ورد اليوم — البطاقة البطلة
 
     private var todayCard: some View {
         let range = store.khatmahTodayRange
         let startRef = Quran.firstAyah(ofPage: range.lowerBound)
-        return AtharCard(padding: 16) {
-            VStack(alignment: .leading, spacing: 10) {
+        let surahName = Quran.surah(startRef.surah)?.name ?? ""
+        let juz = Quran.juz(of: startRef)
+        let wardTotal = max(1, range.count)
+        let wardDone = min(wardTotal, max(0, store.khatmahPagesDone - (range.lowerBound - 1)))
+        let wardFrac = Double(wardDone) / Double(wardTotal)
+        let shape = RoundedRectangle(cornerRadius: Theme.Radius.xl, style: .continuous)
+
+        return VStack(alignment: .leading, spacing: 14) {
+            // العنوان + شارة الجزء الذهبية
+            HStack {
                 Text(loc("ورد اليوم"))
-                    .font(Theme.display(12, weight: .semibold))
+                    .font(Theme.display(13, weight: .semibold))
                     .foregroundStyle(Theme.accent)
-
-                Text(loc("من صفحة %1$@ إلى %2$@", range.lowerBound.counterText, range.upperBound.counterText))
-                    .font(Theme.display(18, weight: .bold))
-                    .foregroundStyle(Theme.ink)
-
-                Text("يبدأ من سورة \(Quran.surah(startRef.surah)?.name ?? "") · الجزء \(Quran.juz(of: startRef).counterText)")
-                    .font(Theme.display(12))
-                    .foregroundStyle(Theme.inkSoft)
-
-                NavigationLink {
-                    SurahReaderView(surahId: startRef.surah, scrollTo: startRef)
-                } label: {
-                    Label(loc("ابدأ القراءة من موضعك"), systemImage: "book.pages.fill")
-                        .font(Theme.display(14, weight: .semibold))
-                        .foregroundStyle(Theme.onAccent)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Theme.accent))
-                }
-                .pressable()
+                Spacer()
+                Text(loc("الجزء %1$@", juz.counterText))
+                    .font(Theme.display(12, weight: .semibold))
+                    .foregroundStyle(Theme.gold)
+                    .padding(.horizontal, 10).padding(.vertical, 5)
+                    .background(Capsule().fill(Theme.gold.opacity(0.14)))
             }
+
+            // الأرقام الكبيرة المدوّرة لنطاق الصفحات
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                Text(loc("صفحة"))
+                    .font(Theme.display(14, weight: .medium))
+                    .foregroundStyle(Theme.inkSoft)
+                Text(range.lowerBound.counterText)
+                    .font(.system(size: 34, weight: .bold, design: .rounded))
+                    .foregroundStyle(percentJewel)
+                    .contentTransition(.numericText())
+                Text("–")
+                    .font(.system(size: 26, weight: .regular, design: .rounded))
+                    .foregroundStyle(Theme.inkFaint)
+                Text(range.upperBound.counterText)
+                    .font(.system(size: 34, weight: .bold, design: .rounded))
+                    .foregroundStyle(percentJewel)
+                    .contentTransition(.numericText())
+            }
+
+            Text(loc("يبدأ من سورة %1$@", surahName))
+                .font(Theme.display(12))
+                .foregroundStyle(Theme.inkSoft)
+
+            // شريط رفيع لتقدّم ورد اليوم
+            VStack(alignment: .leading, spacing: 5) {
+                GeometryReader { geo in
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(Theme.accent.opacity(0.12))
+                        Capsule().fill(Theme.gradient(for: "green"))
+                            .frame(width: max(6, geo.size.width * wardFrac))
+                    }
+                }
+                .frame(height: 6)
+                .animation(Motion.smooth, value: wardFrac)
+
+                Text(loc("قرأت %1$@ من %2$@ في ورد اليوم", wardDone.counterText, wardTotal.counterText))
+                    .font(Theme.display(11))
+                    .foregroundStyle(Theme.inkFaint)
+            }
+            .padding(.top, 2)
+
+            NavigationLink {
+                SurahReaderView(surahId: startRef.surah, scrollTo: startRef)
+            } label: {
+                Label(loc("ابدأ القراءة من موضعك"), systemImage: "book.pages.fill")
+                    .font(Theme.display(14, weight: .semibold))
+                    .gradientButton(Theme.gradient(for: "green"), glow: Theme.accent)
+            }
+            .pressable()
+            .padding(.top, 2)
         }
+        .padding(Theme.Space.xl)
+        .background(heroBackground(shape))
+    }
+
+    /// خلفية البطاقة البطلة: سطح البطاقة الموحّد (عمق .e2) + غسالة خضراء قطرية
+    /// خفيفة (٠٫٠٥) + نجمة ثمانية باهتة في الزاوية (٠٫٠٣) مقصوصة داخل الحواف.
+    private func heroBackground(_ shape: RoundedRectangle) -> some View {
+        CardSurface(radius: Theme.Radius.xl, elevation: .e2)
+            .overlay {
+                ZStack(alignment: .bottomLeading) {
+                    LinearGradient(colors: [Theme.accent.opacity(0.05), .clear],
+                                   startPoint: .topTrailing, endPoint: .bottomLeading)
+                    EightPointStar()
+                        .fill(Theme.accent.opacity(0.03))
+                        .frame(width: 150, height: 150)
+                        .offset(x: -36, y: 40)
+                }
+                .clipShape(shape)
+                .allowsHitTesting(false)
+            }
     }
 
     private var slots: some View {
@@ -244,9 +353,7 @@ struct KhatmahView: View {
             } label: {
                 Label(loc("قرأت صفحة"), systemImage: "plus")
                     .font(Theme.display(15, weight: .semibold))
-                    .foregroundStyle(Theme.onAccent)
-                    .frame(maxWidth: .infinity).padding(.vertical, 13)
-                    .background(RoundedRectangle(cornerRadius: 13, style: .continuous).fill(Theme.accent))
+                    .gradientButton(Theme.gradient(for: "green"), glow: Theme.accent, radius: Theme.Radius.sm)
             }
             .pressable()
 
@@ -256,9 +363,7 @@ struct KhatmahView: View {
             } label: {
                 Text(loc("أتممت الورد"))
                     .font(Theme.display(15, weight: .semibold))
-                    .foregroundStyle(Theme.accent)
-                    .frame(maxWidth: .infinity).padding(.vertical, 13)
-                    .background(RoundedRectangle(cornerRadius: 13, style: .continuous).fill(Theme.accentSoft))
+                    .softButton(Theme.accent, radius: Theme.Radius.sm)
             }
             .pressable()
         }
@@ -272,5 +377,49 @@ struct KhatmahView: View {
         .font(Theme.display(13))
         .foregroundStyle(Theme.inkFaint)
         .padding(.top, 4)
+    }
+}
+
+// MARK: - حلقة الختمة (أخضر ← ذهبي)
+
+/// حلقة تقدّم بهوية الشاشة: قوس بتدرّج زاويّ من الأخضر إلى الذهبي، مسار خافت،
+/// ثلاثون علامة (أجزاء المصحف)، وتوهّج يشتدّ قرب الإتمام. مخصّصة لهذه الشاشة
+/// لأن التدرّج ثنائي النغمة (أخضر←ذهبي) لا توفّره الحلقة المشتركة.
+private struct KhatmahRing: View {
+    var progress: Double
+    var lineWidth: CGFloat = 13
+    var glow: Bool = true
+
+    private var p: Double { max(0.001, min(1, progress)) }
+
+    private var sweep: AngularGradient {
+        AngularGradient(colors: [Theme.accent, Theme.gold, Theme.accent],
+                        center: .center, angle: .degrees(-90))
+    }
+
+    var body: some View {
+        ZStack {
+            Circle().stroke(Theme.accent.opacity(0.16), lineWidth: lineWidth)
+
+            // ثلاثون علامة خافتة حول المسار — أجزاء المصحف
+            ForEach(0..<30, id: \.self) { i in
+                Capsule()
+                    .fill(Theme.accent.opacity(0.22))
+                    .frame(width: lineWidth * 0.14, height: lineWidth * 0.5)
+                    .offset(y: -0.5)
+                    .rotationEffect(.degrees(Double(i) / 30 * 360))
+            }
+            .padding(lineWidth / 2)
+
+            let arc = Circle()
+                .trim(from: 0, to: p)
+                .stroke(sweep, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+
+            if glow {
+                arc.blur(radius: 7).opacity(0.25 + 0.5 * p)
+            }
+            arc.animation(Motion.smooth, value: progress)
+        }
     }
 }

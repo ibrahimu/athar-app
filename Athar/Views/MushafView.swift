@@ -32,7 +32,8 @@ struct MushafView: View {
                             continueCard
                             toolsRow
                             if !store.bookmarks.isEmpty { bookmarksCard }
-                            SettingsGroupTitle(text: loc("suras"))
+                            SectionHeader(title: loc("suras"), tint: Theme.gold)
+                                .padding(.top, 2)
                         }
 
                         ForEach(Array(filtered.enumerated()), id: \.element.id) { i, surah in
@@ -103,7 +104,7 @@ struct MushafView: View {
     private var stopMarkCard: some View {
         if let mark = store.stopMark, let su = Quran.surah(mark.surah) {
             NavigationLink { SurahReaderView(surahId: mark.surah, scrollTo: mark) } label: {
-                AtharCard(padding: 16) {
+                AtharCard(padding: 16, elevation: .e2, tint: Theme.gold) {
                     HStack(spacing: 14) {
                         Image(systemName: "pin.fill")
                             .font(.system(size: 18))
@@ -135,7 +136,7 @@ struct MushafView: View {
     private var continueCard: some View {
         if let last = store.lastRead, let s = Quran.surah(last.surah) {
             NavigationLink { SurahReaderView(surahId: last.surah, scrollTo: last) } label: {
-                AtharCard(padding: 16) {
+                AtharCard(padding: 16, elevation: .e2, tint: Theme.accent) {
                     HStack(spacing: 14) {
                         Image(systemName: "book.pages.fill")
                             .font(.system(size: 20))
@@ -186,12 +187,14 @@ struct MushafView: View {
     }
 
     private func toolTile(_ icon: String, _ tint: Color, _ title: String, _ sub: String, badge: Bool) -> some View {
-        AtharCard(padding: 14) {
+        AtharCard(padding: 14, elevation: .e2, tint: tint) {
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
                     Image(systemName: icon)
                         .font(.system(size: 18))
                         .foregroundStyle(tint)
+                        .frame(width: 36, height: 36)
+                        .background(Circle().fill(tint.opacity(0.14)))
                     Spacer()
                     if badge {
                         Circle().fill(tint).frame(width: 8, height: 8)
@@ -271,7 +274,7 @@ struct SurahRow: View {
                 Spacer()
                 Image(systemName: "chevron.forward")
                     .font(.system(size: 12, weight: .semibold))
-                    .foregroundStyle(Theme.inkFaint)
+                    .foregroundStyle(Theme.gold.opacity(0.5))
             }
         }
     }

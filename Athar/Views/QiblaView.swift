@@ -10,6 +10,17 @@ struct QiblaView: View {
     @StateObject private var compass = HeadingProvider()
     @State private var didAlignHaptic = false
 
+    @Environment(\.colorScheme) private var scheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    /// حروف الجهات الأربع على القرص — الشمال (ش) أبرزها والبقية مُلمَّحة.
+    private let cardinalMarks: [QiblaCardinal] = [
+        .init(letter: "ش", angle: 0),
+        .init(letter: "ق", angle: 90),
+        .init(letter: "ج", angle: 180),
+        .init(letter: "غ", angle: 270),
+    ]
+
     private var qiblaBearing: Double? { Qibla.bearing(from: store.coordinate) }
     private var distanceKm: Double { Qibla.distanceKm(from: store.coordinate) }
     private var atKaaba: Bool { Qibla.isAtKaaba(store.coordinate) }
@@ -79,9 +90,30 @@ struct QiblaView: View {
     // قصيرة ثابتة (٠٫٢٥ث) لتلاحق الدوران بسلاسة دون أن تتخلّف عن اليد.
     private var dial: some View {
         ZStack {
+            // وجه البوصلة: سطح مرفوع، بريق علوي يمنحه حجمًا، وإطار خارجي متدرّج خلف التدريج
             Circle()
                 .fill(Theme.surface)
-                .overlay(Circle().stroke(Theme.hairline, lineWidth: 1))
+                .overlay(
+                    Circle().fill(
+                        RadialGradient(colors: [Color.white.opacity(scheme == .dark ? 0.10 : 0.55), .clear],
+                                       center: .top, startRadius: 0, endRadius: 210)
+                    )
+                )
+                .overlay(
+                    Circle().strokeBorder(
+                        AngularGradient(colors: [Theme.gold.opacity(0.30),
+                                                 Theme.accent.opacity(0.18),
+                                                 Theme.gold.opacity(0.30)],
+                                        center: .center),
+                        lineWidth: 14)
+                )
+                .overlay(Circle().strokeBorder(Theme.hairline.opacity(0.7), lineWidth: 1))
+                .atharElevation(.e2)
+
+            // علامة مائية: نجمة ثمانية باهتة جدًا في القلب خلف السهم
+            EightPointStar(innerRatio: 0.68)
+                .fill(Theme.gold.opacity(0.04))
+                .frame(width: 148, height: 148)
 
             // تدريج كل ١٥ درجة، يدور مع الجهاز
             ForEach(0..<24, id: \.self) { i in
@@ -95,33 +127,68 @@ struct QiblaView: View {
             .rotationEffect(.degrees(-(compass.heading ?? 0)))
             .animation(.smooth(duration: 0.25), value: compass.heading)
 
-            // حرف الشمال
-            Text("ش")
-                .font(Theme.display(13, weight: .bold))
-                .foregroundStyle(Theme.inkSoft)
-                .offset(y: -152)
-                .rotationEffect(.degrees(-(compass.heading ?? 0)))
-                .animation(.smooth(duration: 0.25), value: compass.heading)
+            // حروف الجهات الأربع، تدور مع الجهاز — الشمال أبرزها والبقية مُلمَّحة
+            ForEach(cardinalMarks) { mark in
+                Text(mark.letter)
+                    .font(Theme.display(mark.angle == 0 ? 13 : 12, weight: mark.angle == 0 ? .bold : .semibold))
+                    .foregroundStyle(Theme.inkSoft.opacity(mark.angle == 0 ? 1 : 0.4))
+                    .offset(y: -152)
+                    .rotationEffect(.degrees(mark.angle))
+            }
+            .rotationEffect(.degrees(-(compass.heading ?? 0)))
+            .animation(.smooth(duration: 0.25), value: compass.heading)
 
-            // سهم القبلة
+            // علامة القبلة الثابتة على الإطار — ماسة ذهبية عند زاوية القبلة، تدور مع القرص
+            Image(systemName: "diamond.fill")
+                .font(.system(size: 10, weight: .bold))
+                .foregroundStyle(Theme.gold)
+                .shadow(color: Theme.gold.opacity(0.35), radius: 3)
+                .offset(y: -142)
+                .rotationEffect(.degrees(arrowAngle))
+                .animation(.smooth(duration: 0.25), value: arrowAngle)
+
+            // سهم القبلة — تعبئة رأسية متدرّجة (رأس مضيء ← ذيل ناعم)، ونقطة توهّج عند الرأس
             QiblaArrow()
-                .fill(isAligned ? Theme.accent : Theme.gold)
+                .fill(isAligned
+                      ? AnyShapeStyle(Theme.accentGradient)
+                      : AnyShapeStyle(LinearGradient(colors: [Theme.gold, Theme.gold.opacity(0.6)],
+                                                     startPoint: .top, endPoint: .bottom)))
                 .frame(width: 46, height: 128)
+                .shadow(color: (isAligned ? Theme.accent : Theme.gold).opacity(0.22), radius: 5, y: 3)
+                .overlay(alignment: .top) {
+                    Circle()
+                        .fill(isAligned ? Theme.accent : Theme.gold)
+                        .frame(width: 7, height: 7)
+                        .blur(radius: 2)
+                        .offset(y: -2)
+                }
                 .offset(y: -46)
                 .rotationEffect(.degrees(arrowAngle))
                 .animation(.smooth(duration: 0.25), value: arrowAngle)
                 .animation(.smooth(duration: 0.2), value: isAligned)
 
-            // القلب: الكعبة
-            Circle()
-                .fill(isAligned ? Theme.accentSoft : Theme.surfaceAlt)
-                .frame(width: 64, height: 64)
-                .overlay(
-                    Image(systemName: "cube.fill")
-                        .font(.system(size: 24))
-                        .foregroundStyle(isAligned ? Theme.accent : Theme.inkSoft)
-                )
-                .animation(.smooth(duration: 0.2), value: isAligned)
+            // القلب: الكعبة — توهّج محيطي عند الانطباق، وهالة تتمدّد مرّة واحدة احتفاءً
+            ZStack {
+                if isAligned, !reduceMotion {
+                    QiblaAlignHalo(tint: Theme.accent)
+                }
+                Circle()
+                    .fill(isAligned ? Theme.accentSoft : Theme.surfaceAlt)
+                    .frame(width: 64, height: 64)
+                    .background(
+                        Circle()
+                            .fill(Theme.accent.opacity(isAligned ? 0.22 : 0))
+                            .frame(width: 82, height: 82)
+                            .blur(radius: 10)
+                    )
+                    .overlay(Circle().strokeBorder(Theme.accent.opacity(isAligned ? 0.4 : 0), lineWidth: 1.5))
+                    .overlay(
+                        Image(systemName: "cube.fill")
+                            .font(.system(size: 24))
+                            .foregroundStyle(isAligned ? Theme.accent : Theme.inkSoft)
+                    )
+                    .animation(.smooth(duration: 0.25), value: isAligned)
+            }
         }
         // البوصلة شكل هندسي لا نص: بيئة RTL تعكس دوراتها أفقيًا فيشير السهم
         // إلى (٣٦٠ − الزاوية). نثبّتها على اتجاه تخطيط ثابت.
@@ -161,15 +228,20 @@ struct QiblaView: View {
                     .monospacedDigit()
             }
 
+            // رقاقة الموقع/المسافة — بنفس نبرة رقاقات الصلاة، تربط الشاشتين معًا
             HStack(spacing: 6) {
-                Image(systemName: "location.fill").font(.system(size: 10))
+                Image(systemName: "location.fill")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(Theme.accent)
                 Text(store.placeName)
                 Text("·")
                 Text(distanceText)
             }
-            .font(Theme.display(12))
-            .foregroundStyle(Theme.inkFaint)
-            .padding(.top, 2)
+            .font(Theme.display(12, weight: .medium))
+            .foregroundStyle(Theme.inkSoft)
+            .padding(.horizontal, 12).padding(.vertical, 7)
+            .background(Capsule().fill(Theme.accentSoft))
+            .padding(.top, 4)
         }
         .animation(.smooth(duration: 0.2), value: isAligned)
     }
@@ -259,6 +331,30 @@ struct QiblaView: View {
             .foregroundStyle(Theme.inkFaint)
             .multilineTextAlignment(.center)
             .frame(maxWidth: .infinity)
+    }
+}
+
+/// حرف جهة على قرص البوصلة مع زاويته من الشمال.
+private struct QiblaCardinal: Identifiable {
+    let letter: String
+    let angle: Double
+    var id: String { letter }
+}
+
+/// هالة تتمدّد مرّة واحدة خلف الكعبة لحظة الانطباق ثم تتلاشى (٠٫٦ ← ١٫٤، ٠٫٢٨ ← ٠).
+/// تُركَّب فقط حين ينطبق الاتجاه ومع تعطيل «تقليل الحركة»، فتُشغَّل حركتها عند الظهور.
+private struct QiblaAlignHalo: View {
+    var tint: Color
+    @State private var expand = false
+
+    var body: some View {
+        Circle()
+            .fill(tint.opacity(0.28))
+            .frame(width: 72, height: 72)
+            .scaleEffect(expand ? 1.4 : 0.6)
+            .opacity(expand ? 0 : 1)
+            .onAppear { withAnimation(.easeOut(duration: 0.5)) { expand = true } }
+            .allowsHitTesting(false)
     }
 }
 

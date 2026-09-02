@@ -86,7 +86,27 @@ enum AtharStyle {
         }
     }
 
-    /// خلفية الويدجت كاملة.
+    /// نجمة ثمانية — نفس زخرفة المصحف في التطبيق، لركن الويدجت كنسيج باهت.
+    struct Star: Shape {
+        var innerRatio: CGFloat = 0.62
+        func path(in rect: CGRect) -> Path {
+            let c = CGPoint(x: rect.midX, y: rect.midY)
+            let R = min(rect.width, rect.height) / 2
+            let r = R * innerRatio
+            var p = Path()
+            for i in 0..<16 {
+                let radius = i.isMultiple(of: 2) ? R : r
+                let a = (.pi / 8) * CGFloat(i) - .pi / 2
+                let pt = CGPoint(x: c.x + cos(a) * radius, y: c.y + sin(a) * radius)
+                if i == 0 { p.move(to: pt) } else { p.addLine(to: pt) }
+            }
+            p.closeSubpath()
+            return p
+        }
+    }
+
+    /// خلفية الويدجت كاملة: تدرّج اللحظة + وهج علوي عند منبع القطرة +
+    /// حلقات الأثر + نجمة زخرفية باهتة في الركن السفلي — عمق أنعم بلا مساس بوضوح النص.
     struct Backdrop: View {
         let moment: Moment
         var rippleScale: CGFloat = 1
@@ -94,6 +114,19 @@ enum AtharStyle {
         var body: some View {
             ZStack {
                 LinearGradient(colors: moment.gradient, startPoint: .topTrailing, endPoint: .bottomLeading)
+
+                // وهج علوي قرب منبع القطرة (أعلى اليمين)
+                RadialGradient(colors: [moment.tint.opacity(0.16), .clear],
+                               center: .init(x: 0.86, y: 0.20), startRadius: 0, endRadius: 150)
+
+                // نجمة زخرفية باهتة في الركن السفلي (اتجاه عربي: أسفل اليمين)
+                GeometryReader { g in
+                    Star(innerRatio: 0.66)
+                        .stroke(moment.ink.opacity(0.05), lineWidth: 1)
+                        .frame(width: g.size.width * 0.5, height: g.size.width * 0.5)
+                        .position(x: g.size.width * 0.12, y: g.size.height * 0.9)
+                }
+
                 Ripples(tint: moment.tint, scale: rippleScale)
             }
         }

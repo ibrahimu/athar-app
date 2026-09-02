@@ -11,6 +11,9 @@ struct HifzPicker: View {
     @State private var to = 6
     @State private var query = ""
 
+    /// لون القسم البحري — يوحّد هوية الحفظ بين الجلسة وهذه الورقة.
+    private var sea: Color { Theme.accent(for: "hifz") }
+
     private var surah: Surah? { Quran.surah(surahId) }
     private var count: Int { max(0, to - from + 1) }
 
@@ -24,10 +27,10 @@ struct HifzPicker: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                AtharBackground()
+                AtharBackground(tint: sea)
                 ScrollView {
                     VStack(spacing: 16) {
-                        SettingsGroupTitle(text: loc("السورة"))
+                        SettingsGroupTitle(text: loc("السورة"), tint: sea)
                         SettingsCard {
                             ForEach(Array(filtered.prefix(query.isEmpty ? 114 : 12).enumerated()), id: \.element.id) { i, s in
                                 Button {
@@ -38,7 +41,7 @@ struct HifzPicker: View {
                                     HStack(spacing: 12) {
                                         Image(systemName: surahId == s.id ? "checkmark.circle.fill" : "circle")
                                             .font(.system(size: 17))
-                                            .foregroundStyle(surahId == s.id ? Theme.accent : Theme.hairline)
+                                            .foregroundStyle(surahId == s.id ? sea : Theme.hairline)
                                         Text("\(s.id.counterText). سورة \(s.name)")
                                             .font(Theme.display(15, weight: surahId == s.id ? .semibold : .regular))
                                             .foregroundStyle(Theme.ink)
@@ -55,7 +58,7 @@ struct HifzPicker: View {
                         }
 
                         if let s = surah {
-                            SettingsGroupTitle(text: loc("المدى"))
+                            SettingsGroupTitle(text: loc("المدى"), tint: sea)
                             SettingsCard {
                                 stepperRow(loc("من الآية"), value: $from, range: 1...s.ayahCount)
                                 SettingsDivider()
@@ -101,13 +104,13 @@ struct HifzPicker: View {
             Stepper(value: value, in: range) {
                 Text(value.wrappedValue.counterText)
                     .font(Theme.display(16, weight: .semibold))
-                    .foregroundStyle(Theme.accent)
+                    .foregroundStyle(sea)
                     .monospacedDigit()
             }
             .labelsHidden()
             Text(value.wrappedValue.counterText)
                 .font(Theme.display(16, weight: .semibold))
-                .foregroundStyle(Theme.accent)
+                .foregroundStyle(sea)
                 .monospacedDigit()
                 .frame(minWidth: 34)
         }

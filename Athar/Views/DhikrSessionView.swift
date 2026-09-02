@@ -26,7 +26,7 @@ struct DhikrSessionView: View {
 
     var body: some View {
         ZStack {
-            AtharBackground()
+            AtharBackground(tint: color)
 
             VStack(spacing: 0) {
                 progressBar
@@ -73,8 +73,9 @@ struct DhikrSessionView: View {
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
                     Capsule().fill(color.opacity(0.15))
-                    Capsule().fill(color)
+                    Capsule().fill(Theme.gradient(for: category.accent))
                         .frame(width: max(4, geo.size.width * overallProgress))
+                        .shadow(color: color.opacity(0.28), radius: 4, y: 1)
                         .animation(Motion.smooth, value: overallProgress)
                 }
             }
@@ -98,8 +99,14 @@ struct DhikrSessionView: View {
     private func dhikrPage(_ dhikr: Dhikr) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                AtharCard(padding: 22) {
+                AtharCard(padding: 22, elevation: .e2, tint: color) {
                     VStack(alignment: .leading, spacing: 18) {
+                        // خيط علوي بلون القسم — حاشية مذهّبة تحت النص لا تنافسه
+                        Capsule().fill(Theme.gradient(for: category.accent))
+                            .frame(width: 44, height: 3)
+                            .opacity(0.85)
+                            .frame(maxWidth: .infinity)
+
                         Text(dhikr.text)
                             .font(Theme.dhikrFont(size: 22, scale: store.fontScale))
                             .foregroundStyle(Theme.ink)
@@ -147,7 +154,7 @@ struct DhikrSessionView: View {
                 ZStack {
                     ProgressRing(
                         progress: 1 - Double(left) / Double(max(1, current.count)),
-                        color: color, lineWidth: 7
+                        color: color, lineWidth: 7, gradient: true, glow: true
                     )
                     VStack(spacing: 0) {
                         Text(left.counterText)
@@ -162,8 +169,8 @@ struct DhikrSessionView: View {
                     }
                 }
                 .frame(width: 108, height: 108)
-                .background(Circle().fill(Theme.surface))
-                .overlay(Circle().stroke(Theme.hairline, lineWidth: 1))
+                .background(Circle().fill(Theme.surfaceTint(color)))
+                .overlay(Circle().stroke(color.opacity(0.18), lineWidth: 1))
                 .contentShape(Circle())
             }
             .buttonStyle(.plain)
@@ -180,9 +187,13 @@ struct DhikrSessionView: View {
         ZStack {
             Rectangle().fill(.ultraThinMaterial).ignoresSafeArea()
             VStack(spacing: 18) {
-                Image(systemName: "checkmark.seal.fill")
-                    .font(.system(size: 62))
-                    .foregroundStyle(color)
+                ZStack {
+                    CelebrationHalo(tint: color)
+                    Image(systemName: "checkmark.seal.fill")
+                        .font(.system(size: 62))
+                        .foregroundStyle(Theme.gradient(for: category.accent))
+                }
+                .frame(width: 150, height: 150)
                 Text(loc("تقبّل الله منك"))
                     .font(Theme.display(26, weight: .bold))
                     .foregroundStyle(Theme.ink)
@@ -197,25 +208,23 @@ struct DhikrSessionView: View {
                     } label: {
                         Text(loc("تم"))
                             .font(Theme.display(16, weight: .semibold))
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 14)
-                            .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(color))
-                            .foregroundStyle(.white)
+                            .gradientButton(Theme.gradient(for: category.accent), glow: color)
                     }
+                    .pressable()
                     Button {
                         resetCounts()
                         showCompletion = false
                     } label: {
                         Text(loc("إعادة"))
                             .font(Theme.display(15, weight: .medium))
-                            .foregroundStyle(Theme.inkSoft)
+                            .softButton(color)
                     }
+                    .pressable()
                 }
                 .padding(.top, 6)
             }
             .padding(28)
-            .background(RoundedRectangle(cornerRadius: 26, style: .continuous).fill(Theme.surface))
-            .overlay(RoundedRectangle(cornerRadius: 26, style: .continuous).stroke(Theme.hairline))
+            .background(CardSurface(radius: Theme.Radius.xl, elevation: .e3))
             .padding(36)
             .transition(.scale(scale: 0.92).combined(with: .opacity))
         }

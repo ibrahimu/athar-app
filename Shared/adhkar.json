@@ -350,7 +350,7 @@
   {
    "id": "sleep",
    "title": "أذكار النوم",
-   "subtitle": "تُقال عند إرادة النوم",
+   "subtitle": "تُقال عند النوم",
    "icon": "bed.double.fill",
    "accent": "night",
    "items": [

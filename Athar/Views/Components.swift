@@ -13,54 +13,57 @@ struct AtharBackground: View {
     var body: some View {
         Theme.canvas
             .overlay { if motif { PaperMotif().allowsHitTesting(false) } }  // نقش الورق كامل الصفحة
-            .overlay(alignment: .top) {
-                // غسالة علوية بلون القسم
-                LinearGradient(colors: [tint.opacity(0.12), .clear],
-                               startPoint: .top, endPoint: .bottom)
-                    .frame(height: 320)
+            .overlay(alignment: .topTrailing) {
+                // وهج علوي بلون القسم — شكل مموّه بدل تدرّج شعاعي، فلا حزوز ولا تكسّر
+                Circle()
+                    .fill(tint.opacity(0.16))
+                    .frame(width: 460, height: 460)
+                    .blur(radius: 110)
+                    .offset(x: 120, y: -230)
                     .allowsHitTesting(false)
             }
             .overlay(alignment: .bottomLeading) {
-                // نغمة سفلية خافتة جدًا (اتجاه عربي: أسفل اليسار)
-                RadialGradient(colors: [(secondary ?? Theme.gold).opacity(0.06), .clear],
-                               center: .bottomLeading, startRadius: 0, endRadius: 400)
-                    .frame(height: 440)
+                // نغمة سفلية خافتة جدًا (اتجاه عربي: أسفل اليسار) — مموّهة كذلك
+                Circle()
+                    .fill((secondary ?? Theme.gold).opacity(0.10))
+                    .frame(width: 380, height: 380)
+                    .blur(radius: 120)
+                    .offset(x: -120, y: 160)
                     .allowsHitTesting(false)
             }
             .ignoresSafeArea()
     }
 }
 
-// MARK: - نقش الورق (تبليط هندسي محفور باهت جدًا)
+// MARK: - نقش الورق (تبليط هندسي محفور، ناعم ومموّه)
 
-/// شبكة متناثرة من نجمات ثمانية صغيرة متشابكة تغطّي الورق كله بشفافية ٠٫٠٢
-/// تقريبًا — نسيج ورق مصحفي محفور، يُحسّ ولا يُقرأ. تُرسم مرّة عبر Canvas.
+/// نجمات ثمانية مملوءة باهتة جدًا ومموّهة قليلًا — نسيج ورق مصحفي محفور ناعم،
+/// يُحسّ ولا يُقرأ. التعبئة (لا الخطوط الرفيعة) والتمويه يمنعان أي «تبكسل».
 struct PaperMotif: View {
     var tint: Color = Theme.ink
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
-        let op = scheme == .dark ? 0.030 : 0.022
+        let op = scheme == .dark ? 0.028 : 0.020
         Canvas { ctx, size in
-            let cell: CGFloat = 74           // تباعد الوحدات
-            let r: CGFloat = 15              // نصف قطر النجمة
+            let cell: CGFloat = 96           // وحدات أكبر وأندر = أهدأ
+            let r: CGFloat = 20
             let color = tint.opacity(op)
             var row = 0
-            var y: CGFloat = -cell/2
+            var y: CGFloat = -cell / 2
             while y < size.height + cell {
-                // إزاحة صفٍّ بعد صف لتبليط متشابك
-                let offset: CGFloat = row.isMultiple(of: 2) ? 0 : cell/2
-                var x: CGFloat = -cell/2 + offset
+                let offset: CGFloat = row.isMultiple(of: 2) ? 0 : cell / 2
+                var x: CGFloat = -cell / 2 + offset
                 while x < size.width + cell {
-                    let rect = CGRect(x: x - r, y: y - r, width: r*2, height: r*2)
-                    ctx.stroke(EightPointStar(innerRatio: 0.62).path(in: rect),
-                               with: .color(color), lineWidth: 0.8)
+                    let rect = CGRect(x: x - r, y: y - r, width: r * 2, height: r * 2)
+                    ctx.fill(EightPointStar(innerRatio: 0.64).path(in: rect), with: .color(color))
                     x += cell
                 }
-                y += cell * 0.82
+                y += cell * 0.86
                 row += 1
             }
         }
+        .blur(radius: 0.6)               // تنعيم لطيف يذهب بالحواف الحادّة
     }
 }
 

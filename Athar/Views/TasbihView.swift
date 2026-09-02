@@ -4,6 +4,8 @@ import WidgetKit
 struct TasbihView: View {
     @EnvironmentObject private var store: AtharStore
     @State private var pulse = false
+    @State private var bloom = false        // وميض إتمام لمرّة عند بلوغ الهدف
+    @State private var bloomToken = 0        // يُجدّد الوميض في كل بلوغ
 
     private let phrases = [
         loc("سُبْحَانَ اللهِ"),
@@ -25,15 +27,15 @@ struct TasbihView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                AtharBackground()
+                AtharBackground(tint: Theme.accent, secondary: Theme.gold)
 
-                VStack(spacing: 20) {
-                    phrasePicker
+                VStack(spacing: Theme.Space.xl) {
+                    phrasePicker.appearStagger(0)
                     Spacer(minLength: 0)
-                    counter
+                    counter.appearStagger(1)
                     Spacer(minLength: 0)
-                    targetPicker
-                    controls
+                    targetPicker.appearStagger(2)
+                    controls.appearStagger(3)
                 }
                 .padding(.horizontal, 20)
                 .padding(.bottom, 12)
@@ -57,12 +59,13 @@ struct TasbihView: View {
                     } label: {
                         Text(phrase)
                             .font(Theme.dhikrFont(size: 15))
-                            .foregroundStyle(selected ? .white : Theme.inkSoft)
+                            .foregroundStyle(selected ? Theme.onAccent : Theme.inkSoft)
                             .padding(.horizontal, 14).padding(.vertical, 9)
                             .background(
-                                Capsule().fill(selected ? Theme.accent : Theme.surface)
+                                Capsule().fill(selected ? Theme.accentGradient : Theme.surfaceGradient)
                             )
-                            .overlay(Capsule().stroke(selected ? .clear : Theme.hairline))
+                            .overlay(Capsule().strokeBorder(selected ? Color.clear : Theme.hairline, lineWidth: 0.5))
+                            .shadow(color: selected ? Theme.accent.opacity(0.25) : .clear, radius: 6, y: 3)
                     }
                     .buttonStyle(.plain)
                 }
@@ -76,22 +79,40 @@ struct TasbihView: View {
     private var counter: some View {
         Button(action: increment) {
             ZStack {
+                // هالة ناعمة تنبض مع كل ضغطة
                 Circle()
                     .fill(Theme.accent.opacity(0.06))
                     .scaleEffect(pulse ? 1.06 : 1)
-                ProgressRing(progress: progress, color: Theme.accent, lineWidth: 14)
+
+                // مكافأة هادئة عند بلوغ الهدف — تظهر وتتلاشى مرّة واحدة
+                if bloom {
+                    CompletionBloom(tint: Theme.accent)
+                        .id(bloomToken)
+                }
+
+                // حلقة العدّ: قوس متدرّج يتوهّج كلما اقترب الإتمام
+                ProgressRing(progress: progress, color: Theme.accent,
+                             lineWidth: 14, gradient: true, glow: true)
                     .padding(16)
 
-                VStack(spacing: 8) {
+                // نجمة ثمانية باهتة خلف الرقم — نسيج زخرفي لا ينافس
+                EightPointStar(innerRatio: 0.68)
+                    .fill(Theme.accent.opacity(0.05))
+                    .frame(width: 150, height: 150)
+
+                VStack(spacing: Theme.Space.sm) {
+                    // النص الشرعي — حبريّ مهيب بخطّ النسخ، لا صبغة عليه
                     Text(store.tasbihPhrase)
                         .font(Theme.dhikrFont(size: 19))
-                        .foregroundStyle(Theme.accent)
+                        .foregroundStyle(Theme.ink)
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, 34)
 
+                    // الرقم «جوهرة»: تعبئة متدرّجة بلون القسم
                     Text((store.tasbihCount % store.tasbihTarget).counterText)
                         .font(.system(size: 68, weight: .bold, design: .rounded))
-                        .foregroundStyle(Theme.ink)
+                        .foregroundStyle(LinearGradient(colors: [Theme.accent, Theme.accent.opacity(0.7)],
+                                                        startPoint: .top, endPoint: .bottom))
                         .contentTransition(.numericText())
 
                     Text(loc("الهدف %1$@", store.tasbihTarget.counterText))
@@ -115,13 +136,14 @@ struct TasbihView: View {
                 } label: {
                     Text(target.counterText)
                         .font(Theme.display(14, weight: .semibold))
-                        .foregroundStyle(selected ? .white : Theme.inkSoft)
+                        .foregroundStyle(selected ? Theme.onAccent : Theme.inkSoft)
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 10)
-                        .background(RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .fill(selected ? Theme.accent : Theme.surface))
-                        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous)
-                            .stroke(selected ? .clear : Theme.hairline))
+                        .padding(.vertical, 11)
+                        .background(RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous)
+                            .fill(selected ? Theme.accentGradient : Theme.surfaceGradient))
+                        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous)
+                            .strokeBorder(selected ? Color.clear : Theme.hairline, lineWidth: 0.5))
+                        .shadow(color: selected ? Theme.accent.opacity(0.22) : .clear, radius: 6, y: 3)
                 }
                 .buttonStyle(.plain)
             }
@@ -129,32 +151,35 @@ struct TasbihView: View {
     }
 
     private var controls: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: Theme.Space.md) {
             Button {
                 store.tasbihCount = 0
                 Haptics.tap(enabled: store.hapticsEnabled)
             } label: {
                 Label(loc("تصفير"), systemImage: "arrow.counterclockwise")
-                    .font(Theme.display(14, weight: .medium))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Theme.surface))
-                    .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(Theme.hairline))
-                    .foregroundStyle(Theme.inkSoft)
+                    .font(Theme.display(15, weight: .semibold))
+                    .softButton(Theme.accent)
             }
-            .buttonStyle(.plain)
+            .pressable()
 
             HStack(spacing: 6) {
                 Text(loc("الأشواط"))
                     .font(Theme.display(13))
                     .foregroundStyle(Theme.inkFaint)
                 Text(rounds.counterText)
-                    .font(Theme.display(16, weight: .bold))
-                    .foregroundStyle(Theme.accent)
+                    .font(.system(size: 17, weight: .bold, design: .rounded))
+                    .foregroundStyle(LinearGradient(colors: [Theme.accent, Theme.accent.opacity(0.7)],
+                                                    startPoint: .top, endPoint: .bottom))
+                    .contentTransition(.numericText())
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 12)
-            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Theme.accentSoft))
+            .padding(.vertical, 14)
+            .background(
+                RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous)
+                    .fill(Theme.accentSoft)
+                    .overlay(RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous)
+                        .strokeBorder(Theme.accent.opacity(0.14), lineWidth: 0.5))
+            )
         }
     }
 
@@ -171,6 +196,12 @@ struct TasbihView: View {
         if store.tasbihCount % store.tasbihTarget == 0 {
             Haptics.done(enabled: store.hapticsEnabled)
             WidgetCenter.shared.reloadAllTimelines()
+            // مكافأة الإتمام: وميض واحد يزهر ثم يتلاشى
+            bloomToken += 1
+            bloom = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                bloom = false
+            }
         } else {
             Haptics.step(enabled: store.hapticsEnabled)
         }

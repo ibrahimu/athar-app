@@ -136,42 +136,86 @@ struct SurahReaderView: View {
         let page = Quran.page(of: ref)
         let juz = Quran.juz(of: ref)
         let pct = Int((Double(page) / Double(Quran.pageCount) * 100).rounded())
-        return HStack(spacing: 10) {
+        return HStack(spacing: Theme.Space.sm) {
             Text(loc("الجزء %1$@", juz.counterText))
-            Rectangle().fill(palette.faint.opacity(0.4)).frame(width: 1, height: 12)
+                .foregroundStyle(palette.accent)
+            posDivider
             Text(loc("صفحة %1$@ من %2$@", page.counterText, Quran.pageCount.counterText))
-            Rectangle().fill(palette.faint.opacity(0.4)).frame(width: 1, height: 12)
+            posDivider
             Text("\(pct.counterText)٪")
         }
         .font(.system(size: 12, weight: .medium, design: .rounded))
         .foregroundStyle(palette.faint)
         .monospacedDigit()
-        .padding(.horizontal, 16).padding(.vertical, 9)
-        .background(Capsule().fill(palette.paper.opacity(0.94)))
-        .overlay(Capsule().stroke(palette.hairline, lineWidth: 1))
+        .padding(.horizontal, Theme.Space.lg).padding(.vertical, 9)
+        .background(
+            Capsule().fill(
+                LinearGradient(colors: [palette.paper.opacity(0.98), palette.paper.opacity(0.9)],
+                               startPoint: .top, endPoint: .bottom))
+        )
+        .overlay(Capsule().strokeBorder(palette.hairline, lineWidth: 1))
+        .atharElevation(.e1)
         .padding(.bottom, 8)
         .animation(Motion.snappy, value: page)
     }
 
+    /// نقطة فاصلة ناعمة بين حقول شريط الموضع.
+    private var posDivider: some View {
+        Circle().fill(palette.faint.opacity(0.4)).frame(width: 3, height: 3)
+    }
+
     private var header: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: 8) {
             if let surah {
                 Text(surah.name)
                     .font(Theme.display(26, weight: .bold))
                     .foregroundStyle(palette.ink)
+
+                // خيط زخرفيّ بنجمة — بلون القراءة، لا ينافس الاسم
+                HStack(spacing: 7) {
+                    Rectangle()
+                        .fill(LinearGradient(colors: [palette.accent.opacity(0.45), palette.accent.opacity(0)],
+                                             startPoint: .leading, endPoint: .trailing))
+                        .frame(width: 44, height: 1)
+                    EightPointStar(innerRatio: 0.6)
+                        .fill(palette.accent.opacity(0.55))
+                        .frame(width: 7, height: 7)
+                    Rectangle()
+                        .fill(LinearGradient(colors: [palette.accent.opacity(0), palette.accent.opacity(0.45)],
+                                             startPoint: .leading, endPoint: .trailing))
+                        .frame(width: 44, height: 1)
+                }
+
                 Text("\(surah.revelation) · \(surah.ayahCount.counterText) آية")
-                    .font(Theme.display(12))
+                    .font(Theme.display(12, weight: .medium))
                     .foregroundStyle(palette.faint)
+                    .padding(.horizontal, 12).padding(.vertical, 5)
+                    .background(Capsule().fill(palette.accent.opacity(0.10)))
             }
         }
         .frame(maxWidth: .infinity)
         .padding(.top, 10)
-        .padding(.bottom, 4)
+        .padding(.bottom, 6)
     }
 
     private var endOfSurah: some View {
-        VStack(spacing: 10) {
-            Rectangle().fill(palette.hairline).frame(height: 1).padding(.vertical, 22)
+        VStack(spacing: 12) {
+            // فاصل ختام بنجمة زخرفيّة تتلاشى في الطرفين
+            HStack(spacing: 8) {
+                Rectangle()
+                    .fill(LinearGradient(colors: [palette.hairline.opacity(0), palette.accent.opacity(0.4)],
+                                         startPoint: .leading, endPoint: .trailing))
+                    .frame(height: 1)
+                EightPointStar(innerRatio: 0.6)
+                    .fill(palette.accent.opacity(0.4))
+                    .frame(width: 8, height: 8)
+                Rectangle()
+                    .fill(LinearGradient(colors: [palette.accent.opacity(0.4), palette.hairline.opacity(0)],
+                                         startPoint: .leading, endPoint: .trailing))
+                    .frame(height: 1)
+            }
+            .padding(.vertical, 20)
+
             if surahId < 114, let next = Quran.surah(surahId + 1) {
                 NavigationLink { SurahReaderView(surahId: next.id) } label: {
                     HStack(spacing: 8) {
@@ -180,8 +224,13 @@ struct SurahReaderView: View {
                         Image(systemName: "chevron.forward").font(.system(size: 12, weight: .semibold))
                     }
                     .foregroundStyle(palette.accent)
-                    .padding(.horizontal, 18).padding(.vertical, 11)
-                    .background(Capsule().fill(palette.accent.opacity(0.12)))
+                    .padding(.horizontal, Theme.Space.xl).padding(.vertical, 12)
+                    .background(
+                        Capsule().fill(
+                            LinearGradient(colors: [palette.accent.opacity(0.16), palette.accent.opacity(0.07)],
+                                           startPoint: .top, endPoint: .bottom))
+                    )
+                    .overlay(Capsule().strokeBorder(palette.accent.opacity(0.18), lineWidth: 0.5))
                 }
                 .pressable()
             } else {
@@ -281,6 +330,10 @@ private struct MushafPageContent: View {
                 Text(page.counterText)
                     .font(.system(size: 13, weight: .medium, design: .rounded))
                     .foregroundStyle(palette.faint)
+                    .monospacedDigit()
+                    .padding(.horizontal, 12).padding(.vertical, 4)
+                    .background(Capsule().fill(palette.ink.opacity(0.04)))
+                    .overlay(Capsule().strokeBorder(palette.hairline.opacity(0.6), lineWidth: 0.5))
                     .padding(.top, 6)
             }
             .padding(.horizontal, 20)
@@ -296,13 +349,19 @@ private struct MushafPageContent: View {
     private func surahHeader(_ id: Int) -> some View {
         if let su = Quran.surah(id) {
             VStack(spacing: 10) {
-                HStack(spacing: 10) {
+                HStack(spacing: 8) {
                     ornamentLine
+                    EightPointStar(innerRatio: 0.6)
+                        .fill(palette.accent.opacity(0.55))
+                        .frame(width: 7, height: 7)
                     Text(loc("سُورَةُ %1$@", su.name))
                         .font(Theme.naskhFont(size: 18, bold: true))
                         .foregroundStyle(palette.accent)
                         .lineLimit(1)
                         .fixedSize()
+                    EightPointStar(innerRatio: 0.6)
+                        .fill(palette.accent.opacity(0.55))
+                        .frame(width: 7, height: 7)
                     ornamentLine
                 }
                 if su.hasBasmalah, su.id != 1 {
@@ -507,9 +566,12 @@ struct AyahActions: View {
             Image(systemName: icon).font(.system(size: 10))
             Text(text).font(Theme.display(12, weight: .medium))
         }
-        .foregroundStyle(Theme.inkSoft)
+        .foregroundStyle(Theme.gold)
         .padding(.horizontal, 11).padding(.vertical, 6)
-        .background(Capsule().fill(Theme.surfaceAlt))
+        .background(
+            Capsule().fill(Theme.gold.opacity(0.12))
+                .overlay(Capsule().strokeBorder(Theme.gold.opacity(0.22), lineWidth: 0.5))
+        )
     }
 
     let ref: AyahRef
@@ -519,23 +581,79 @@ struct AyahActions: View {
     private var text: String { Quran.text(ref) ?? "" }
     private var surahName: String { Quran.surah(ref.surah)?.name ?? "" }
 
+    /// «وقفتُ هنا» — زرّ ذهبيّ بارز (متدرّج حين يُوضَع، ناعم حين يُرفَع).
+    @ViewBuilder
+    private var stopMarkButton: some View {
+        let stopped = store.stopMark == ref
+        VStack(spacing: 6) {
+            Button {
+                store.stopMark = stopped ? nil : ref
+                Haptics.done(enabled: store.hapticsEnabled)
+                dismiss()
+            } label: {
+                if stopped {
+                    HStack(spacing: 8) {
+                        Image(systemName: "pin.slash.fill")
+                        Text(loc("إزالة علامة الوقوف"))
+                    }
+                    .font(Theme.display(16, weight: .semibold))
+                    .softButton(Theme.gold)
+                } else {
+                    HStack(spacing: 8) {
+                        Image(systemName: "pin.fill")
+                        Text(loc("وقفتُ هنا"))
+                    }
+                    .font(Theme.display(16, weight: .semibold))
+                    .gradientButton(Theme.goldGradient, glow: Theme.gold)
+                }
+            }
+            .pressable()
+
+            if !stopped {
+                Text(loc("علامة تعود إليها من شاشة المصحف"))
+                    .font(Theme.display(11))
+                    .foregroundStyle(Theme.inkFaint)
+            }
+        }
+    }
+
     var body: some View {
         ZStack {
             AtharBackground()
-            VStack(spacing: 16) {
+            VStack(spacing: Theme.Space.lg) {
                 Capsule().fill(Theme.hairline).frame(width: 36, height: 5).padding(.top, 10)
 
-                Text("\(surahName) · الآية \(ref.ayah.counterText)")
-                    .font(Theme.display(13, weight: .semibold))
-                    .foregroundStyle(Theme.accent)
+                // بطاقة الآية — سطح وعمق، والنصّ الشرعي سيّدها
+                AtharCard(padding: Theme.Space.lg, elevation: .e2) {
+                    VStack(spacing: Theme.Space.md) {
+                        // خيط ذهبي علوي — كحاشية المصحف المذهّبة
+                        Capsule().fill(Theme.goldGradient)
+                            .frame(width: 46, height: 3)
+                            .opacity(0.8)
 
-                Text(text)
-                    .font(Theme.dhikrFont(size: 19))
-                    .foregroundStyle(Theme.ink)
-                    .lineSpacing(10)
-                    .multilineTextAlignment(.center)
-                    .lineLimit(4)
-                    .padding(.horizontal, 8)
+                        Text("\(surahName) · الآية \(ref.ayah.counterText)")
+                            .font(Theme.display(13, weight: .semibold))
+                            .foregroundStyle(Theme.accent)
+
+                        Text(text)
+                            .font(Theme.dhikrFont(size: 19))
+                            .foregroundStyle(Theme.ink)
+                            .lineSpacing(10)
+                            .multilineTextAlignment(.center)
+                            .lineLimit(4)
+                            .padding(.horizontal, 4)
+
+                        // معلومات الموضع — ذهبية أنيقة، مكية/مدنية والجزء والصفحة
+                        if let su = Quran.surah(ref.surah) {
+                            HStack(spacing: Theme.Space.sm) {
+                                infoChip(su.revelation, icon: su.isMakki ? "cube.fill" : "building.2.fill")
+                                infoChip(loc("الجزء %1$@", Quran.juz(of: ref).counterText), icon: "book.closed.fill")
+                                infoChip(loc("صفحة %1$@", Quran.page(of: ref).counterText), icon: "doc.plaintext.fill")
+                            }
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                }
 
                 // ألوان التظليل — كما يُظلّل القارئ في مصحفه الورقي
                 VStack(alignment: .leading, spacing: 8) {
@@ -588,28 +706,10 @@ struct AyahActions: View {
                 }
                 .animation(Motion.snappy, value: store.highlight(ref))
 
-                // معلومات الموضع — مكية/مدنية والجزء والصفحة
-                if let su = Quran.surah(ref.surah) {
-                    HStack(spacing: 14) {
-                        infoChip(su.revelation, icon: su.isMakki ? "cube.fill" : "building.2.fill")
-                        infoChip(loc("الجزء %1$@", Quran.juz(of: ref).counterText), icon: "book.closed.fill")
-                        infoChip(loc("صفحة %1$@", Quran.page(of: ref).counterText), icon: "doc.plaintext.fill")
-                    }
-                }
+                // علامة الوقوف — الإجراء الأبرز، ذهبيّ أنيق
+                stopMarkButton
 
                 SettingsCard {
-                    Button {
-                        store.stopMark = store.stopMark == ref ? nil : ref
-                        Haptics.done(enabled: store.hapticsEnabled)
-                        dismiss()
-                    } label: {
-                        SettingsRow(icon: "pin.fill", tint: Theme.accent,
-                                    title: store.stopMark == ref ? loc("إزالة علامة الوقوف") : loc("وقفتُ هنا"),
-                                    subtitle: store.stopMark == ref ? nil : loc("علامة تعود إليها من شاشة المصحف"))
-                    }
-                    .buttonStyle(.plain)
-
-                    SettingsDivider()
                     Button {
                         store.toggleBookmark(ref)
                         Haptics.tap(enabled: store.hapticsEnabled)
@@ -696,8 +796,12 @@ struct AyahListPage: View {
                 }
                 .padding(14)
                 .background(
-                    RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous)
                         .fill(hl?.color(dark: isDark) ?? palette.ink.opacity(0.03))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous)
+                        .strokeBorder(palette.hairline.opacity(0.6), lineWidth: 0.5)
                 )
                 .contentShape(Rectangle())
                 .onTapGesture { onTapAyah(ref) }
