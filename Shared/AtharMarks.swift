@@ -24,20 +24,21 @@ struct KaabaMark: View {
 
 // MARK: - سجّادة الصلاة — مستطيل طوليّ بشريطين (علويّ وسفليّ) طالعين للأطراف
 
-/// ظِلّ سجّادة: جسم طوليّ، وفوقه وتحته شريطان أعرض منه (طرفا السجّادة).
+/// ظِلّ سجّادة: مستطيل طوليّ بعرض موحّد، مقسوم بشريطين علويّ وسفليّ (طرفا السجّادة)
+/// يفصلهما عن الجسم فراغان رفيعان. الثلاثة بنفس العرض.
 struct PrayerMatShape: Shape {
     func path(in rect: CGRect) -> Path {
-        let midX = rect.midX
-        let bodyW = rect.width * 0.42
-        let barW  = rect.width * 0.68
-        let top = rect.minY + rect.height * 0.07
-        let bot = rect.maxY - rect.height * 0.07
-        let barH = rect.height * 0.085
+        let w = rect.width * 0.60
+        let x = rect.midX - w/2
+        let top = rect.minY + rect.height * 0.06
+        let bot = rect.maxY - rect.height * 0.06
+        let total = bot - top
+        let barH = total * 0.14          // ارتفاع الشريطين
+        let gap  = total * 0.05          // الفراغ بين الشريط والجسم
         var p = Path()
-        p.addRect(CGRect(x: midX - barW/2, y: top, width: barW, height: barH))                     // شريط علويّ
-        p.addRect(CGRect(x: midX - bodyW/2, y: top + barH + rect.height*0.05,
-                         width: bodyW, height: (bot - barH - rect.height*0.05) - (top + barH + rect.height*0.05))) // الجسم
-        p.addRect(CGRect(x: midX - barW/2, y: bot - barH, width: barW, height: barH))               // شريط سفليّ
+        p.addRect(CGRect(x: x, y: top, width: w, height: barH))                                   // شريط علويّ
+        p.addRect(CGRect(x: x, y: top + barH + gap, width: w, height: total - 2*(barH+gap)))      // الجسم
+        p.addRect(CGRect(x: x, y: bot - barH, width: w, height: barH))                            // شريط سفليّ
         return p
     }
 }

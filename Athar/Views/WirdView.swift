@@ -135,7 +135,7 @@ struct WirdView: View {
                 }
 
                 SettingsDivider()
-                SettingsRow(icon: "bell.fill", tint: Theme.gold, title: loc("تذكير الورد")) {
+                SettingsRow(icon: "bell.fill", tint: Theme.accent(for: "gold"), title: loc("تذكير الورد")) {
                     Toggle("", isOn: Binding(
                         get: { store.wirdEnabled },
                         set: { on in

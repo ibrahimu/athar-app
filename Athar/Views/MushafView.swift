@@ -32,7 +32,7 @@ struct MushafView: View {
                             continueCard
                             toolsRow
                             if !store.bookmarks.isEmpty { bookmarksCard }
-                            SectionHeader(title: loc("suras"), tint: Theme.gold)
+                            SectionHeader(title: loc("suras"), tint: Theme.accent(for: "gold"))
                                 .padding(.top, 2)
                         }
 
@@ -104,7 +104,7 @@ struct MushafView: View {
     private var stopMarkCard: some View {
         if let mark = store.stopMark, let su = Quran.surah(mark.surah) {
             NavigationLink { SurahReaderView(surahId: mark.surah, scrollTo: mark) } label: {
-                AtharCard(padding: 16, elevation: .e2, tint: Theme.gold) {
+                AtharCard(padding: 16, elevation: .e2, tint: Theme.accent(for: "gold")) {
                     HStack(spacing: 14) {
                         Image(systemName: "pin.fill")
                             .font(.system(size: 18))

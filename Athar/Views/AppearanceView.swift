@@ -53,7 +53,7 @@ struct AppearanceView: View {
 
     private var themes: some View {
         VStack(spacing: 10) {
-            SectionHeader(title: loc("colorTheme"), tint: Theme.gold)
+            SectionHeader(title: loc("colorTheme"), tint: Theme.accent(for: "gold"))
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 84), spacing: 12)], spacing: 12) {
                 ForEach(AppTheme.allCases) { theme in
                     Button {

@@ -284,7 +284,7 @@ struct HomeView: View {
 
     private func dailyCard(_ dhikr: Dhikr) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            SectionHeader(title: loc("dhikrOfDay"), tint: Theme.gold)
+            SectionHeader(title: loc("dhikrOfDay"), tint: Theme.accent(for: "gold"))
             AtharCard {
                 VStack(alignment: .leading, spacing: 12) {
                     // خيط ذهبي علوي — كحاشية المصحف المذهّبة
@@ -344,9 +344,9 @@ struct HomeView: View {
                 HStack(spacing: 14) {
                     Image(systemName: "heart.fill")
                         .font(.system(size: 19))
-                        .foregroundStyle(Theme.gold)
+                        .foregroundStyle(Theme.accent(for: "gold"))
                         .frame(width: 44, height: 44)
-                        .background(Circle().fill(Theme.gold.opacity(0.13)))
+                        .background(Circle().fill(Theme.accent(for: "gold").opacity(0.13)))
 
                     VStack(alignment: .leading, spacing: 3) {
                         Text(loc("صدقة اليوم"))

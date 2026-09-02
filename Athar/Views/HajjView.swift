@@ -5,7 +5,7 @@ struct HajjView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                AtharBackground(tint: Theme.gold, secondary: Theme.accent(for: "sea"))
+                AtharBackground(tint: Theme.accent(for: "gold"), secondary: Theme.accent(for: "sea"))
                 ScrollView {
                     VStack(spacing: 16) {
                         header
@@ -14,7 +14,7 @@ struct HajjView: View {
                                 .appearStagger(1)
                         }
                         if let hajj = HajjData.hajj {
-                            guideSquare(hajj, tint: Theme.gold, badge: loc("الحج"))
+                            guideSquare(hajj, tint: Theme.accent(for: "gold"), badge: loc("الحج"))
                                 .appearStagger(2)
                         }
                         footer.appearStagger(3)

@@ -97,9 +97,9 @@ struct SettingsView: View {
 
     private var reminders: some View {
         VStack(spacing: 8) {
-            SettingsGroupTitle(text: loc("grpReminders"), tint: Theme.gold)
+            SettingsGroupTitle(text: loc("grpReminders"), tint: Theme.accent(for: "gold"))
             SettingsCard {
-                SettingsScreenRow(icon: "bell.badge.fill", tint: Theme.gold,
+                SettingsScreenRow(icon: "bell.badge.fill", tint: Theme.accent(for: "gold"),
                             title: loc("rowAdhkarRem"),
                             subtitle: store.remindersEnabled ? nil : loc("تنبيه لطيف للصباح والمساء")) {
                     Toggle("", isOn: Binding(
@@ -169,7 +169,7 @@ struct SettingsView: View {
         VStack(spacing: 8) {
             SettingsGroupTitle(text: loc("grpSunan"), tint: Theme.accent(for: "dusk"))
             SettingsCard {
-                SettingsScreenRow(icon: "sparkles", tint: Theme.gold, title: loc("rowJumuah"),
+                SettingsScreenRow(icon: "sparkles", tint: Theme.accent(for: "gold"), title: loc("rowJumuah"),
                             subtitle: loc("subJumuah")) {
                     Toggle("", isOn: alertToggle({ store.jumuahAlert }, { store.jumuahAlert = $0 })).labelsHidden()
                 }
@@ -329,7 +329,7 @@ struct SettingsView: View {
                         set: { store.countTapArea = $0 }))
 
                 SettingsDivider()
-                SettingsScreenRow(icon: "hand.tap.fill", tint: Theme.gold, title: loc("rowHaptics")) {
+                SettingsScreenRow(icon: "hand.tap.fill", tint: Theme.accent(for: "gold"), title: loc("rowHaptics")) {
                     Toggle("", isOn: Binding(
                         get: { store.hapticsEnabled },
                         set: { store.hapticsEnabled = $0 }
@@ -420,7 +420,7 @@ struct SettingsView: View {
 
                 SettingsDivider()
                 Link(destination: URL(string: "https://ehsan.sa")!) {
-                    SettingsScreenRow(icon: "heart.fill", tint: Theme.gold,
+                    SettingsScreenRow(icon: "heart.fill", tint: Theme.accent(for: "gold"),
                                 title: loc("rowSadaqah"),
                                 subtitle: loc("المنصة الوطنية للعمل الخيري")) {
                         Image(systemName: "arrow.up.forward")

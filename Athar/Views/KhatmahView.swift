@@ -209,7 +209,7 @@ struct KhatmahView: View {
             } else {
                 Label(loc("متأخّر بـ%1$@ صفحة — عوّضها على مهل", (-d).counterText),
                       systemImage: "arrow.counterclockwise")
-                    .foregroundStyle(Theme.gold)
+                    .foregroundStyle(Theme.accent(for: "gold"))
             }
         }
         .font(Theme.display(13, weight: .semibold))
@@ -238,9 +238,9 @@ struct KhatmahView: View {
                 Spacer()
                 Text(loc("الجزء %1$@", juz.counterText))
                     .font(Theme.display(12, weight: .semibold))
-                    .foregroundStyle(Theme.gold)
+                    .foregroundStyle(Theme.accent(for: "gold"))
                     .padding(.horizontal, 10).padding(.vertical, 5)
-                    .background(Capsule().fill(Theme.gold.opacity(0.14)))
+                    .background(Capsule().fill(Theme.accent(for: "gold").opacity(0.14)))
             }
 
             // الأرقام الكبيرة المدوّرة لنطاق الصفحات
