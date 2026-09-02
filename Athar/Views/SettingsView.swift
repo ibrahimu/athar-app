@@ -298,6 +298,18 @@ struct SettingsView: View {
                 linkRow("lifepreserver.fill", Theme.accent(for: "sea"), "الدعم والتواصل",
                         "https://ibrahimu.github.io/athar-app/support.html")
                 SettingsDivider()
+                NavigationLink { SourcesView() } label: {
+                    SettingsRow(icon: "text.book.closed.fill", tint: Theme.accent(for: "sea"),
+                                title: "المصادر والحقوق",
+                                subtitle: "نصوص المصحف والأذكار والخطوط") {
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(Theme.inkFaint)
+                    }
+                }
+                .buttonStyle(.plain)
+
+                SettingsDivider()
                 Link(destination: URL(string: "https://ehsan.sa")!) {
                     SettingsRow(icon: "heart.fill", tint: Theme.gold,
                                 title: "تصدّق عبر إحسان",

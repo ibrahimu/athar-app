@@ -51,6 +51,8 @@ struct MushafView: View {
                             }
                         }
 
+                        if query.isEmpty { sourceCredit }
+
                         if filtered.isEmpty && searchHits.isEmpty && !query.isEmpty {
                             ContentUnavailableView("لا توجد نتائج", systemImage: "magnifyingglass",
                                                    description: Text("جرّب اسم سورة أو جزءًا من آية"))
@@ -67,6 +69,31 @@ struct MushafView: View {
             .navigationBarTitleDisplayMode(.inline)
             .searchable(text: $query, prompt: "سورة أو آية")
         }
+    }
+
+    /// إسناد نص المصحف — شرط رخصة Tanzil: إظهار المصدر بوضوح مع رابط.
+    private var sourceCredit: some View {
+        VStack(spacing: 7) {
+            Rectangle().fill(Theme.hairline.opacity(0.6))
+                .frame(height: 0.7).padding(.horizontal, 40).padding(.top, 10)
+            Text("نص المصحف بالرسم العثماني من")
+                .font(Theme.display(11))
+                .foregroundStyle(Theme.inkFaint)
+            Link(destination: URL(string: "https://tanzil.net")!) {
+                HStack(spacing: 4) {
+                    Text("مشروع تنزيل — tanzil.net")
+                        .font(Theme.display(12, weight: .medium))
+                    Image(systemName: "arrow.up.forward").font(.system(size: 9, weight: .semibold))
+                }
+                .foregroundStyle(Theme.accent)
+            }
+            Text("مُدقَّق على مصحف المدينة · يُنقل كما هو دون تغيير")
+                .font(Theme.display(10))
+                .foregroundStyle(Theme.inkFaint)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, 6)
+        .padding(.bottom, 4)
     }
 
     // MARK: متابعة القراءة

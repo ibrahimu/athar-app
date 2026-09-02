@@ -19,3 +19,44 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+
+================================================================================
+THIRD-PARTY CONTENT / محتوى الأطراف الأخرى
+================================================================================
+
+The MIT licence above covers the SOURCE CODE of this app only.
+رخصة MIT أعلاه تغطي شيفرة التطبيق فقط، لا المحتوى أدناه.
+
+--------------------------------------------------------------------------------
+QURAN TEXT — Tanzil Project
+--------------------------------------------------------------------------------
+Shared/quran.json contains the Uthmani Quran text from the Tanzil Project
+(https://tanzil.net), verified against the Madinah Mushaf.
+
+Tanzil terms of use:
+
+    Permission is granted to copy and distribute verbatim copies of the Quran
+    text provided here, but changing the text is not allowed. The text can be
+    used in any website or application, provided that its source (Tanzil
+    Project) is clearly indicated, and a link is made to tanzil.net to enable
+    users to keep track of changes.
+
+This app complies: the text is used verbatim and unmodified, and the source and
+a link to tanzil.net are shown in the Mushaf screen and under
+Settings → Sources and Rights.
+
+--------------------------------------------------------------------------------
+FONT — Noto Naskh Arabic
+--------------------------------------------------------------------------------
+Athar/Resources/Fonts/NotoNaskhArabic-*.ttf
+Copyright 2022 The Noto Project Authors (https://github.com/notofonts/arabic)
+Licensed under the SIL Open Font License, Version 1.1.
+Full licence text: Athar/Resources/Fonts/OFL.txt
+
+--------------------------------------------------------------------------------
+ADHKAR TEXTS
+--------------------------------------------------------------------------------
+Shared/adhkar.json contains verses of the Quran and hadith from the classical
+collections (Bukhari, Muslim, Abu Dawud, Tirmidhi, Nasa'i, Ibn Majah, Ahmad).
+These classical texts are in the public domain. Each entry carries its citation.
