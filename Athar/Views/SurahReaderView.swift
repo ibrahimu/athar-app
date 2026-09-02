@@ -58,6 +58,9 @@ struct SurahReaderView: View {
                         MushafPage(surahId: surahId, palette: palette,
                                    scale: store.mushafFontScale,
                                    bookmarks: Set(store.bookmarks),
+                                   highlights: store.highlights,
+                                   selected: selected,
+                                   isDark: store.readingTheme == .night,
                                    onTapAyah: { selected = $0 },
                                    onVisible: { store.lastRead = $0 })
 
@@ -91,7 +94,7 @@ struct SurahReaderView: View {
             ReaderControls().presentationDetents([.height(330)])
         }
         .sheet(item: $selected) { ref in
-            AyahActions(ref: ref).presentationDetents([.height(300)])
+            AyahActions(ref: ref).presentationDetents([.height(420)])
         }
         .toolbarColorScheme(store.readingTheme == .night ? .dark : .light, for: .navigationBar)
     }
@@ -138,43 +141,100 @@ struct SurahReaderView: View {
 
 // MARK: - صفحة المصحف
 
-/// نص متصل كصفحة المصحف المطبوع: الآيات تتلو بعضها في فقرة واحدة،
-/// وفاصلة كل آية ميدالية ملوّنة، مع علامة ۩ لمواضع السجود.
+/// صفحة مصحف: النص يتدفّق متصلًا كالمطبوع، لكن **كل كلمة عنصر مستقل**
+/// فيمكن لمس أي آية وتظليلها. التقسيم إلى مقاطع يبقي التمرير سلسًا في
+/// السور الطويلة، ويكشف الآية الظاهرة لحفظ آخر موضع.
 struct MushafPage: View {
     let surahId: Int
     let palette: ReadingPalette
     let scale: Double
     let bookmarks: Set<AyahRef>
+    let highlights: [String: String]
+    let selected: AyahRef?
+    let isDark: Bool
     let onTapAyah: (AyahRef) -> Void
     let onVisible: (AyahRef) -> Void
 
     private var surah: Surah? { Quran.surah(surahId) }
 
     var body: some View {
-        VStack(alignment: .center, spacing: 26) {
+        LazyVStack(alignment: .center, spacing: 20) {
             ForEach(chunks, id: \.first) { group in
-                Text(attributed(for: group))
-                    .lineSpacing(15 * scale)
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: .infinity)
-                    .onAppear { if let f = group.first { onVisible(f) } }
-                    .overlay(alignment: .topLeading) {
-                        if group.contains(where: { bookmarks.contains($0) }) {
-                            Image(systemName: "bookmark.fill")
-                                .font(.system(size: 10))
-                                .foregroundStyle(palette.accent.opacity(0.7))
-                                .offset(x: -6, y: -4)
-                        }
+                FlowLayout(lineSpacing: 14 * scale, wordSpacing: 5 * scale) {
+                    ForEach(tokens(of: group)) { token in
+                        tokenView(token)
                     }
-                    .contentShape(Rectangle())
-                    .onTapGesture { if let f = group.first { onTapAyah(f) } }
+                }
+                .onAppear { if let f = group.first { onVisible(f) } }
             }
         }
         .padding(.top, 8)
     }
 
-    /// تُقسَّم السورة إلى مجموعات صغيرة ليبقى التمرير سلسًا في السور الطويلة،
-    /// ولتُعرف الآية الظاهرة لحفظ آخر موضع.
+    // MARK: الوحدات
+
+    /// كلمة واحدة أو فاصلة آية — أصغر وحدة قابلة للّمس.
+    struct Token: Identifiable {
+        let id: String
+        let text: String
+        let ref: AyahRef
+        let isMarker: Bool
+        let isSajdah: Bool
+    }
+
+    private func tokens(of group: [AyahRef]) -> [Token] {
+        var out: [Token] = []
+        for ref in group {
+            let words = (Quran.text(ref) ?? "").ayahWords
+            for (i, w) in words.enumerated() {
+                out.append(Token(id: "\(ref.id)-w\(i)", text: w, ref: ref,
+                                 isMarker: false, isSajdah: false))
+            }
+            if Quran.isSajdah(ref) {
+                out.append(Token(id: "\(ref.id)-sj", text: "۩", ref: ref,
+                                 isMarker: false, isSajdah: true))
+            }
+            out.append(Token(id: "\(ref.id)-m", text: medallion(ref.ayah), ref: ref,
+                             isMarker: true, isSajdah: false))
+        }
+        return out
+    }
+
+    @ViewBuilder
+    private func tokenView(_ t: Token) -> some View {
+        let hl = highlights[t.ref.id].flatMap(HighlightColor.init(rawValue:))
+        let isSelected = selected == t.ref
+
+        Text(t.text)
+            .font(t.isMarker ? .system(size: 18 * scale)
+                             : Theme.dhikrFont(size: 23, scale: scale))
+            .foregroundStyle(t.isMarker || t.isSajdah ? palette.accent : palette.ink)
+            .padding(.horizontal, 2)
+            .padding(.vertical, 3)
+            .background(
+                RoundedRectangle(cornerRadius: 5, style: .continuous)
+                    .fill(background(hl: hl, isSelected: isSelected))
+            )
+            .overlay(alignment: .topLeading) {
+                // علامة المرجعية على فاصلة الآية فقط، فلا تتكرر مع كل كلمة
+                if t.isMarker, bookmarks.contains(t.ref) {
+                    Image(systemName: "bookmark.fill")
+                        .font(.system(size: 8))
+                        .foregroundStyle(palette.accent)
+                        .offset(x: -2, y: -3)
+                }
+            }
+            .contentShape(Rectangle())
+            .onTapGesture { onTapAyah(t.ref) }
+    }
+
+    private func background(hl: HighlightColor?, isSelected: Bool) -> Color {
+        if isSelected { return palette.accent.opacity(0.20) }
+        if let hl { return hl.color(dark: isDark) }
+        return .clear
+    }
+
+    /// مقاطع من خمس آيات: تبقي التمرير سلسًا وتحدّ من عدد العناصر المرسومة.
     private var chunks: [[AyahRef]] {
         guard let s = surah else { return [] }
         let refs = (1...s.ayahCount).map { AyahRef(surah: surahId, ayah: $0) }
@@ -183,30 +243,6 @@ struct MushafPage: View {
         }
     }
 
-    private func attributed(for group: [AyahRef]) -> AttributedString {
-        var out = AttributedString("")
-        for ref in group {
-            var body = AttributedString(Quran.text(ref) ?? "")
-            body.font = Theme.dhikrFont(size: 23, scale: scale)
-            body.foregroundColor = palette.ink
-            out += body
-
-            if Quran.isSajdah(ref) {
-                var sj = AttributedString(" ۩")
-                sj.font = .system(size: 19 * scale)
-                sj.foregroundColor = palette.accent
-                out += sj
-            }
-
-            var mark = AttributedString(" \(medallion(ref.ayah)) ")
-            mark.font = .system(size: 18 * scale)
-            mark.foregroundColor = palette.accent
-            out += mark
-        }
-        return out
-    }
-
-    /// رقم الآية بالأرقام العربية داخل قوسي زخرفة.
     private func medallion(_ n: Int) -> String {
         let ar = Array("٠١٢٣٤٥٦٧٨٩")
         let digits = String(String(n).compactMap { c -> Character? in
@@ -335,6 +371,57 @@ struct AyahActions: View {
                     .multilineTextAlignment(.center)
                     .lineLimit(4)
                     .padding(.horizontal, 8)
+
+                // ألوان التظليل — كما يُظلّل القارئ في مصحفه الورقي
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("تظليل الآية")
+                        .font(Theme.display(12, weight: .semibold))
+                        .foregroundStyle(Theme.inkFaint)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                    HStack(spacing: 10) {
+                        ForEach(HighlightColor.allCases) { c in
+                            let on = store.highlight(ref) == c
+                            Button {
+                                store.setHighlight(on ? nil : c, for: ref)
+                                Haptics.tap(enabled: store.hapticsEnabled)
+                            } label: {
+                                Circle()
+                                    .fill(c.color(dark: false).opacity(1))
+                                    .frame(width: 34, height: 34)
+                                    .overlay(
+                                        Circle().stroke(on ? Theme.ink : Theme.hairline,
+                                                        lineWidth: on ? 2.5 : 1)
+                                    )
+                                    .overlay {
+                                        if on {
+                                            Image(systemName: "checkmark")
+                                                .font(.system(size: 13, weight: .bold))
+                                                .foregroundStyle(Theme.ink)
+                                        }
+                                    }
+                            }
+                            .pressable(scale: 0.9)
+                        }
+
+                        if store.highlight(ref) != nil {
+                            Button {
+                                store.setHighlight(nil, for: ref)
+                                Haptics.tap(enabled: store.hapticsEnabled)
+                            } label: {
+                                Image(systemName: "xmark")
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundStyle(Theme.inkSoft)
+                                    .frame(width: 34, height: 34)
+                                    .background(Circle().fill(Theme.surfaceAlt))
+                            }
+                            .pressable(scale: 0.9)
+                            .transition(.scale.combined(with: .opacity))
+                        }
+                        Spacer()
+                    }
+                }
+                .animation(Motion.snappy, value: store.highlight(ref))
 
                 SettingsCard {
                     Button {

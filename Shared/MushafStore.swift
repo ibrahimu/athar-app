@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 // MARK: - سِمة القراءة
 
@@ -75,6 +76,7 @@ extension AtharStore {
         static let wirdDay       = "athar.wird.dayStamp"
         static let wirdEnabled   = "athar.wird.enabled"
         static let wirdMinutes   = "athar.wird.reminderMinutes"
+        static let highlights    = "athar.mushaf.highlights"
     }
 
     /// عدد الأيام منذ مرجع ثابت — أساس جدولة المراجعة.
@@ -134,6 +136,40 @@ extension AtharStore {
         var b = bookmarks
         if let i = b.firstIndex(of: ref) { b.remove(at: i) } else { b.append(ref) }
         bookmarks = b
+    }
+
+    // MARK: التظليل
+
+    /// آيات مظلَّلة بلون — كما يُظلّل القارئ في مصحفه الورقي.
+    /// المفتاح مرجع الآية، والقيمة اسم اللون.
+    var highlights: [String: String] {
+        get {
+            guard let d = defaults.data(forKey: MKey.highlights),
+                  let v = try? JSONDecoder().decode([String: String].self, from: d) else { return [:] }
+            return v
+        }
+        set {
+            if let d = try? JSONEncoder().encode(newValue) { defaults.set(d, forKey: MKey.highlights) }
+            objectWillChange.send()
+        }
+    }
+
+    func highlight(_ ref: AyahRef) -> HighlightColor? {
+        highlights[ref.id].flatMap(HighlightColor.init(rawValue:))
+    }
+
+    func setHighlight(_ color: HighlightColor?, for ref: AyahRef) {
+        var all = highlights
+        if let color { all[ref.id] = color.rawValue } else { all.removeValue(forKey: ref.id) }
+        highlights = all
+    }
+
+    var highlightedRefs: [AyahRef] {
+        highlights.keys.compactMap { key in
+            let p = key.split(separator: ":")
+            guard p.count == 2, let s = Int(p[0]), let a = Int(p[1]) else { return nil }
+            return AyahRef(surah: s, ayah: a)
+        }.sorted()
     }
 
     // MARK: الحفظ
@@ -217,5 +253,34 @@ extension AtharStore {
     var wirdReminderMinutes: Int {
         get { defaults.integer(forKey: MKey.wirdMinutes) == 0 ? 20 * 60 : defaults.integer(forKey: MKey.wirdMinutes) }
         set { defaults.set(newValue, forKey: MKey.wirdMinutes); objectWillChange.send() }
+    }
+}
+
+/// ألوان التظليل — هادئة تكفي لتمييز الآية دون أن تطغى على النص.
+enum HighlightColor: String, CaseIterable, Identifiable {
+    case amber, green, sky, rose, violet
+
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .amber:  return "كهرماني"
+        case .green:  return "أخضر"
+        case .sky:    return "سماوي"
+        case .rose:   return "وردي"
+        case .violet: return "بنفسجي"
+        }
+    }
+
+    /// شفافية منخفضة عمدًا: التظليل يميّز ولا يحجب.
+    func color(dark: Bool) -> Color {
+        let hex: UInt32
+        switch self {
+        case .amber:  hex = dark ? 0xE0B06A : 0xF2C46B
+        case .green:  hex = dark ? 0x6FD3A6 : 0x86D9B0
+        case .sky:    hex = dark ? 0x7FB6E0 : 0x9AC9EC
+        case .rose:   hex = dark ? 0xE39BB4 : 0xF0AEC4
+        case .violet: hex = dark ? 0xB4A7E8 : 0xC4B8F0
+        }
+        return Color(hex: hex).opacity(dark ? 0.26 : 0.42)
     }
 }
