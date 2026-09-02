@@ -25,6 +25,12 @@ enum Motion {
     /// أسرع، لتبدّل القيم والحالات.
     static var snappy: Animation { .smooth(duration: quick) }
 
+    /// استقرار المحتوى الوارد — نابض هادئ بلا ارتداد.
+    static var arrive: Animation { .spring(response: 0.5, dampingFraction: 0.85) }
+
+    /// تلاشٍ متقاطع للصبغات والتدرّجات (تبدّل لون القسم أو خلفية الوقت).
+    static var gentle: Animation { .easeOut(duration: 0.4) }
+
     /// تتابع ظهور عناصر القوائم: ٣٥ مللي لكل عنصر، وبحدّ أقصى ٨ عناصر
     /// حتى لا ينتظر المستخدم قائمة طويلة.
     static func stagger(_ index: Int) -> Animation {

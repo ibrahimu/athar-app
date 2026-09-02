@@ -2,17 +2,93 @@ import SwiftUI
 
 // MARK: - Screen background
 
+/// خلفية الشاشة: ورق سادة بنقش هندسي محفور ناعم جدًا (يُحسّ ولا يُقرأ)،
+/// وغسالة لونية علوية بلون القسم، ونغمة سفلية خافتة.
+/// كل شاشة تمرّر لونها المميّز (Hifz بحري، Wird فجري…)، وتبقى النغمة ناعمة.
 struct AtharBackground: View {
+    var tint: Color = Theme.accent
+    var secondary: Color? = nil          // النغمة السفلية (افتراضيًا ذهبي)
+    var motif: Bool = true
+
     var body: some View {
         Theme.canvas
+            .overlay { if motif { PaperMotif().allowsHitTesting(false) } }  // نقش الورق كامل الصفحة
             .overlay(alignment: .top) {
-                LinearGradient(
-                    colors: [Theme.accent.opacity(0.10), .clear],
-                    startPoint: .top, endPoint: .bottom
-                )
-                .frame(height: 260)
+                // غسالة علوية بلون القسم
+                LinearGradient(colors: [tint.opacity(0.12), .clear],
+                               startPoint: .top, endPoint: .bottom)
+                    .frame(height: 320)
+                    .allowsHitTesting(false)
+            }
+            .overlay(alignment: .bottomLeading) {
+                // نغمة سفلية خافتة جدًا (اتجاه عربي: أسفل اليسار)
+                RadialGradient(colors: [(secondary ?? Theme.gold).opacity(0.06), .clear],
+                               center: .bottomLeading, startRadius: 0, endRadius: 400)
+                    .frame(height: 440)
+                    .allowsHitTesting(false)
             }
             .ignoresSafeArea()
+    }
+}
+
+// MARK: - نقش الورق (تبليط هندسي محفور باهت جدًا)
+
+/// شبكة متناثرة من نجمات ثمانية صغيرة متشابكة تغطّي الورق كله بشفافية ٠٫٠٢
+/// تقريبًا — نسيج ورق مصحفي محفور، يُحسّ ولا يُقرأ. تُرسم مرّة عبر Canvas.
+struct PaperMotif: View {
+    var tint: Color = Theme.ink
+    @Environment(\.colorScheme) private var scheme
+
+    var body: some View {
+        let op = scheme == .dark ? 0.030 : 0.022
+        Canvas { ctx, size in
+            let cell: CGFloat = 74           // تباعد الوحدات
+            let r: CGFloat = 15              // نصف قطر النجمة
+            let color = tint.opacity(op)
+            var row = 0
+            var y: CGFloat = -cell/2
+            while y < size.height + cell {
+                // إزاحة صفٍّ بعد صف لتبليط متشابك
+                let offset: CGFloat = row.isMultiple(of: 2) ? 0 : cell/2
+                var x: CGFloat = -cell/2 + offset
+                while x < size.width + cell {
+                    let rect = CGRect(x: x - r, y: y - r, width: r*2, height: r*2)
+                    ctx.stroke(EightPointStar(innerRatio: 0.62).path(in: rect),
+                               with: .color(color), lineWidth: 0.8)
+                    x += cell
+                }
+                y += cell * 0.82
+                row += 1
+            }
+        }
+    }
+}
+
+// MARK: - زخرفة نجمية مفردة (لزوايا البطاقات البطلة والأيقونات)
+
+/// نجمة ثمانية واحدة كبيرة كعلامة مائية باهتة جدًا. السقف المطلق للشفافية ٠٫٠٥.
+struct GeometryMotif: View {
+    var tint: Color = Theme.ink
+    var intensity: Double = 1
+    @Environment(\.colorScheme) private var scheme
+
+    var body: some View {
+        let base = (scheme == .dark ? 0.05 : 0.035) * intensity
+        GeometryReader { g in
+            let s = min(g.size.width, g.size.height) * 1.1
+            EightPointStar(innerRatio: 0.68)
+                .fill(tint.opacity(min(0.06, base)))
+                .frame(width: s, height: s)
+                .position(x: g.size.width * 0.84, y: g.size.height * 0.32)
+        }
+        .clipped()
+    }
+}
+
+extension View {
+    /// زخرفة هندسية باهتة خلف العنصر (خلف الأيقونات وزوايا البطاقات البطلة).
+    func motifTexture(_ tint: Color = Theme.ink, intensity: Double = 1) -> some View {
+        background(GeometryMotif(tint: tint, intensity: intensity))
     }
 }
 
@@ -20,19 +96,41 @@ struct AtharBackground: View {
 
 struct AtharCard<Content: View>: View {
     var padding: CGFloat = 18
+    var elevation: Theme.Elevation = .e1
+    var tint: Color? = nil            // بطاقة «لحظة» مصبوغة بلون قسمها
+    var radius: CGFloat = Theme.Radius.lg
     @ViewBuilder var content: Content
 
     var body: some View {
         content
             .padding(padding)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                RoundedRectangle(cornerRadius: Theme.corner, style: .continuous)
-                    .fill(Theme.surface)
-                    .shadow(color: Theme.cardShadow.color,
-                            radius: Theme.cardShadow.radius,
-                            y: Theme.cardShadow.y)
-            )
+            .background(CardSurface(radius: radius, tint: tint, elevation: elevation))
+    }
+}
+
+/// سطح البطاقة الموحّد: تعبئة متدرّجة + حدّ شعري + بريق علوي + عمق مزدوج.
+/// مصدر واحد يرثه كل سطح في التطبيق.
+struct CardSurface: View {
+    var radius: CGFloat = Theme.Radius.lg
+    var tint: Color? = nil
+    var elevation: Theme.Elevation = .e1
+    @Environment(\.colorScheme) private var scheme
+
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
+        shape
+            .fill(tint.map { Theme.surfaceTint($0) } ?? Theme.surfaceGradient)
+            .overlay(shape.strokeBorder(Theme.hairline.opacity(0.5), lineWidth: 0.5))
+            .overlay(alignment: .top) {
+                // بريق على الحافة العلوية يلتقط الضوء
+                LinearGradient(colors: [.white.opacity(scheme == .dark ? 0.06 : 0.5), .clear],
+                               startPoint: .top, endPoint: .bottom)
+                    .frame(height: 6)
+                    .mask(shape)
+                    .allowsHitTesting(false)
+            }
+            .atharElevation(elevation)
     }
 }
 
@@ -42,16 +140,43 @@ struct ProgressRing: View {
     var progress: Double
     var color: Color
     var lineWidth: CGFloat = 8
+    var gradient: Bool = false        // قوس متدرّج بدل لون مصمت
+    var ticks: Int = 0                // علامات خافتة حول المسار (مثل أجزاء المصحف)
+    var glow: Bool = false            // توهّج يشتدّ قرب الإتمام
+
+    private var p: Double { max(0.001, min(1, progress)) }
+
+    private var arcStyle: AnyShapeStyle {
+        gradient
+            ? AnyShapeStyle(AngularGradient(colors: [color, color.opacity(0.55), color],
+                                            center: .center, angle: .degrees(-90)))
+            : AnyShapeStyle(color)
+    }
 
     var body: some View {
         ZStack {
-            Circle()
-                .stroke(color.opacity(0.18), lineWidth: lineWidth)
-            Circle()
-                .trim(from: 0, to: max(0.001, min(1, progress)))
-                .stroke(color, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
+            Circle().stroke(color.opacity(0.16), lineWidth: lineWidth)
+
+            if ticks > 0 {
+                ForEach(0..<ticks, id: \.self) { i in
+                    Capsule()
+                        .fill(color.opacity(0.22))
+                        .frame(width: lineWidth * 0.14, height: lineWidth * 0.5)
+                        .offset(y: -0.5)
+                        .rotationEffect(.degrees(Double(i) / Double(ticks) * 360))
+                }
+                .padding(lineWidth / 2)
+            }
+
+            let arc = Circle()
+                .trim(from: 0, to: p)
+                .stroke(arcStyle, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
                 .rotationEffect(.degrees(-90))
-                .animation(Motion.smooth, value: progress)
+
+            if glow {
+                arc.blur(radius: 6).opacity(0.25 + 0.45 * p)
+            }
+            arc.animation(Motion.smooth, value: progress)
         }
     }
 }
@@ -60,11 +185,16 @@ struct ProgressRing: View {
 
 struct SectionHeader: View {
     let title: String
+    var tint: Color = Theme.accent
     var action: (() -> Void)?
     var actionTitle: String = loc("الكل")
 
     var body: some View {
-        HStack {
+        HStack(spacing: 9) {
+            // شارة بلون القسم على الحافة البادئة (يمين في العربية)
+            Capsule()
+                .fill(tint)
+                .frame(width: 3, height: 16)
             Text(title)
                 .font(Theme.display(19, weight: .bold))
                 .foregroundStyle(Theme.ink)
@@ -72,7 +202,7 @@ struct SectionHeader: View {
             if let action {
                 Button(actionTitle, action: action)
                     .font(Theme.display(14, weight: .medium))
-                    .foregroundStyle(Theme.accent)
+                    .foregroundStyle(tint)
             }
         }
     }
@@ -113,14 +243,20 @@ enum Haptics {
 /// عنوان مجموعة: صغير، خافت، ومتباعد الحروف.
 struct SettingsGroupTitle: View {
     let text: String
+    var tint: Color = Theme.accent
     var body: some View {
-        Text(text)
-            .font(Theme.display(12, weight: .semibold))
-            .tracking(0.6)
-            .foregroundStyle(Theme.inkFaint)
-            .padding(.horizontal, 6)
-            .padding(.bottom, 2)
-            .frame(maxWidth: .infinity, alignment: .leading)
+        HStack(spacing: 7) {
+            Circle()
+                .fill(tint.opacity(0.85))
+                .frame(width: 7, height: 7)
+            Text(text)
+                .font(Theme.display(12, weight: .semibold))
+                .tracking(0.6)
+                .foregroundStyle(tint.opacity(0.85))
+        }
+        .padding(.horizontal, 6)
+        .padding(.bottom, 2)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
@@ -129,14 +265,13 @@ struct SettingsCard<Content: View>: View {
     @ViewBuilder var content: Content
     var body: some View {
         VStack(spacing: 0) { content }
-            .background(
-                RoundedRectangle(cornerRadius: Theme.corner, style: .continuous)
-                    .fill(Theme.surface)
-            )
+            .background(Theme.surfaceGradient)
             .clipShape(RoundedRectangle(cornerRadius: Theme.corner, style: .continuous))
-            .shadow(color: Theme.cardShadow.color,
-                    radius: Theme.cardShadow.radius,
-                    y: Theme.cardShadow.y)
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.corner, style: .continuous)
+                    .strokeBorder(Theme.hairline.opacity(0.5), lineWidth: 0.5)
+            )
+            .atharElevation(.e1)
     }
 }
 
@@ -391,3 +526,113 @@ struct AyahMedallion: View {
 /// مطابقة لغات الواجهة لبروتوكول الاختيار — هنا لأن البروتوكول في هدف
 /// التطبيق وAppLanguage في الملفات المشتركة مع الويدجت.
 extension AppLanguage: SettingsChoice {}
+
+// MARK: - أزرار متدرّجة موحّدة
+
+/// الزر الأساسي (CTA): تعبئة متدرّجة بلون القسم، نص onAccent، وظلّ ملوّن يرفعه عن الورق.
+struct AtharPrimaryButton: View {
+    let title: String
+    var icon: String? = nil
+    var gradient: LinearGradient = Theme.accentGradient
+    var glowTint: Color = Theme.accent
+    var action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                if let icon { Image(systemName: icon) }
+                Text(title)
+            }
+            .font(Theme.display(16, weight: .semibold))
+            .foregroundStyle(Theme.onAccent)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 15)
+            .background(RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous).fill(gradient))
+            .shadow(color: glowTint.opacity(0.28), radius: 12, y: 6)
+        }
+        .pressable()
+    }
+}
+
+extension View {
+    /// خلفية زر متدرّجة بظلّ ملوّن — لأي Label/نص زرّ قائم.
+    func gradientButton(_ gradient: LinearGradient = Theme.accentGradient,
+                        glow: Color = Theme.accent,
+                        radius: CGFloat = Theme.Radius.md) -> some View {
+        self
+            .foregroundStyle(Theme.onAccent)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 14)
+            .background(RoundedRectangle(cornerRadius: radius, style: .continuous).fill(gradient))
+            .shadow(color: glow.opacity(0.28), radius: 12, y: 6)
+    }
+
+    /// زر ثانوي ناعم: صبغة خفيفة، نصّ بلون القسم، حدّ شعري.
+    func softButton(_ tint: Color = Theme.accent, radius: CGFloat = Theme.Radius.md) -> some View {
+        self
+            .foregroundStyle(tint)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 14)
+            .background(
+                RoundedRectangle(cornerRadius: radius, style: .continuous)
+                    .fill(tint.opacity(0.14))
+                    .overlay(RoundedRectangle(cornerRadius: radius, style: .continuous)
+                        .strokeBorder(tint.opacity(0.18), lineWidth: 0.5))
+            )
+    }
+}
+
+// MARK: - مكافأة الإتمام (بذوق، بلا مبالغة)
+
+/// وميض دائري لمرّة واحدة عند إتمام صغير — يتمدّد ويتلاشى في نصف ثانية.
+struct CompletionBloom: View {
+    var tint: Color = Theme.accent
+    @State private var on = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        Circle()
+            .fill(RadialGradient(colors: [tint.opacity(0.28), .clear],
+                                 center: .center, startRadius: 0, endRadius: 90))
+            .scaleEffect(reduceMotion ? 1 : (on ? 1.3 : 0.8))
+            .opacity(on ? 0 : 1)
+            .onAppear {
+                withAnimation(.easeOut(duration: 0.5)) { on = true }
+            }
+            .allowsHitTesting(false)
+    }
+}
+
+/// هالة احتفاء لذُرى الإنجاز الحقيقية فقط (ختم المراجعة، إتمام الورد، ختم القرآن،
+/// بلوغ هدف التسبيح): توهّج ذهبي ناعم + حلقة أشعّة نجمية باهتة تظهر بنبضة نابضة.
+/// لا قصاصات، لا حلقات لانهائية، ويتلطّف مع «تقليل الحركة».
+struct CelebrationHalo: View {
+    var tint: Color = Theme.gold
+    @State private var shown = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .fill(RadialGradient(colors: [tint.opacity(0.35), .clear],
+                                     center: .center, startRadius: 0, endRadius: 130))
+                .scaleEffect(shown ? 1 : 0.6)
+                .opacity(shown ? 1 : 0)
+
+            ForEach(0..<12, id: \.self) { i in
+                Capsule()
+                    .fill(tint.opacity(0.5))
+                    .frame(width: 2.5, height: 12)
+                    .offset(y: -70)
+                    .rotationEffect(.degrees(Double(i) * 30))
+            }
+            .opacity(shown ? 0.9 : 0)
+            .scaleEffect(shown ? 1 : 0.85)
+        }
+        .allowsHitTesting(false)
+        .onAppear {
+            if reduceMotion { shown = true }
+            else { withAnimation(.spring(response: 0.55, dampingFraction: 0.7)) { shown = true } }
+        }
+    }
+}

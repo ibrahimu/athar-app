@@ -10,7 +10,7 @@ struct AppearanceView: View {
             AtharBackground()
             ScrollView {
                 VStack(spacing: 24) {
-                    languagePicker
+                    if !AppConfig.arabicOnly { languagePicker }
                     themes
                     appearanceMode
                     tabBar
@@ -50,12 +50,12 @@ struct AppearanceView: View {
     // MARK: الطابع
 
     private var themes: some View {
-        VStack(spacing: 8) {
-            SettingsGroupTitle(text: loc("colorTheme"))
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: 86), spacing: 12)], spacing: 12) {
+        VStack(spacing: 10) {
+            SectionHeader(title: loc("colorTheme"), tint: Theme.gold)
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 84), spacing: 12)], spacing: 12) {
                 ForEach(AppTheme.allCases) { theme in
                     Button {
-                        withAnimation(Motion.smooth) { store.appTheme = theme }
+                        withAnimation(Motion.gentle) { store.appTheme = theme }
                         Haptics.tap(enabled: store.hapticsEnabled)
                     } label: {
                         swatch(theme)
@@ -68,25 +68,51 @@ struct AppearanceView: View {
 
     private func swatch(_ theme: AppTheme) -> some View {
         let on = store.appTheme == theme
-        let accent = Color.adaptive(light: Color(hex: theme.accent.light), dark: Color(hex: theme.accent.dark))
-        let canvas = Color.adaptive(light: Color(hex: theme.canvas.light), dark: Color(hex: theme.canvas.dark))
+        let accent  = Color.adaptive(light: Color(hex: theme.accent.light),  dark: Color(hex: theme.accent.dark))
+        let accent2 = Color.adaptive(light: Color(hex: theme.accent2.light), dark: Color(hex: theme.accent2.dark))
+        let canvas  = Color.adaptive(light: Color(hex: theme.canvas.light),  dark: Color(hex: theme.canvas.dark))
+        let surface = Color.adaptive(light: Color(hex: theme.surface.light), dark: Color(hex: theme.surface.dark))
+        let gold    = Color.adaptive(light: Color(hex: theme.ornament.light), dark: Color(hex: theme.ornament.dark))
         return VStack(spacing: 7) {
             ZStack {
-                RoundedRectangle(cornerRadius: 14, style: .continuous).fill(canvas)
-                VStack(spacing: 5) {
-                    Circle().fill(accent).frame(width: 20, height: 20)
-                    Capsule().fill(accent.opacity(0.3)).frame(width: 34, height: 5)
+                // معاينة مصغّرة: ورق الطابع + بطاقة صغيرة + كرة اللون المتدرّج ولمسة ذهب
+                RoundedRectangle(cornerRadius: 16, style: .continuous).fill(canvas)
+                VStack(spacing: 6) {
+                    ZStack {
+                        Circle()
+                            .fill(LinearGradient(colors: [accent, accent2],
+                                                 startPoint: .topTrailing, endPoint: .bottomLeading))
+                            .frame(width: 26, height: 26)
+                            .shadow(color: accent.opacity(0.35), radius: 4, y: 2)
+                        if on {
+                            Image(systemName: "checkmark")
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundStyle(.white)
+                        }
+                    }
+                    RoundedRectangle(cornerRadius: 5, style: .continuous)
+                        .fill(surface)
+                        .frame(width: 40, height: 14)
+                        .overlay(alignment: .leading) {
+                            HStack(spacing: 3) {
+                                Capsule().fill(accent.opacity(0.4)).frame(width: 16, height: 4)
+                                Circle().fill(gold).frame(width: 4, height: 4)
+                            }
+                            .padding(.leading, 5)
+                        }
                 }
             }
-            .frame(height: 68)
+            .frame(height: 74)
             .overlay(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .stroke(on ? accent : Theme.hairline, lineWidth: on ? 2.5 : 1)
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .strokeBorder(on ? accent : Theme.hairline.opacity(0.6), lineWidth: on ? 2.5 : 1)
             )
+            .shadow(color: on ? accent.opacity(0.22) : .clear, radius: 8, y: 3)
             Text(theme.title)
                 .font(Theme.display(12, weight: on ? .semibold : .regular))
-                .foregroundStyle(on ? Theme.accent : Theme.inkSoft)
+                .foregroundStyle(on ? accent : Theme.inkSoft)
         }
+        .scaleEffect(on ? 1.03 : 1)
     }
 
     // MARK: الوضع
@@ -107,12 +133,12 @@ struct AppearanceView: View {
                                 .font(.system(size: 17))
                             Text(mode.title).font(Theme.display(12, weight: on ? .semibold : .regular))
                         }
-                        .foregroundStyle(on ? .white : Theme.inkSoft)
+                        .foregroundStyle(on ? Theme.onAccent : Theme.inkSoft)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 13)
                         .background(
                             RoundedRectangle(cornerRadius: 13, style: .continuous)
-                                .fill(on ? Theme.accent : Theme.surface)
+                                .fill(on ? AnyShapeStyle(Theme.accentGradient) : AnyShapeStyle(Theme.surface))
                         )
                         .overlay(
                             RoundedRectangle(cornerRadius: 13, style: .continuous)

@@ -22,17 +22,17 @@ struct HomeView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                AtharBackground()
+                AtharBackground(tint: dayTint, secondary: Theme.gold)
                 ScrollView {
                     VStack(alignment: .leading, spacing: 26) {
-                        header
-                        prayerStrip
-                        statsRow
-                        if let suggested { suggestionCard(suggested) }
-                        if let dailyDhikr { dailyCard(dailyDhikr) }
-                        quickGrid
-                        sadaqahCard
-                        footerNote
+                        header.appearStagger(0)
+                        prayerStrip.appearStagger(1)
+                        statsRow.appearStagger(2)
+                        if let suggested { suggestionCard(suggested).appearStagger(3) }
+                        if let dailyDhikr { dailyCard(dailyDhikr).appearStagger(4) }
+                        quickGrid.appearStagger(5)
+                        sadaqahCard.appearStagger(6)
+                        footerNote.appearStagger(7)
                     }
                     .padding(.horizontal, 18)
                     .padding(.bottom, 32)
@@ -57,17 +57,39 @@ struct HomeView: View {
 
     // MARK: Header
 
+    /// لون اليوم — يتبدّل مع الصلاة القادمة (فجر كهرماني ← عشاء نيليّ).
+    private var dayTint: Color {
+        Theme.accent(for: upcomingPrayer?.prayer.accentKey ?? "green")
+    }
+
+    private var timeSymbol: String {
+        switch Calendar.current.component(.hour, from: now) {
+        case 4..<12:  return "sun.max.fill"
+        case 12..<17: return "sun.min.fill"
+        case 17..<20: return "sunset.fill"
+        default:      return "moon.stars.fill"
+        }
+    }
+
     private var header: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 9) {
             Text(greeting)
                 .font(Theme.display(28, weight: .bold))
-                .foregroundStyle(Theme.ink)
-            Text(hijriDate)
-                .font(Theme.display(14, weight: .regular))
-                .foregroundStyle(Theme.inkSoft)
+                .foregroundStyle(LinearGradient(colors: [Theme.ink, Theme.inkSoft],
+                                                startPoint: .top, endPoint: .bottom))
+            HStack(spacing: 6) {
+                Image(systemName: timeSymbol)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(dayTint)
+                Text(hijriDate)
+                    .font(Theme.display(12.5, weight: .medium))
+                    .foregroundStyle(Theme.inkSoft)
+            }
+            .padding(.horizontal, 11).padding(.vertical, 6)
+            .background(Capsule().fill(Theme.surfaceAlt))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.top, 8)
+        .padding(.top, 10)
     }
 
     private var greeting: String {
@@ -100,17 +122,37 @@ struct HomeView: View {
         return (.fajr, fajr)
     }
 
+    /// نسبة انقضاء الوقت بين الصلاة السابقة والقادمة — تملأ حلقة حيّة.
+    private var prayerArc: Double {
+        guard let up = upcomingPrayer else { return 0 }
+        let next = up.date
+        let prev: Date
+        if let times = store.prayerTimes(for: now),
+           let earlier = Prayer.allCases.filter({ $0.isPrayer })
+               .compactMap({ times[$0] }).filter({ $0 <= now }).max() {
+            prev = earlier
+        } else {
+            prev = next.addingTimeInterval(-6 * 3600)
+        }
+        let total = next.timeIntervalSince(prev)
+        guard total > 0 else { return 0 }
+        return min(1, max(0, now.timeIntervalSince(prev) / total))
+    }
+
     @ViewBuilder
     private var prayerStrip: some View {
         if let upcoming = upcomingPrayer {
+            let pcolor = Theme.accent(for: upcoming.prayer.accentKey)
             Button { onOpenTab(.prayer) } label: {
-                AtharCard(padding: 14) {
+                AtharCard(padding: 14, elevation: .e2, tint: pcolor) {
                     HStack(spacing: 12) {
-                        Image(systemName: upcoming.prayer.icon)
-                            .font(.system(size: 20))
-                            .foregroundStyle(Theme.accent)
-                            .frame(width: 42, height: 42)
-                            .background(Circle().fill(Theme.accentSoft))
+                        ZStack {
+                            ProgressRing(progress: prayerArc, color: pcolor, lineWidth: 3, gradient: true)
+                                .frame(width: 46, height: 46)
+                            Image(systemName: upcoming.prayer.icon)
+                                .font(.system(size: 18))
+                                .foregroundStyle(pcolor)
+                        }
 
                         VStack(alignment: .leading, spacing: 2) {
                             Text(upcoming.prayer.title)
@@ -125,8 +167,9 @@ struct HomeView: View {
 
                         VStack(alignment: .trailing, spacing: 2) {
                             Text(PrayerView.time(upcoming.date, in: store.placeTimeZone))
-                                .font(.system(size: 17, weight: .semibold, design: .rounded))
-                                .foregroundStyle(Theme.accent)
+                                .font(.system(size: 18, weight: .bold, design: .rounded))
+                                .foregroundStyle(LinearGradient(colors: [pcolor, pcolor.opacity(0.7)],
+                                                                startPoint: .top, endPoint: .bottom))
                             Text(countdown(to: upcoming.date))
                                 .font(.system(size: 11, weight: .medium, design: .rounded))
                                 .foregroundStyle(Theme.inkFaint)
@@ -164,15 +207,20 @@ struct HomeView: View {
         AtharCard(padding: 14) {
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 6) {
-                    Image(systemName: icon).font(.system(size: 13, weight: .semibold))
+                    Image(systemName: icon)
+                        .font(.system(size: 13, weight: .semibold))
+                        .background(
+                            Circle().fill(color.opacity(0.2)).frame(width: 26, height: 26).blur(radius: 7)
+                        )
                     Text(label).font(Theme.display(12, weight: .medium))
                     Spacer()
                 }
                 .foregroundStyle(color)
 
                 Text(value)
-                    .font(Theme.display(28, weight: .bold))
-                    .foregroundStyle(Theme.ink)
+                    .font(Theme.display(30, weight: .bold))
+                    .foregroundStyle(LinearGradient(colors: [color, color.opacity(0.7)],
+                                                    startPoint: .top, endPoint: .bottom))
                     .contentTransition(.numericText())
             }
         }
@@ -186,14 +234,22 @@ struct HomeView: View {
         return NavigationLink {
             DhikrSessionView(category: category)
         } label: {
-            AtharCard(padding: 18) {
+            AtharCard(padding: 18, elevation: .e2, tint: color) {
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
-                        Text(done ? loc("أتممتها اليوم") : loc("وقتها الآن"))
-                            .font(Theme.display(12, weight: .bold))
-                            .foregroundStyle(color)
-                            .padding(.horizontal, 10).padding(.vertical, 5)
-                            .background(Capsule().fill(color.opacity(0.14)))
+                        if done {
+                            Label(loc("أتممتها اليوم"), systemImage: "checkmark.seal.fill")
+                                .font(Theme.display(12, weight: .bold))
+                                .foregroundStyle(Theme.onAccent)
+                                .padding(.horizontal, 11).padding(.vertical, 5)
+                                .background(Capsule().fill(Theme.gradient(for: "gold")))
+                        } else {
+                            Text(loc("وقتها الآن"))
+                                .font(Theme.display(12, weight: .bold))
+                                .foregroundStyle(color)
+                                .padding(.horizontal, 10).padding(.vertical, 5)
+                                .background(Capsule().fill(color.opacity(0.14)))
+                        }
                         Spacer()
                         Image(systemName: done ? "checkmark.seal.fill" : "arrow.forward")
                             .font(.system(size: 16, weight: .semibold))
@@ -216,7 +272,10 @@ struct HomeView: View {
                             .font(.system(size: 30))
                             .foregroundStyle(color)
                             .frame(width: 56, height: 56)
-                            .background(Circle().fill(color.opacity(0.13)))
+                            .background(
+                                Circle().fill(color.opacity(0.13))
+                                    .overlay(EightPointStar().fill(color.opacity(0.10)).padding(6))
+                            )
                     }
                 }
             }
@@ -228,9 +287,14 @@ struct HomeView: View {
 
     private func dailyCard(_ dhikr: Dhikr) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            SectionHeader(title: loc("dhikrOfDay"))
+            SectionHeader(title: loc("dhikrOfDay"), tint: Theme.gold)
             AtharCard {
                 VStack(alignment: .leading, spacing: 12) {
+                    // خيط ذهبي علوي — كحاشية المصحف المذهّبة
+                    Capsule().fill(Theme.goldGradient)
+                        .frame(width: 46, height: 3)
+                        .opacity(0.7)
+
                     Text(dhikr.text)
                         .font(Theme.dhikrFont(size: 20, scale: store.fontScale))
                         .foregroundStyle(Theme.ink)
@@ -247,9 +311,11 @@ struct HomeView: View {
                     ShareLink(item: dhikr.text + (dhikr.hasReference ? "\n\n\(dhikr.reference)" : "") + "\n\nمن تطبيق أثر") {
                         Label(loc("انشر الأجر"), systemImage: "square.and.arrow.up")
                             .font(Theme.display(13, weight: .semibold))
+                            .foregroundStyle(Theme.accent)
+                            .padding(.horizontal, 14).padding(.vertical, 9)
+                            .background(Capsule().fill(Theme.accent.opacity(0.13)))
                     }
                     .pressable()
-                    .foregroundStyle(Theme.accent)
                 }
             }
         }
@@ -321,16 +387,18 @@ struct CategoryTile: View {
 
     var body: some View {
         let color = Theme.accent(for: category.accent)
-        return AtharCard(padding: 14) {
+        return AtharCard(padding: 14, tint: color) {
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
                     Image(systemName: category.icon)
-                        .font(.system(size: 20))
+                        .font(.system(size: 18))
                         .foregroundStyle(color)
+                        .frame(width: 36, height: 36)
+                        .background(Circle().fill(color.opacity(0.14)))
                     Spacer()
                     if completed {
                         Image(systemName: "checkmark.circle.fill")
-                            .font(.system(size: 14))
+                            .font(.system(size: 15))
                             .foregroundStyle(color)
                     }
                 }

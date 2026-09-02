@@ -32,6 +32,19 @@ enum Prayer: String, CaseIterable, Identifiable {
 
     /// الشروق ليس صلاة — يُعرض للعلم فقط ولا يُذكَّر به كصلاة قادمة.
     var isPrayer: Bool { self != .sunrise }
+
+    /// مفتاح لون الوقت — تتبدّل هوية اللون مع تدرّج اليوم (فجر كهرماني ← عشاء نيليّ).
+    /// يشترك فيه التطبيق والويدجت ليتناغم لونهما عبر اليوم.
+    var accentKey: String {
+        switch self {
+        case .fajr:    return "dawn"
+        case .sunrise: return "dawn"
+        case .dhuhr:   return "noon"
+        case .asr:     return "asr"
+        case .maghrib: return "maghrib"
+        case .isha:    return "night"
+        }
+    }
 }
 
 // MARK: - Calculation method
