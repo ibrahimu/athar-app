@@ -53,16 +53,12 @@ struct PrayerView: View {
                         HStack(spacing: 5) {
                             Image(systemName: "location.fill")
                                 .font(.system(size: 11, weight: .semibold))
-                                .foregroundStyle(Theme.accent)
                             Text(store.placeName)
                                 .font(Theme.display(13, weight: .medium))
-                                .foregroundStyle(Theme.ink)
                         }
-                        .padding(.horizontal, 11)
-                        .padding(.vertical, 6)
-                        .background(Capsule().fill(Theme.accentSoft))
+                        .foregroundStyle(Theme.accent)
                     }
-                    .pressable()
+                    .tint(Theme.accent)
                 }
             }
             .sheet(isPresented: $showCityPicker) {
@@ -129,11 +125,10 @@ struct PrayerView: View {
         }
     }
 
-    /// حبّة العدّ التنازلي: كبسولة تمتلئ بتدرّج لون الوقت بنسبة ما انقضى
-    /// من الصلاة السابقة إلى القادمة، وتتحرّك مع نبضة الثانية.
+    /// حبّة العدّ التنازلي: كبسولة نظيفة بلون الوقت بحجم محتواها (بلا GeometryReader
+    /// حتى لا تتمدّد الخلفية وتصنع شكلًا منتفخًا خلفها).
     private func countdownPill(next: Date, tint: Color, key: String) -> some View {
-        let frac = elapsed(to: next)
-        return HStack(spacing: 6) {
+        HStack(spacing: 6) {
             Image(systemName: "hourglass")
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(tint)
@@ -144,30 +139,8 @@ struct PrayerView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
-        .background(
-            GeometryReader { geo in
-                ZStack(alignment: .leading) {
-                    Capsule().fill(tint.opacity(0.12))
-                    Capsule()
-                        .fill(Theme.gradient(for: key))
-                        .frame(width: geo.size.width * frac)
-                        .opacity(0.28)
-                }
-                .animation(Motion.smooth, value: frac)
-            }
-        )
+        .background(Capsule().fill(tint.opacity(0.12)))
         .overlay(Capsule().strokeBorder(tint.opacity(0.20), lineWidth: 0.5))
-        .clipShape(Capsule())
-    }
-
-    /// نسبة ما انقضى من الوقت السابق إلى الصلاة القادمة (٠…١).
-    private func elapsed(to next: Date) -> Double {
-        guard let times else { return 0 }
-        let prev = times.ordered.map(\.date).filter { $0 <= now }.max()
-            ?? next.addingTimeInterval(-6 * 3600)
-        let total = next.timeIntervalSince(prev)
-        guard total > 0 else { return 0 }
-        return min(1, max(0, now.timeIntervalSince(prev) / total))
     }
 
     private func remaining(to date: Date) -> String {
