@@ -272,10 +272,7 @@ struct HomeView: View {
                             .font(.system(size: 30))
                             .foregroundStyle(color)
                             .frame(width: 56, height: 56)
-                            .background(
-                                Circle().fill(color.opacity(0.13))
-                                    .overlay(EightPointStar().fill(color.opacity(0.10)).padding(6))
-                            )
+                            .background(Circle().fill(color.opacity(0.13)))
                     }
                 }
             }

@@ -187,16 +187,18 @@ struct PrayerView: View {
         if let times, let fajr = times[.fajr], let isha = times[.isha], isha > fajr {
             let span = isha.timeIntervalSince(fajr)
             let nowFrac = min(1, max(0, now.timeIntervalSince(fajr) / span))
+            // من اليسار (العشاء) إلى اليمين (الفجر): نيليّ ← ورديّ ← ذهبيّ ← كهرمانيّ
             let dayColors: [Color] = [
-                Theme.accent(for: "dusk"),
-                Theme.accent(for: "dawn"),
-                Theme.accent(for: "noon"),
+                Theme.accent(for: "night"),
                 Theme.accent(for: "maghrib"),
-                Theme.accent(for: "night")
+                Theme.accent(for: "noon"),
+                Theme.accent(for: "dawn")
             ]
             let dotColor = Theme.accent(for: (upcoming?.prayer ?? .isha).accentKey)
             AtharCard(padding: 16) {
                 VStack(spacing: 10) {
+                    // نثبّت اتجاه القوس إلى LTR حتى لا يزدوج قلب الإحداثيات مع RTL،
+                    // ونضع الفجر يمينًا والعشاء يسارًا يدويًا (x = w·(1−f)).
                     GeometryReader { geo in
                         let w = geo.size.width
                         let midY = geo.size.height / 2
@@ -205,14 +207,13 @@ struct PrayerView: View {
                             Capsule().fill(Theme.hairline.opacity(0.6))
                                 .frame(height: 6)
 
-                            // التدرّج المنساب، مكشوفٌ حتى اللحظة الحاضرة
+                            // التدرّج: العشاء (يسار) نيليّ … الفجر (يمين) كهرمانيّ
                             Capsule()
-                                .fill(LinearGradient(
-                                    colors: dayColors,
-                                    startPoint: UnitPoint(x: layoutDirection == .rightToLeft ? 1 : 0, y: 0.5),
-                                    endPoint: UnitPoint(x: layoutDirection == .rightToLeft ? 0 : 1, y: 0.5)))
+                                .fill(LinearGradient(colors: dayColors,
+                                                     startPoint: .leading, endPoint: .trailing))
                                 .frame(height: 6)
-                                .mask(alignment: .leading) {
+                                // يُكشف المنقضي من الفجر (يمين) نحو اليسار بمقدار nowFrac
+                                .mask(alignment: .trailing) {
                                     Capsule().frame(width: max(6, w * nowFrac))
                                 }
 
@@ -223,7 +224,7 @@ struct PrayerView: View {
                                     .fill(Theme.surface)
                                     .overlay(Circle().strokeBorder(Theme.hairline, lineWidth: 1))
                                     .frame(width: 5, height: 5)
-                                    .position(x: arcX(f, w), y: midY)
+                                    .position(x: w * (1 - f), y: midY)
                             }
 
                             // النقطة المتوهّجة عند الآن
@@ -235,29 +236,27 @@ struct PrayerView: View {
                                     .frame(width: 10, height: 10)
                                     .overlay(Circle().strokeBorder(Theme.surface, lineWidth: 1.5))
                             }
-                            .position(x: arcX(nowFrac, w), y: midY)
+                            .position(x: w * (1 - nowFrac), y: midY)
                         }
                         .animation(Motion.smooth, value: nowFrac)
+                        .environment(\.layoutDirection, .leftToRight)
                     }
                     .frame(height: 16)
 
+                    // العشاء يسارًا، الفجر يمينًا (نفس ترتيب القوس)
                     HStack {
-                        Text(Prayer.fajr.title)
-                            .font(Theme.display(10, weight: .medium))
-                            .foregroundStyle(Theme.inkFaint)
-                        Spacer()
                         Text(Prayer.isha.title)
                             .font(Theme.display(10, weight: .medium))
                             .foregroundStyle(Theme.inkFaint)
+                        Spacer()
+                        Text(Prayer.fajr.title)
+                            .font(Theme.display(10, weight: .medium))
+                            .foregroundStyle(Theme.inkFaint)
                     }
+                    .environment(\.layoutDirection, .leftToRight)
                 }
             }
         }
-    }
-
-    /// موضع الكسر على الخيط — يُعكس في الاتجاه العربي فيبدأ الفجر من اليمين.
-    private func arcX(_ f: Double, _ w: CGFloat) -> CGFloat {
-        layoutDirection == .rightToLeft ? w * (1 - f) : w * f
     }
 
     // MARK: List

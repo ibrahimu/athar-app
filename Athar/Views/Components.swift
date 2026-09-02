@@ -96,6 +96,44 @@ struct PaperMotif: View {
                     }
                 }
                 .blur(radius: 0.5)
+            case .dots:
+                Canvas { ctx, size in
+                    // نقاط ناعمة منتظمة
+                    let cell: CGFloat = 40, r: CGFloat = 2.4
+                    let color = tint.opacity(op * 1.15)
+                    var row = 0; var y: CGFloat = cell / 2
+                    while y < size.height + cell {
+                        let off: CGFloat = row.isMultiple(of: 2) ? 0 : cell / 2
+                        var x: CGFloat = cell / 2 + off
+                        while x < size.width + cell {
+                            ctx.fill(Path(ellipseIn: CGRect(x: x - r, y: y - r, width: r * 2, height: r * 2)),
+                                     with: .color(color))
+                            x += cell
+                        }
+                        y += cell; row += 1
+                    }
+                }
+                .blur(radius: 0.4)
+            case .scales:
+                Canvas { ctx, size in
+                    // حراشف — أقواس متراكبة صفًّا بعد صف (زخرفة إسلامية)
+                    let r: CGFloat = 30
+                    let color = tint.opacity(op * 0.9)
+                    var row = 0; var y: CGFloat = 0
+                    while y < size.height + r {
+                        let off: CGFloat = row.isMultiple(of: 2) ? 0 : r
+                        var x: CGFloat = -r + off
+                        while x < size.width + r {
+                            var arc = Path()
+                            arc.addArc(center: CGPoint(x: x, y: y), radius: r,
+                                       startAngle: .degrees(0), endAngle: .degrees(180), clockwise: false)
+                            ctx.stroke(arc, with: .color(color), lineWidth: 0.9)
+                            x += r * 2
+                        }
+                        y += r; row += 1
+                    }
+                }
+                .blur(radius: 0.5)
             }
         }
     }

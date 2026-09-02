@@ -140,6 +140,8 @@ enum BackgroundPattern: String, CaseIterable, Identifiable, Codable {
     case plain      // سادة — بلا نقش، غسالات لونية فقط
     case waves      // أثر القطرة — حلقات متمددة، هوية «أثر»
     case lattice    // تعريشة هندسية متشابكة
+    case dots       // نقاط ناعمة
+    case scales     // حراشف — أقواس متراكبة (زخرفة إسلامية)
 
     var id: String { rawValue }
 
@@ -149,6 +151,8 @@ enum BackgroundPattern: String, CaseIterable, Identifiable, Codable {
         case .plain:   return "سادة"
         case .waves:   return "موج"
         case .lattice: return "تعريشة"
+        case .dots:    return "نقاط"
+        case .scales:  return "حراشف"
         }
     }
     var shortTitle: String { title }
@@ -158,6 +162,8 @@ enum BackgroundPattern: String, CaseIterable, Identifiable, Codable {
         case .plain:   return "ورق صافٍ بلا نقش"
         case .waves:   return "حلقات أثر القطرة الهادئة"
         case .lattice: return "تعريشة هندسية متشابكة"
+        case .dots:    return "نقاط ناعمة منتظمة"
+        case .scales:  return "حراشف مقوّسة — زخرفة إسلامية"
         }
     }
 
