@@ -95,6 +95,19 @@ enum Quran {
         return AyahRef(surah: starts[i][0], ayah: starts[i][1])
     }
 
+    /// كل آيات صفحة معيّنة من مصحف المدينة.
+    static func ayahs(inPage page: Int) -> [AyahRef] {
+        let from = firstAyah(ofPage: page)
+        let to: AyahRef
+        if page < pageCount {
+            guard let prev = previous(before: firstAyah(ofPage: page + 1)) else { return [from] }
+            to = prev
+        } else {
+            to = AyahRef(surah: 114, ayah: 6)
+        }
+        return range(from: from, to: to)
+    }
+
     private static func position(of ref: AyahRef, in starts: [[Int]]) -> Int {
         var result = 1
         for (i, st) in starts.enumerated() {

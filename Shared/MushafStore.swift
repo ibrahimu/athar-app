@@ -82,6 +82,7 @@ extension AtharStore {
         static let khatmahStart  = "athar.khatmah.startDay"
         static let khatmahDone   = "athar.khatmah.pagesDone"
         static let khatmahMode   = "athar.khatmah.mode"
+        static let stopMark      = "athar.mushaf.stopMark"
     }
 
     /// عدد الأيام منذ مرجع ثابت — أساس جدولة المراجعة.
@@ -147,6 +148,23 @@ extension AtharStore {
     var readingMode: ReadingMode {
         get { ReadingMode(rawValue: defaults.string(forKey: MKey.readingMode) ?? "") ?? .page }
         set { defaults.set(newValue.rawValue, forKey: MKey.readingMode); objectWillChange.send() }
+    }
+
+    /// «وقفتُ هنا» — علامة يضعها القارئ بيده ليعود إليها، مستقلة عن
+    /// آخر موضع تلقائي؛ فالتصفح لا يضيّع موضع القراءة الحقيقي.
+    var stopMark: AyahRef? {
+        get {
+            guard let d = defaults.data(forKey: MKey.stopMark) else { return nil }
+            return try? JSONDecoder().decode(AyahRef.self, from: d)
+        }
+        set {
+            if let v = newValue, let d = try? JSONEncoder().encode(v) {
+                defaults.set(d, forKey: MKey.stopMark)
+            } else {
+                defaults.removeObject(forKey: MKey.stopMark)
+            }
+            objectWillChange.send()
+        }
     }
 
     // MARK: التظليل

@@ -28,6 +28,7 @@ struct MushafView: View {
                 ScrollView {
                     LazyVStack(spacing: 16) {
                         if query.isEmpty {
+                            stopMarkCard
                             continueCard
                             toolsRow
                             if !store.bookmarks.isEmpty { bookmarksCard }
@@ -95,6 +96,37 @@ struct MushafView: View {
         .frame(maxWidth: .infinity)
         .padding(.top, 6)
         .padding(.bottom, 4)
+    }
+
+    /// علامة «وقفتُ هنا» التي وضعها القارئ بيده.
+    @ViewBuilder
+    private var stopMarkCard: some View {
+        if let mark = store.stopMark, let su = Quran.surah(mark.surah) {
+            NavigationLink { SurahReaderView(surahId: mark.surah, scrollTo: mark) } label: {
+                AtharCard(padding: 16) {
+                    HStack(spacing: 14) {
+                        Image(systemName: "pin.fill")
+                            .font(.system(size: 18))
+                            .foregroundStyle(Theme.gold)
+                            .frame(width: 46, height: 46)
+                            .background(Circle().fill(Theme.gold.opacity(0.13)))
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text("وقوفي")
+                                .font(Theme.display(12, weight: .semibold))
+                                .foregroundStyle(Theme.gold)
+                            Text("سورة \(su.name) · آية \(mark.ayah.counterText) · ص \(Quran.page(of: mark).counterText)")
+                                .font(Theme.display(16, weight: .semibold))
+                                .foregroundStyle(Theme.ink)
+                        }
+                        Spacer()
+                        Image(systemName: "chevron.left")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(Theme.inkFaint)
+                    }
+                }
+            }
+            .pressable()
+        }
     }
 
     // MARK: متابعة القراءة
