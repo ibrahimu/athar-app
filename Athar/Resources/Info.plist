@@ -49,6 +49,12 @@
 	</array>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>لحساب أوقات الصلاة في مكانك بدقة. يُستخدم الموقع على جهازك فقط ولا يُرسل إلى أي جهة.</string>
+	<key>UIAppFonts</key>
+	<array>
+		<string>NotoNaskhArabic-Regular.ttf</string>
+		<string>NotoNaskhArabic-Medium.ttf</string>
+		<string>NotoNaskhArabic-Bold.ttf</string>
+	</array>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 </dict>

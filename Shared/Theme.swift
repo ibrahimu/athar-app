@@ -54,9 +54,17 @@ enum Theme {
 
     // MARK: Typography
 
-    /// Arabic body text — SF Arabic renders tashkeel cleanly at these sizes.
+    /// خط النص الشرعي: نسخ تقليدي (Noto Naskh Arabic, OFL) — أليق بالقرآن
+    /// والأذكار من خط الواجهة، ويغطي كل محارف الرسم العثماني.
+    /// يسقط إلى خط النظام إن تعذّر تحميله.
     static func dhikrFont(size: CGFloat, scale: Double = 1) -> Font {
-        .system(size: size * scale, weight: .regular)
+        .custom("NotoNaskhArabic-Regular", size: size * scale, relativeTo: .body)
+    }
+
+    /// نسخ بوزن أثقل — لعناوين السور وما يحتاج تمييزًا.
+    static func naskhFont(size: CGFloat, scale: Double = 1, bold: Bool = false) -> Font {
+        .custom(bold ? "NotoNaskhArabic-Bold" : "NotoNaskhArabic-Medium",
+                size: size * scale, relativeTo: .body)
     }
 
     static func display(_ size: CGFloat, weight: Font.Weight = .semibold) -> Font {

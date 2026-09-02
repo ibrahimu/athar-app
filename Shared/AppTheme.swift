@@ -38,7 +38,7 @@ enum AppTheme: String, CaseIterable, Identifiable, Codable {
     var accent: (light: UInt32, dark: UInt32) {
         switch self {
         case .green:    return (0x1F6B4F, 0x4FBF8F)
-        case .sand:     return (0x9A6B33, 0xD3A263)
+        case .sand:     return (0x8A5D28, 0xD3A263)
         case .sea:      return (0x1F6473, 0x5FB7CB)
         case .rose:     return (0xA0466A, 0xDD8CAA)
         case .violet:   return (0x5B5390, 0x9A91D6)
