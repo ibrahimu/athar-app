@@ -44,12 +44,16 @@ enum Theme {
     /// يُستعمل فقط بشفافية ٠٫٠٨–٠٫١٦.
     static var success: Color { .adaptive(light: Color(hex: 0x3FA37A), dark: Color(hex: 0x5FBF97)) }
 
-    static var gold: Color { .adaptive(light: Color(hex: current.ornament.light), dark: Color(hex: current.ornament.dark)) }
+    /// الذهبي الزخرفي — يصبح لون الطابع في وضع الأيقونات الموحّد (كله لون واحد).
+    static var gold: Color {
+        unifyIcons ? accent : .adaptive(light: Color(hex: current.ornament.light), dark: Color(hex: current.ornament.dark))
+    }
 
-    /// تدرّج ذهبي للزخارف والميداليات.
+    /// تدرّج ذهبي للزخارف والميداليات (يتبع التوحيد كذلك).
     static var goldGradient: LinearGradient {
-        LinearGradient(colors: [gold.opacity(0.95), gold.opacity(0.55), gold.opacity(0.9)],
-                       startPoint: .topTrailing, endPoint: .bottomLeading)
+        if unifyIcons { return accentGradient }
+        return LinearGradient(colors: [gold.opacity(0.95), gold.opacity(0.55), gold.opacity(0.9)],
+                              startPoint: .topTrailing, endPoint: .bottomLeading)
     }
 
     static var hairline: Color { .adaptive(light: Color(hex: current.hairline.light), dark: Color(hex: current.hairline.dark)) }
