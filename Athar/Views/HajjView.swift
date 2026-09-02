@@ -90,7 +90,7 @@ struct HajjView: View {
                         Spacer()
                         Text(loc("ابدأ الدليل"))
                             .font(Theme.display(13, weight: .semibold))
-                        Image(systemName: "chevron.backward")
+                        Image(systemName: "chevron.forward")
                             .font(.system(size: 12, weight: .semibold))
                     }
                     .foregroundStyle(tint)

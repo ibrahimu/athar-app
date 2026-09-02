@@ -92,6 +92,7 @@ enum Quran {
     static func firstAyah(ofPage page: Int) -> AyahRef {
         let starts = metaFile?.pageStarts ?? [[1, 1]]
         let i = min(max(page, 1), starts.count) - 1
+        guard starts.indices.contains(i), starts[i].count >= 2 else { return AyahRef(surah: 1, ayah: 1) }
         return AyahRef(surah: starts[i][0], ayah: starts[i][1])
     }
 
@@ -111,6 +112,7 @@ enum Quran {
     private static func position(of ref: AyahRef, in starts: [[Int]]) -> Int {
         var result = 1
         for (i, st) in starts.enumerated() {
+            guard st.count >= 2 else { continue }   // حراسة: مدخلة سليمة [سورة، آية]
             let s = AyahRef(surah: st[0], ayah: st[1])
             if s <= ref { result = i + 1 } else { break }
         }

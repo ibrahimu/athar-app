@@ -64,16 +64,7 @@ final class AtharStore: ObservableObject {
         Theme.current = AppTheme(rawValue: self.defaults.string(forKey: "athar.theme") ?? "") ?? .green
         BackgroundPattern.current = BackgroundPattern(rawValue: self.defaults.string(forKey: "athar.bgPattern") ?? "") ?? .stars
         Theme.unifyIcons = self.defaults.bool(forKey: "athar.unifyIcons")
-
-        // مزامنة iCloud: اسحب حالة الأجهزة الأخرى، وأعِد بناء الواجهة عند وصول تغيير.
-        CloudSync.shared.onExternalChange = { [weak self] in
-            guard let self else { return }
-            Theme.current = AppTheme(rawValue: self.defaults.string(forKey: "athar.theme") ?? "") ?? .green
-            BackgroundPattern.current = BackgroundPattern(rawValue: self.defaults.string(forKey: "athar.bgPattern") ?? "") ?? .stars
-            Theme.unifyIcons = self.defaults.bool(forKey: "athar.unifyIcons")
-            self.objectWillChange.send()
-        }
-        CloudSync.shared.start()
+        // مزامنة iCloud مؤجّلة لإصدار لاحق (تحتاج دمجًا آمنًا واختبارًا على أجهزة) — CloudSync.swift جاهز.
     }
 
     private func registerDefaults() {

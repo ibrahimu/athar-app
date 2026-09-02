@@ -282,7 +282,7 @@ struct AppearanceView: View {
                 } label: {
                     Text(editing ? loc("done") : loc("reorderBtn"))
                         .font(Theme.display(12, weight: .semibold))
-                        .foregroundStyle(editing ? .white : Theme.accent)
+                        .foregroundStyle(editing ? Theme.onAccent : Theme.accent)
                         .padding(.horizontal, 13).padding(.vertical, 6)
                         .background(Capsule().fill(editing ? Theme.accent : Theme.accentSoft))
                 }

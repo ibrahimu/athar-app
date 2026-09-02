@@ -12,7 +12,8 @@ struct DhikrSessionView: View {
     @State private var showCompletion = false
 
     private var color: Color { Theme.accent(for: category.accent) }
-    private var current: Dhikr { category.items[min(index, category.items.count - 1)] }
+    // حارس ضدّ فهرس سالب لو كانت الفئة فارغة (غير ممكن ببيانات مُدرجة، لكن احتياطًا).
+    private var current: Dhikr { category.items[max(0, min(index, category.items.count - 1))] }
     private var left: Int { remaining[current.id] ?? current.count }
 
     private var overallProgress: Double {
@@ -271,7 +272,7 @@ struct DhikrSessionView: View {
 
     private func resetCounts() {
         withAnimation {
-            remaining = Dictionary(uniqueKeysWithValues: category.items.map { ($0.id, $0.count) })
+            remaining = Dictionary(category.items.map { ($0.id, $0.count) }, uniquingKeysWith: { first, _ in first })
             index = 0
         }
     }

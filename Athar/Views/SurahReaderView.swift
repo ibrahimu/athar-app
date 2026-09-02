@@ -489,7 +489,7 @@ struct ReaderControls: View {
                                     Image(systemName: mode.icon).font(.system(size: 14))
                                     Text(mode.title).font(Theme.display(14, weight: on ? .semibold : .regular))
                                 }
-                                .foregroundStyle(on ? .white : Theme.inkSoft)
+                                .foregroundStyle(on ? Theme.onAccent : Theme.inkSoft)
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 12)
                                 .background(RoundedRectangle(cornerRadius: 12, style: .continuous)
