@@ -269,7 +269,7 @@ struct PrayerView: View {
                     .font(.system(size: 13))
                     .foregroundStyle(Theme.gold)
                     .padding(.top, 2)
-                Text(loc("في هذا الوقت من السنة لا تنزل الشمس إلى الزاوية المطلوبة في \(store.placeName)، فقُدِّر الفجر والعشاء بقاعدة سُبع الليل."))
+                Text(loc("في هذا الوقت من السنة لا تنزل الشمس إلى الزاوية المطلوبة في %1$@، فقُدِّر الفجر والعشاء بقاعدة سُبع الليل.", store.placeName))
                     .font(Theme.display(12))
                     .foregroundStyle(Theme.inkSoft)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -281,7 +281,7 @@ struct PrayerView: View {
 
     private var methodNote: some View {
         VStack(spacing: 4) {
-            Text(loc("طريقة الحساب: \(store.calculationMethod.title)"))
+            Text(loc("طريقة الحساب: %1$@", store.calculationMethod.title))
             Text(loc("الأوقات محسوبة على جهازك فلكيًا — قد تختلف دقائق عن مسجد حيّك."))
         }
         .font(Theme.display(11))

@@ -27,6 +27,12 @@ enum Theme {
                   dark:  Color(hex: current.accent.dark).opacity(0.18))
     }
     /// اللون الزخرفي — يتبع الطابع المختار.
+    /// لون النص فوق الأزرار الملوّنة — أبيض في الفاتح، خلفية داكنة في الداكن،
+    /// لتجاوز فشل التباين (أبيض على لون فاتح ~٢:١).
+    static var onAccent: Color {
+        .adaptive(light: .white, dark: Color(hex: current.canvas.dark))
+    }
+
     static var gold: Color { .adaptive(light: Color(hex: current.ornament.light), dark: Color(hex: current.ornament.dark)) }
 
     /// تدرّج ذهبي للزخارف والميداليات.

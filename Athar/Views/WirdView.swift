@@ -53,7 +53,7 @@ struct WirdView: View {
                     .font(.system(size: 46, weight: .bold, design: .rounded))
                     .foregroundStyle(Theme.ink)
                     .contentTransition(.numericText())
-                Text(loc("من \(store.wirdTarget.counterText) آية"))
+                Text(loc("من %1$@ آية", store.wirdTarget.counterText))
                     .font(Theme.display(13)).foregroundStyle(Theme.inkFaint)
                 if done {
                     Text(loc("تمّ وردك اليوم"))
@@ -75,7 +75,7 @@ struct WirdView: View {
             } label: {
                 Label(loc("قرأت آية"), systemImage: "plus")
                     .font(Theme.display(15, weight: .semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Theme.onAccent)
                     .frame(maxWidth: .infinity).padding(.vertical, 14)
                     .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Theme.accent))
             }

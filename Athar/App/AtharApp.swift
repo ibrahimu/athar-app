@@ -16,8 +16,8 @@ struct AtharApp: App {
                     OnboardingView().environmentObject(store)
                 }
                 .environmentObject(store)
-                .environment(\.layoutDirection, store.appLanguage.layoutDirection)
-                .id(store.appLanguage)
+                .environment(\.layoutDirection, AppConfig.arabicOnly ? .rightToLeft : store.appLanguage.layoutDirection)
+                .id(AppConfig.arabicOnly ? AppLanguage.ar : store.appLanguage)
                 .tint(Theme.accent)
                 .preferredColorScheme(store.appearance.colorScheme)
 

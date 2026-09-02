@@ -35,7 +35,7 @@ struct SettingsView: View {
                 AtharBackground()
                 ScrollView {
                     VStack(spacing: 30) {
-                        languageRow
+                        if !AppConfig.arabicOnly { languageRow }
                         reminders
                         sunanReminders
                         prayer

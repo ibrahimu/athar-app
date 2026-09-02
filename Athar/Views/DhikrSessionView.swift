@@ -155,7 +155,7 @@ struct DhikrSessionView: View {
                             .foregroundStyle(left == 0 ? color : Theme.ink)
                             .contentTransition(.numericText(countsDown: true))
                         if current.count > 1 {
-                            Text(loc("من \(current.count.counterText)"))
+                            Text(loc("من %1$@", current.count.counterText))
                                 .font(Theme.display(11))
                                 .foregroundStyle(Theme.inkFaint)
                         }
@@ -186,7 +186,7 @@ struct DhikrSessionView: View {
                 Text(loc("تقبّل الله منك"))
                     .font(Theme.display(26, weight: .bold))
                     .foregroundStyle(Theme.ink)
-                Text(loc("أتممت \(category.title)"))
+                Text(loc("أتممت %1$@", category.title))
                     .font(Theme.display(15))
                     .foregroundStyle(Theme.inkSoft)
 

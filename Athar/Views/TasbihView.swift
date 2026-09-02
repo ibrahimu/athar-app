@@ -94,7 +94,7 @@ struct TasbihView: View {
                         .foregroundStyle(Theme.ink)
                         .contentTransition(.numericText())
 
-                    Text(loc("الهدف \(store.tasbihTarget.counterText)"))
+                    Text(loc("الهدف %1$@", store.tasbihTarget.counterText))
                         .font(Theme.display(13))
                         .foregroundStyle(Theme.inkFaint)
                 }

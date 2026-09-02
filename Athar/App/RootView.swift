@@ -12,6 +12,10 @@ struct RootView: View {
                     .tag(tab)
             }
         }
+        .onChange(of: store.visibleTabs) { _, tabs in
+            // لو حُذف التبويب المختار، ارجع لليوم (موجود دائمًا) بدل شاشة فارغة.
+            if !tabs.contains(selection) { selection = .home }
+        }
     }
 
     @ViewBuilder

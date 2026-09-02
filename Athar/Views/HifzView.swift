@@ -88,7 +88,7 @@ struct HifzView: View {
                     stageHint
 
                     if let card = store.card(for: ref), card.lapses > 0 {
-                        Label(loc("تعثّرت فيها \(card.lapses.counterText) مرة — كرّرها"),
+                        Label(loc("تعثّرت فيها %1$@ مرة — كرّرها", card.lapses.counterText),
                               systemImage: "arrow.trianglehead.counterclockwise")
                             .font(Theme.display(12))
                             .foregroundStyle(Theme.gold)
@@ -119,7 +119,7 @@ struct HifzView: View {
                 Text("\((index + 1).counterText) من \(queue.count.counterText)")
                 Spacer()
                 if sessionStumbled > 0 {
-                    Text(loc("تعثّر \(sessionStumbled.counterText)"))
+                    Text(loc("تعثّر %1$@", sessionStumbled.counterText))
                         .foregroundStyle(Theme.gold)
                 }
             }
@@ -135,7 +135,7 @@ struct HifzView: View {
         switch stage {
         case .reading:
             Text(repeatsLeft > 0
-                 ? loc("اقرأها بصوتك — بقي \(repeatsLeft.counterText) من \(store.hifzRepeatCount.counterText)")
+                 ? loc("اقرأها بصوتك — بقي %1$@ من %2$@", repeatsLeft.counterText, store.hifzRepeatCount.counterText)
                  : loc("أحسنت — انتقل للتلميح"))
                 .font(Theme.display(13)).foregroundStyle(Theme.inkSoft)
         case .hinted:
@@ -195,7 +195,7 @@ struct HifzView: View {
         Button(action: action) {
             Text(title)
                 .font(Theme.display(16, weight: .semibold))
-                .foregroundStyle(.white)
+                .foregroundStyle(Theme.onAccent)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 15)
                 .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(tint))
@@ -236,7 +236,7 @@ struct HifzView: View {
             Button { showPicker = true } label: {
                 Label(loc("اختر ما تحفظ"), systemImage: "plus")
                     .font(Theme.display(16, weight: .semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Theme.onAccent)
                     .padding(.horizontal, 26).padding(.vertical, 14)
                     .background(Capsule().fill(Theme.accent))
             }
@@ -257,7 +257,7 @@ struct HifzView: View {
                 .font(.system(size: 56)).foregroundStyle(Theme.accent)
             Text(loc("أتممت مراجعة اليوم"))
                 .font(Theme.display(22, weight: .bold)).foregroundStyle(Theme.ink)
-            Text(loc("ثبت \(sessionPassed.counterText) · تعثّر \(sessionStumbled.counterText)"))
+            Text(loc("ثبت %1$@ · تعثّر %2$@", sessionPassed.counterText, sessionStumbled.counterText))
                 .font(Theme.display(14)).foregroundStyle(Theme.inkSoft)
             Text(loc("المتعثّر يعود عليك اليوم، وما ثبت يعود بعد أيام."))
                 .font(Theme.display(12)).foregroundStyle(Theme.inkFaint)

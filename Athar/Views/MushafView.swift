@@ -114,7 +114,7 @@ struct MushafView: View {
                             Text(loc("myStop"))
                                 .font(Theme.display(12, weight: .semibold))
                                 .foregroundStyle(Theme.gold)
-                            Text(loc("سورة \(su.name) · آية \(mark.ayah.counterText) · ص \(Quran.page(of: mark).counterText)"))
+                            Text(loc("سورة %1$@ · آية %2$@ · ص %3$@", su.name, mark.ayah.counterText, Quran.page(of: mark).counterText))
                                 .font(Theme.display(16, weight: .semibold))
                                 .foregroundStyle(Theme.ink)
                         }
@@ -146,7 +146,7 @@ struct MushafView: View {
                             Text(loc("continueReading"))
                                 .font(Theme.display(12, weight: .semibold))
                                 .foregroundStyle(Theme.accent)
-                            Text(loc("سورة \(s.name) · ص \(Quran.page(of: last).counterText) · الجزء \(Quran.juz(of: last).counterText)"))
+                            Text(loc("سورة %1$@ · ص %2$@ · الجزء %3$@", s.name, Quran.page(of: last).counterText, Quran.juz(of: last).counterText))
                                 .font(Theme.display(16, weight: .semibold))
                                 .foregroundStyle(Theme.ink)
                         }
@@ -260,7 +260,7 @@ struct SurahRow: View {
                 SurahMedallion(number: surah.id, size: 46)
 
                 VStack(alignment: .leading, spacing: 3) {
-                    Text(loc("سورة \(surah.name)"))
+                    Text(loc("سورة %1$@", surah.name))
                         .font(Theme.display(17, weight: .semibold))
                         .foregroundStyle(Theme.ink)
                     Text("\(surah.revelation) · \(surah.ayahCount.counterText) آية")

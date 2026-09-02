@@ -124,7 +124,7 @@ struct OnboardingView: View {
                     Text(anySelected ? loc("فعّل التذكيرات") : loc("ابدأ"))
                         .font(Theme.display(17, weight: .semibold))
                 }
-                .foregroundStyle(.white)
+                .foregroundStyle(Theme.onAccent)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
                 .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Theme.accent))

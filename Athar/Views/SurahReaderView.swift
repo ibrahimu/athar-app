@@ -51,7 +51,7 @@ struct SurahReaderView: View {
 
             if store.readingMode == .page {
                 MushafPager(
-                    startPage: Quran.page(of: scrollTo ?? AyahRef(surah: surahId, ayah: 1)),
+                    startPage: Quran.page(of: currentRef ?? scrollTo ?? AyahRef(surah: surahId, ayah: 1)),
                     palette: palette,
                     scale: store.mushafFontScale,
                     bookmarks: Set(store.bookmarks),
@@ -68,7 +68,7 @@ struct SurahReaderView: View {
             }
         }
         .overlay(alignment: .bottom) { positionBar }
-        .navigationTitle(loc("سورة \(visibleSurahName)"))
+        .navigationTitle(loc("سورة %1$@", visibleSurahName))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.hidden, for: .tabBar)
         .toolbar {
@@ -82,7 +82,7 @@ struct SurahReaderView: View {
             ReaderControls().presentationDetents([.height(430)])
         }
         .sheet(item: $selected) { ref in
-            AyahActions(ref: ref).presentationDetents([.height(420)])
+            AyahActions(ref: ref).presentationDetents([.medium, .large])
         }
         .toolbarColorScheme(store.readingTheme == .night ? .dark : .light, for: .navigationBar)
         // القارئ يُمسك المصحف دقائق دون لمس — لا تنطفئ الشاشة عليه.
@@ -137,9 +137,9 @@ struct SurahReaderView: View {
         let juz = Quran.juz(of: ref)
         let pct = Int((Double(page) / Double(Quran.pageCount) * 100).rounded())
         return HStack(spacing: 10) {
-            Text(loc("الجزء \(juz.counterText)"))
+            Text(loc("الجزء %1$@", juz.counterText))
             Rectangle().fill(palette.faint.opacity(0.4)).frame(width: 1, height: 12)
-            Text(loc("صفحة \(page.counterText) من \(Quran.pageCount.counterText)"))
+            Text(loc("صفحة %1$@ من %2$@", page.counterText, Quran.pageCount.counterText))
             Rectangle().fill(palette.faint.opacity(0.4)).frame(width: 1, height: 12)
             Text("\(pct.counterText)٪")
         }
@@ -175,7 +175,7 @@ struct SurahReaderView: View {
             if surahId < 114, let next = Quran.surah(surahId + 1) {
                 NavigationLink { SurahReaderView(surahId: next.id) } label: {
                     HStack(spacing: 8) {
-                        Text(loc("سورة \(next.name)"))
+                        Text(loc("سورة %1$@", next.name))
                             .font(Theme.display(15, weight: .semibold))
                         Image(systemName: "chevron.forward").font(.system(size: 12, weight: .semibold))
                     }
@@ -298,7 +298,7 @@ private struct MushafPageContent: View {
             VStack(spacing: 10) {
                 HStack(spacing: 10) {
                     ornamentLine
-                    Text(loc("سُورَةُ \(su.name)"))
+                    Text(loc("سُورَةُ %1$@", su.name))
                         .font(Theme.naskhFont(size: 18, bold: true))
                         .foregroundStyle(palette.accent)
                         .lineLimit(1)
@@ -499,6 +499,8 @@ struct ReaderControls: View {
 // MARK: - إجراءات الآية
 
 struct AyahActions: View {
+    @Environment(\.colorScheme) private var actionScheme
+
     @ViewBuilder
     fileprivate func infoChip(_ text: String, icon: String) -> some View {
         HStack(spacing: 5) {
@@ -550,7 +552,7 @@ struct AyahActions: View {
                                 Haptics.tap(enabled: store.hapticsEnabled)
                             } label: {
                                 Circle()
-                                    .fill(c.color(dark: false).opacity(1))
+                                    .fill(c.color(dark: actionScheme == .dark))
                                     .frame(width: 34, height: 34)
                                     .overlay(
                                         Circle().stroke(on ? Theme.ink : Theme.hairline,
@@ -590,8 +592,8 @@ struct AyahActions: View {
                 if let su = Quran.surah(ref.surah) {
                     HStack(spacing: 14) {
                         infoChip(su.revelation, icon: su.isMakki ? "cube.fill" : "building.2.fill")
-                        infoChip(loc("الجزء \(Quran.juz(of: ref).counterText)"), icon: "book.closed.fill")
-                        infoChip(loc("صفحة \(Quran.page(of: ref).counterText)"), icon: "doc.plaintext.fill")
+                        infoChip(loc("الجزء %1$@", Quran.juz(of: ref).counterText), icon: "book.closed.fill")
+                        infoChip(loc("صفحة %1$@", Quran.page(of: ref).counterText), icon: "doc.plaintext.fill")
                     }
                 }
 

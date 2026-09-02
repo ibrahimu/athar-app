@@ -23,6 +23,14 @@
 	<key>CFBundleLocalizations</key>
 	<array>
 		<string>ar</string>
+		<string>en</string>
+		<string>ur</string>
+		<string>fa</string>
+		<string>tr</string>
+		<string>id</string>
+		<string>ms</string>
+		<string>fr</string>
+		<string>bn</string>
 	</array>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>

@@ -384,7 +384,7 @@ struct AyahMedallion: View {
                 .frame(width: size * 0.64)
         }
         .frame(width: size, height: size)
-        .accessibilityLabel(loc("الآية \(number)"))
+        .accessibilityLabel(loc("الآية %1$@", number.counterText))
     }
 }
 

@@ -303,9 +303,15 @@ extension AtharStore {
         return from...max(from, target)
     }
 
-    /// موجب = متقدّم على الخطة، سالب = متأخّر عنها.
+    /// موجب = متقدّم على الخطة، سالب = متأخّر، صفر = ضمن نطاق اليوم.
+    /// النطاق: متأخّر إن قرأ أقل من ورد الأمس، متقدّم إن تجاوز ورد اليوم.
     var khatmahDelta: Int {
-        khatmahPagesDone - min(Quran.pageCount, khatmahDayIndex * khatmahPagesPerDay)
+        let per = khatmahPagesPerDay
+        let floor = min(Quran.pageCount, (khatmahDayIndex - 1) * per)  // ورد نهاية الأمس
+        let ceil = min(Quran.pageCount, khatmahDayIndex * per)          // ورد نهاية اليوم
+        if khatmahPagesDone < floor { return khatmahPagesDone - floor }  // متأخّر
+        if khatmahPagesDone > ceil { return khatmahPagesDone - ceil }    // متقدّم
+        return 0                                                          // على الخطة
     }
 
     // MARK: الورد اليومي

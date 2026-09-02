@@ -109,7 +109,7 @@ struct KhatmahView: View {
             } label: {
                 Text(loc("ابدأ التحدي"))
                     .font(Theme.display(17, weight: .semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Theme.onAccent)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 15)
                     .background(RoundedRectangle(cornerRadius: 15, style: .continuous).fill(Theme.accent))
@@ -150,7 +150,7 @@ struct KhatmahView: View {
                     .contentTransition(.numericText())
                 Text("\(store.khatmahPagesDone.counterText) من \(Quran.pageCount.counterText) صفحة")
                     .font(Theme.display(12)).foregroundStyle(Theme.inkFaint)
-                Text(loc("اليوم \(store.khatmahDayIndex.counterText) من \(store.khatmahTotalDays.counterText)"))
+                Text(loc("اليوم %1$@ من %2$@", store.khatmahDayIndex.counterText, store.khatmahTotalDays.counterText))
                     .font(Theme.display(11)).foregroundStyle(Theme.inkFaint)
             }
         }
@@ -162,12 +162,12 @@ struct KhatmahView: View {
     private var statusLine: some View {
         let d = store.khatmahDelta
         if d >= 0 {
-            Label(d == 0 ? loc("على الخطة تمامًا") : loc("متقدّم بـ\(d.counterText) صفحة — ما شاء الله"),
+            Label(d == 0 ? loc("على الخطة تمامًا") : loc("متقدّم بـ%1$@ صفحة — ما شاء الله", d.counterText),
                   systemImage: "checkmark.seal.fill")
                 .font(Theme.display(13, weight: .semibold))
                 .foregroundStyle(Theme.accent)
         } else {
-            Label(loc("متأخّر بـ\((-d).counterText) صفحة — عوّضها على مهل"),
+            Label(loc("متأخّر بـ%1$@ صفحة — عوّضها على مهل", (-d).counterText),
                   systemImage: "arrow.counterclockwise")
                 .font(Theme.display(13, weight: .semibold))
                 .foregroundStyle(Theme.gold)
@@ -183,7 +183,7 @@ struct KhatmahView: View {
                     .font(Theme.display(12, weight: .semibold))
                     .foregroundStyle(Theme.accent)
 
-                Text(loc("من صفحة \(range.lowerBound.counterText) إلى \(range.upperBound.counterText)"))
+                Text(loc("من صفحة %1$@ إلى %2$@", range.lowerBound.counterText, range.upperBound.counterText))
                     .font(Theme.display(18, weight: .bold))
                     .foregroundStyle(Theme.ink)
 
@@ -196,7 +196,7 @@ struct KhatmahView: View {
                 } label: {
                     Label(loc("ابدأ القراءة من موضعك"), systemImage: "book.pages.fill")
                         .font(Theme.display(14, weight: .semibold))
-                        .foregroundStyle(.white)
+                        .foregroundStyle(Theme.onAccent)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
                         .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Theme.accent))
@@ -221,7 +221,7 @@ struct KhatmahView: View {
                         HStack {
                             Text(name).font(Theme.display(14, weight: .medium)).foregroundStyle(Theme.ink)
                             Spacer()
-                            Text(loc("ص \(from.counterText)–\(to.counterText)"))
+                            Text(loc("ص %1$@–%2$@", from.counterText, to.counterText))
                                 .font(.system(size: 13, design: .rounded))
                                 .foregroundStyle(Theme.inkSoft).monospacedDigit()
                         }
@@ -244,7 +244,7 @@ struct KhatmahView: View {
             } label: {
                 Label(loc("قرأت صفحة"), systemImage: "plus")
                     .font(Theme.display(15, weight: .semibold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Theme.onAccent)
                     .frame(maxWidth: .infinity).padding(.vertical, 13)
                     .background(RoundedRectangle(cornerRadius: 13, style: .continuous).fill(Theme.accent))
             }

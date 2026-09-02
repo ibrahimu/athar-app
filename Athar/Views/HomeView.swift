@@ -142,7 +142,7 @@ struct HomeView: View {
     private func countdown(to date: Date) -> String {
         let seconds = max(0, Int(date.timeIntervalSince(now)))
         let h = seconds / 3600, m = (seconds % 3600) / 60
-        return h > 0 ? loc("بعد \(h) س \(m) د") : loc("بعد \(m) د")
+        return h > 0 ? loc("بعد %1$@ س %2$@ د", h.counterText, m.counterText) : loc("بعد %1$@ د", m.counterText)
     }
 
     // MARK: Stats
