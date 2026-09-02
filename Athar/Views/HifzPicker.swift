@@ -27,7 +27,7 @@ struct HifzPicker: View {
                 AtharBackground()
                 ScrollView {
                     VStack(spacing: 16) {
-                        SettingsGroupTitle(text: "السورة")
+                        SettingsGroupTitle(text: loc("السورة"))
                         SettingsCard {
                             ForEach(Array(filtered.prefix(query.isEmpty ? 114 : 12).enumerated()), id: \.element.id) { i, s in
                                 Button {
@@ -55,14 +55,14 @@ struct HifzPicker: View {
                         }
 
                         if let s = surah {
-                            SettingsGroupTitle(text: "المدى")
+                            SettingsGroupTitle(text: loc("المدى"))
                             SettingsCard {
-                                stepperRow("من الآية", value: $from, range: 1...s.ayahCount)
+                                stepperRow(loc("من الآية"), value: $from, range: 1...s.ayahCount)
                                 SettingsDivider()
-                                stepperRow("إلى الآية", value: $to, range: 1...s.ayahCount)
+                                stepperRow(loc("إلى الآية"), value: $to, range: 1...s.ayahCount)
                             }
 
-                            Text(count > 0 ? "\(count.counterText) آية ستُضاف إلى الحفظ" : "المدى غير صحيح")
+                            Text(count > 0 ? "\(count.counterText) آية ستُضاف إلى الحفظ" : loc("المدى غير صحيح"))
                                 .font(Theme.display(12))
                                 .foregroundStyle(count > 0 ? Theme.inkFaint : Color.red.opacity(0.8))
                         }
@@ -74,15 +74,15 @@ struct HifzPicker: View {
                 }
                 .scrollIndicators(.hidden)
             }
-            .searchable(text: $query, prompt: "ابحث عن سورة")
-            .navigationTitle("ما تريد حفظه")
+            .searchable(text: $query, prompt: loc("ابحث عن سورة"))
+            .navigationTitle(loc("ما تريد حفظه"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button(loc("cancel")) { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("أضِف") {
+                    Button(loc("أضِف")) {
                         guard count > 0 else { return }
                         let refs = (from...to).map { AyahRef(surah: surahId, ayah: $0) }
                         onAdd(refs)

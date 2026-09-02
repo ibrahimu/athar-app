@@ -9,25 +9,25 @@ struct SourcesView: View {
                 VStack(spacing: 22) {
                     block(
                         icon: "book.pages.fill",
-                        title: "نص المصحف",
-                        body: "النص بالرسم العثماني من **مشروع تنزيل (Tanzil Project)**، مُدقَّق على مصحف المدينة النبوية، ومنقول كما هو دون أي تغيير — بما فيه علامات الوقف والسجدات.",
+                        title: loc("نص المصحف"),
+                        body: loc("النص بالرسم العثماني من **مشروع تنزيل (Tanzil Project)**، مُدقَّق على مصحف المدينة النبوية، ومنقول كما هو دون أي تغيير — بما فيه علامات الوقف والسجدات."),
                         linkTitle: "tanzil.net",
                         url: "https://tanzil.net",
-                        note: "تشترط رخصة المشروع إظهار المصدر بوضوح مع رابط إليه، وعدم تغيير النص."
+                        note: loc("تشترط رخصة المشروع إظهار المصدر بوضوح مع رابط إليه، وعدم تغيير النص.")
                     )
 
                     block(
                         icon: "text.book.closed.fill",
-                        title: "الأذكار",
-                        body: "الأذكار من القرآن الكريم والسنة النبوية الصحيحة، وكل ذكر مقترن بتخريجه من مصادره: البخاري، ومسلم، وأبي داود، والترمذي، والنسائي، وابن ماجه، وأحمد.",
+                        title: loc("الأذكار"),
+                        body: loc("الأذكار من القرآن الكريم والسنة النبوية الصحيحة، وكل ذكر مقترن بتخريجه من مصادره: البخاري، ومسلم، وأبي داود، والترمذي، والنسائي، وابن ماجه، وأحمد."),
                         linkTitle: nil, url: nil,
-                        note: "نصوص الوحي وأحاديث الكتب الستة تراث عام."
+                        note: loc("نصوص الوحي وأحاديث الكتب الستة تراث عام.")
                     )
 
                     block(
                         icon: "textformat",
-                        title: "الخط",
-                        body: "خط **Noto Naskh Arabic** من مشروع Noto، مرخّص برخصة الخطوط المفتوحة SIL Open Font License 1.1 التي تتيح التضمين في التطبيقات.",
+                        title: loc("الخط"),
+                        body: loc("خط **Noto Naskh Arabic** من مشروع Noto، مرخّص برخصة الخطوط المفتوحة SIL Open Font License 1.1 التي تتيح التضمين في التطبيقات."),
                         linkTitle: "notofonts.github.io",
                         url: "https://notofonts.github.io",
                         note: nil
@@ -35,13 +35,13 @@ struct SourcesView: View {
 
                     block(
                         icon: "function",
-                        title: "أوقات الصلاة والقبلة",
-                        body: "تُحسب على جهازك بالخوارزمية الفلكية القياسية، بلا اتصال بأي خادم. واتجاه القبلة بحساب الدائرة العظمى إلى الكعبة.",
+                        title: loc("أوقات الصلاة والقبلة"),
+                        body: loc("تُحسب على جهازك بالخوارزمية الفلكية القياسية، بلا اتصال بأي خادم. واتجاه القبلة بحساب الدائرة العظمى إلى الكعبة."),
                         linkTitle: nil, url: nil,
-                        note: "الأوقات تقريبية وقد تختلف دقائق عن تقويم مسجد حيّك."
+                        note: loc("الأوقات تقريبية وقد تختلف دقائق عن تقويم مسجد حيّك.")
                     )
 
-                    Text("إن رأيت خطأً في نصّ أو إسناد، فأخبرنا — تصحيح النص الشرعي أولى من كل شيء.")
+                    Text(loc("إن رأيت خطأً في نصّ أو إسناد، فأخبرنا — تصحيح النص الشرعي أولى من كل شيء."))
                         .font(Theme.display(12))
                         .foregroundStyle(Theme.inkFaint)
                         .multilineTextAlignment(.center)
@@ -55,7 +55,7 @@ struct SourcesView: View {
             }
             .scrollIndicators(.hidden)
         }
-        .navigationTitle("المصادر والحقوق")
+        .navigationTitle(loc("المصادر والحقوق"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.hidden, for: .tabBar)
     }

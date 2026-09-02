@@ -6,14 +6,14 @@ struct TasbihView: View {
     @State private var pulse = false
 
     private let phrases = [
-        "سُبْحَانَ اللهِ",
-        "الْحَمْدُ للهِ",
-        "لَا إِلَهَ إِلَّا اللهُ",
-        "اللهُ أَكْبَرُ",
-        "أَسْتَغْفِرُ اللهَ",
-        "لَا حَوْلَ وَلَا قُوَّةَ إِلَّا بِاللهِ",
-        "اللَّهُمَّ صَلِّ وَسَلِّمْ عَلَى نَبِيِّنَا مُحَمَّدٍ",
-        "سُبْحَانَ اللهِ وَبِحَمْدِهِ"
+        loc("سُبْحَانَ اللهِ"),
+        loc("الْحَمْدُ للهِ"),
+        loc("لَا إِلَهَ إِلَّا اللهُ"),
+        loc("اللهُ أَكْبَرُ"),
+        loc("أَسْتَغْفِرُ اللهَ"),
+        loc("لَا حَوْلَ وَلَا قُوَّةَ إِلَّا بِاللهِ"),
+        loc("اللَّهُمَّ صَلِّ وَسَلِّمْ عَلَى نَبِيِّنَا مُحَمَّدٍ"),
+        loc("سُبْحَانَ اللهِ وَبِحَمْدِهِ")
     ]
     private let targets = [33, 100, 500, 1000]
 
@@ -41,7 +41,7 @@ struct TasbihView: View {
             }
             .contentShape(Rectangle())
             .onTapGesture { if store.countTapArea == .screen { increment() } }
-            .navigationTitle("المسبحة")
+            .navigationTitle(loc("المسبحة"))
             .navigationBarTitleDisplayMode(.inline)
         }
     }
@@ -94,7 +94,7 @@ struct TasbihView: View {
                         .foregroundStyle(Theme.ink)
                         .contentTransition(.numericText())
 
-                    Text("الهدف \(store.tasbihTarget.counterText)")
+                    Text(loc("الهدف \(store.tasbihTarget.counterText)"))
                         .font(Theme.display(13))
                         .foregroundStyle(Theme.inkFaint)
                 }
@@ -134,7 +134,7 @@ struct TasbihView: View {
                 store.tasbihCount = 0
                 Haptics.tap(enabled: store.hapticsEnabled)
             } label: {
-                Label("تصفير", systemImage: "arrow.counterclockwise")
+                Label(loc("تصفير"), systemImage: "arrow.counterclockwise")
                     .font(Theme.display(14, weight: .medium))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
@@ -145,7 +145,7 @@ struct TasbihView: View {
             .buttonStyle(.plain)
 
             HStack(spacing: 6) {
-                Text("الأشواط")
+                Text(loc("الأشواط"))
                     .font(Theme.display(13))
                     .foregroundStyle(Theme.inkFaint)
                 Text(rounds.counterText)

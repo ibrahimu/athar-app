@@ -167,8 +167,8 @@ struct AppearanceView: View {
                     .foregroundStyle(editing ? Theme.accent : Theme.inkFaint)
                     .padding(.top, 1)
                 Text(editing
-                     ? "استعمل الأسهم لتغيير الترتيب، و⊖ لإخفاء تبويب. «اليوم» ثابت لا يُخفى."
-                     : "هذه التبويبات تظهر في أسفل الشاشة. اضغط «ترتيب» لتغيّرها.")
+                     ? loc("استعمل الأسهم لتغيير الترتيب، و⊖ لإخفاء تبويب. «اليوم» ثابت لا يُخفى.")
+                     : loc("هذه التبويبات تظهر في أسفل الشاشة. اضغط «ترتيب» لتغيّرها."))
                     .font(Theme.display(12))
                     .foregroundStyle(Theme.inkSoft)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -195,7 +195,7 @@ struct AppearanceView: View {
                         }
                         Text(tab.title).font(Theme.display(15)).foregroundStyle(Theme.ink)
                         if tab.isPinned {
-                            Text("ثابت").font(Theme.display(10))
+                            Text(loc("ثابت")).font(Theme.display(10))
                                 .foregroundStyle(Theme.inkFaint)
                                 .padding(.horizontal, 7).padding(.vertical, 3)
                                 .background(Capsule().fill(Theme.surfaceAlt))
@@ -222,8 +222,8 @@ struct AppearanceView: View {
 
             if !store.hiddenTabs.isEmpty {
                 SettingsGroupTitle(text: store.visibleTabs.count >= AppTab.maxVisible
-                                   ? "غير ظاهرة — احذف واحدًا لتضيف"
-                                   : "أضِف إلى الشريط")
+                                   ? loc("غير ظاهرة — احذف واحدًا لتضيف")
+                                   : loc("أضِف إلى الشريط"))
                 SettingsCard {
                     ForEach(Array(store.hiddenTabs.enumerated()), id: \.element) { i, tab in
                         Button { add(tab) } label: {

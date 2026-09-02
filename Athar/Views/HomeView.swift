@@ -42,7 +42,7 @@ struct HomeView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .principal) {
-                    Text("أثر").font(Theme.display(18, weight: .bold)).foregroundStyle(Theme.ink)
+                    Text(loc("أثر")).font(Theme.display(18, weight: .bold)).foregroundStyle(Theme.ink)
                 }
                 ToolbarItem(placement: .topBarLeading) {
                     NavigationLink { SettingsSheet() } label: {
@@ -142,7 +142,7 @@ struct HomeView: View {
     private func countdown(to date: Date) -> String {
         let seconds = max(0, Int(date.timeIntervalSince(now)))
         let h = seconds / 3600, m = (seconds % 3600) / 60
-        return h > 0 ? "بعد \(h) س \(m) د" : "بعد \(m) د"
+        return h > 0 ? loc("بعد \(h) س \(m) د") : loc("بعد \(m) د")
     }
 
     // MARK: Stats
@@ -189,7 +189,7 @@ struct HomeView: View {
             AtharCard(padding: 18) {
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
-                        Text(done ? "أتممتها اليوم" : "وقتها الآن")
+                        Text(done ? loc("أتممتها اليوم") : loc("وقتها الآن"))
                             .font(Theme.display(12, weight: .bold))
                             .foregroundStyle(color)
                             .padding(.horizontal, 10).padding(.vertical, 5)
@@ -245,7 +245,7 @@ struct HomeView: View {
                     }
 
                     ShareLink(item: dhikr.text + (dhikr.hasReference ? "\n\n\(dhikr.reference)" : "") + "\n\nمن تطبيق أثر") {
-                        Label("انشر الأجر", systemImage: "square.and.arrow.up")
+                        Label(loc("انشر الأجر"), systemImage: "square.and.arrow.up")
                             .font(Theme.display(13, weight: .semibold))
                     }
                     .pressable()
@@ -286,7 +286,7 @@ struct HomeView: View {
                         .background(Circle().fill(Theme.gold.opacity(0.13)))
 
                     VStack(alignment: .leading, spacing: 3) {
-                        Text("صدقة اليوم")
+                        Text(loc("صدقة اليوم"))
                             .font(Theme.display(16, weight: .semibold))
                             .foregroundStyle(Theme.ink)
                         Text("«الصدقة تطفئ الخطيئة كما يطفئ الماء النار»")

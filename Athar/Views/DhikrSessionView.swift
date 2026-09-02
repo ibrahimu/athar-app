@@ -54,8 +54,8 @@ struct DhikrSessionView: View {
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 Menu {
-                    Button("إعادة العدّ", systemImage: "arrow.counterclockwise") { resetCounts() }
-                    ShareLink(item: shareText) { Label("مشاركة الذكر", systemImage: "square.and.arrow.up") }
+                    Button(loc("إعادة العدّ"), systemImage: "arrow.counterclockwise") { resetCounts() }
+                    ShareLink(item: shareText) { Label(loc("مشاركة الذكر"), systemImage: "square.and.arrow.up") }
                 } label: {
                     Image(systemName: "ellipsis.circle")
                 }
@@ -155,7 +155,7 @@ struct DhikrSessionView: View {
                             .foregroundStyle(left == 0 ? color : Theme.ink)
                             .contentTransition(.numericText(countsDown: true))
                         if current.count > 1 {
-                            Text("من \(current.count.counterText)")
+                            Text(loc("من \(current.count.counterText)"))
                                 .font(Theme.display(11))
                                 .foregroundStyle(Theme.inkFaint)
                         }
@@ -168,7 +168,7 @@ struct DhikrSessionView: View {
             }
             .buttonStyle(.plain)
 
-            Text(left == 0 ? "اسحب للذكر التالي" : (store.countTapArea == .screen ? "اضغط أي مكان للعدّ" : "اضغط الدائرة للعدّ"))
+            Text(left == 0 ? loc("اسحب للذكر التالي") : (store.countTapArea == .screen ? loc("اضغط أي مكان للعدّ") : loc("اضغط الدائرة للعدّ")))
                 .font(Theme.display(12, weight: .medium))
                 .foregroundStyle(Theme.inkFaint)
         }
@@ -183,10 +183,10 @@ struct DhikrSessionView: View {
                 Image(systemName: "checkmark.seal.fill")
                     .font(.system(size: 62))
                     .foregroundStyle(color)
-                Text("تقبّل الله منك")
+                Text(loc("تقبّل الله منك"))
                     .font(Theme.display(26, weight: .bold))
                     .foregroundStyle(Theme.ink)
-                Text("أتممت \(category.title)")
+                Text(loc("أتممت \(category.title)"))
                     .font(Theme.display(15))
                     .foregroundStyle(Theme.inkSoft)
 
@@ -195,7 +195,7 @@ struct DhikrSessionView: View {
                         showCompletion = false
                         dismiss()
                     } label: {
-                        Text("تم")
+                        Text(loc("تم"))
                             .font(Theme.display(16, weight: .semibold))
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 14)
@@ -206,7 +206,7 @@ struct DhikrSessionView: View {
                         resetCounts()
                         showCompletion = false
                     } label: {
-                        Text("إعادة")
+                        Text(loc("إعادة"))
                             .font(Theme.display(15, weight: .medium))
                             .foregroundStyle(Theme.inkSoft)
                     }

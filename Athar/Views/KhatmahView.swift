@@ -19,7 +19,7 @@ struct KhatmahView: View {
             }
             .scrollIndicators(.hidden)
         }
-        .navigationTitle("الختمة")
+        .navigationTitle(loc("الختمة"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.hidden, for: .tabBar)
     }
@@ -37,10 +37,10 @@ struct KhatmahView: View {
                 Image(systemName: "book.closed.fill")
                     .font(.system(size: 44))
                     .foregroundStyle(Theme.gold.opacity(0.8))
-                Text("ابدأ ختمتك")
+                Text(loc("ابدأ ختمتك"))
                     .font(Theme.display(24, weight: .bold))
                     .foregroundStyle(Theme.ink)
-                Text("حدّد مدة الختمة، ونحسب لك ورد كل يوم\nونتابع معك أين وصلت.")
+                Text(loc("حدّد مدة الختمة، ونحسب لك ورد كل يوم\nونتابع معك أين وصلت."))
                     .font(Theme.display(14))
                     .foregroundStyle(Theme.inkSoft)
                     .multilineTextAlignment(.center)
@@ -48,7 +48,7 @@ struct KhatmahView: View {
             .padding(.top, 10)
 
             VStack(spacing: 8) {
-                SettingsGroupTitle(text: "أختمها في")
+                SettingsGroupTitle(text: loc("أختمها في"))
                 HStack(spacing: 8) {
                     ForEach(dayOptions, id: \.self) { d in
                         let on = days == d
@@ -59,7 +59,7 @@ struct KhatmahView: View {
                             VStack(spacing: 2) {
                                 Text(d.counterText)
                                     .font(.system(size: 19, weight: .bold, design: .rounded))
-                                Text("يوم").font(Theme.display(10))
+                                Text(loc("يوم")).font(Theme.display(10))
                             }
                             .foregroundStyle(on ? .white : Theme.inkSoft)
                             .frame(maxWidth: .infinity)
@@ -77,7 +77,7 @@ struct KhatmahView: View {
             }
 
             VStack(spacing: 8) {
-                SettingsGroupTitle(text: "توزيع الورد")
+                SettingsGroupTitle(text: loc("توزيع الورد"))
                 SettingsCard {
                     ForEach(Array(KhatmahMode.allCases.enumerated()), id: \.element.id) { i, m in
                         Button {
@@ -107,7 +107,7 @@ struct KhatmahView: View {
                 store.startKhatmah(days: days, mode: mode)
                 Haptics.done(enabled: store.hapticsEnabled)
             } label: {
-                Text("ابدأ التحدي")
+                Text(loc("ابدأ التحدي"))
                     .font(Theme.display(17, weight: .semibold))
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity)
@@ -121,7 +121,7 @@ struct KhatmahView: View {
     private var planSummary: String {
         let per = Int((Double(Quran.pageCount) / Double(days)).rounded(.up))
         let juz = Double(30) / Double(days)
-        let juzText = juz >= 1 ? "\(Int(juz.rounded()).counterText) جزء" : "نحو نصف جزء"
+        let juzText = juz >= 1 ? "\(Int(juz.rounded()).counterText) جزء" : loc("نحو نصف جزء")
         return "\(per.counterText) صفحة تقريبًا كل يوم — \(juzText) يوميًّا"
     }
 
@@ -150,7 +150,7 @@ struct KhatmahView: View {
                     .contentTransition(.numericText())
                 Text("\(store.khatmahPagesDone.counterText) من \(Quran.pageCount.counterText) صفحة")
                     .font(Theme.display(12)).foregroundStyle(Theme.inkFaint)
-                Text("اليوم \(store.khatmahDayIndex.counterText) من \(store.khatmahTotalDays.counterText)")
+                Text(loc("اليوم \(store.khatmahDayIndex.counterText) من \(store.khatmahTotalDays.counterText)"))
                     .font(Theme.display(11)).foregroundStyle(Theme.inkFaint)
             }
         }
@@ -162,12 +162,12 @@ struct KhatmahView: View {
     private var statusLine: some View {
         let d = store.khatmahDelta
         if d >= 0 {
-            Label(d == 0 ? "على الخطة تمامًا" : "متقدّم بـ\(d.counterText) صفحة — ما شاء الله",
+            Label(d == 0 ? loc("على الخطة تمامًا") : loc("متقدّم بـ\(d.counterText) صفحة — ما شاء الله"),
                   systemImage: "checkmark.seal.fill")
                 .font(Theme.display(13, weight: .semibold))
                 .foregroundStyle(Theme.accent)
         } else {
-            Label("متأخّر بـ\((-d).counterText) صفحة — عوّضها على مهل",
+            Label(loc("متأخّر بـ\((-d).counterText) صفحة — عوّضها على مهل"),
                   systemImage: "arrow.counterclockwise")
                 .font(Theme.display(13, weight: .semibold))
                 .foregroundStyle(Theme.gold)
@@ -179,11 +179,11 @@ struct KhatmahView: View {
         let startRef = Quran.firstAyah(ofPage: range.lowerBound)
         return AtharCard(padding: 16) {
             VStack(alignment: .leading, spacing: 10) {
-                Text("ورد اليوم")
+                Text(loc("ورد اليوم"))
                     .font(Theme.display(12, weight: .semibold))
                     .foregroundStyle(Theme.accent)
 
-                Text("من صفحة \(range.lowerBound.counterText) إلى \(range.upperBound.counterText)")
+                Text(loc("من صفحة \(range.lowerBound.counterText) إلى \(range.upperBound.counterText)"))
                     .font(Theme.display(18, weight: .bold))
                     .foregroundStyle(Theme.ink)
 
@@ -194,7 +194,7 @@ struct KhatmahView: View {
                 NavigationLink {
                     SurahReaderView(surahId: startRef.surah, scrollTo: startRef)
                 } label: {
-                    Label("ابدأ القراءة من موضعك", systemImage: "book.pages.fill")
+                    Label(loc("ابدأ القراءة من موضعك"), systemImage: "book.pages.fill")
                         .font(Theme.display(14, weight: .semibold))
                         .foregroundStyle(.white)
                         .frame(maxWidth: .infinity)
@@ -212,7 +212,7 @@ struct KhatmahView: View {
         let total = range.count
         let per = Int((Double(total) / Double(names.count)).rounded(.up))
         return VStack(spacing: 8) {
-            SettingsGroupTitle(text: "توزيع اليوم")
+            SettingsGroupTitle(text: loc("توزيع اليوم"))
             SettingsCard {
                 ForEach(Array(names.enumerated()), id: \.offset) { i, name in
                     let from = range.lowerBound + i * per
@@ -221,7 +221,7 @@ struct KhatmahView: View {
                         HStack {
                             Text(name).font(Theme.display(14, weight: .medium)).foregroundStyle(Theme.ink)
                             Spacer()
-                            Text("ص \(from.counterText)–\(to.counterText)")
+                            Text(loc("ص \(from.counterText)–\(to.counterText)"))
                                 .font(.system(size: 13, design: .rounded))
                                 .foregroundStyle(Theme.inkSoft).monospacedDigit()
                         }
@@ -242,7 +242,7 @@ struct KhatmahView: View {
                     Haptics.done(enabled: store.hapticsEnabled)
                 }
             } label: {
-                Label("قرأت صفحة", systemImage: "plus")
+                Label(loc("قرأت صفحة"), systemImage: "plus")
                     .font(Theme.display(15, weight: .semibold))
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity).padding(.vertical, 13)
@@ -254,7 +254,7 @@ struct KhatmahView: View {
                 store.khatmahPagesDone = store.khatmahTodayRange.upperBound
                 Haptics.done(enabled: store.hapticsEnabled)
             } label: {
-                Text("أتممت الورد")
+                Text(loc("أتممت الورد"))
                     .font(Theme.display(15, weight: .semibold))
                     .foregroundStyle(Theme.accent)
                     .frame(maxWidth: .infinity).padding(.vertical, 13)
@@ -265,7 +265,7 @@ struct KhatmahView: View {
     }
 
     private var cancelButton: some View {
-        Button("إنهاء التحدي") {
+        Button(loc("إنهاء التحدي")) {
             store.cancelKhatmah()
             Haptics.tap(enabled: store.hapticsEnabled)
         }

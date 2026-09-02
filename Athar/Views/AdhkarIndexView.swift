@@ -34,8 +34,8 @@ struct AdhkarIndexView: View {
                         }
 
                         if filtered.isEmpty {
-                            ContentUnavailableView("لا توجد نتائج", systemImage: "magnifyingglass",
-                                                   description: Text("جرّب كلمة أخرى"))
+                            ContentUnavailableView(loc("لا توجد نتائج"), systemImage: "magnifyingglass",
+                                                   description: Text(loc("جرّب كلمة أخرى")))
                                 .padding(.top, 60)
                         }
                     }
@@ -44,9 +44,9 @@ struct AdhkarIndexView: View {
                     .readableWidth()
                 }
             }
-            .navigationTitle("الأذكار")
+            .navigationTitle(loc("الأذكار"))
             .navigationBarTitleDisplayMode(.large)
-            .searchable(text: $query, prompt: "ابحث في الأذكار")
+            .searchable(text: $query, prompt: loc("ابحث في الأذكار"))
         }
     }
 }

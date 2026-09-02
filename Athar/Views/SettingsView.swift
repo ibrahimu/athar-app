@@ -54,22 +54,22 @@ struct SettingsView: View {
             .navigationTitle(loc("settings"))
             .navigationBarTitleDisplayMode(.inline)
             .task { scheduledAlerts = await Reminders.scheduledAthanCount() }
-            .confirmationDialog("هل تريد تصفير كل الإحصائيات؟", isPresented: $showResetConfirm, titleVisibility: .visible) {
-                Button("تصفير", role: .destructive) {
+            .confirmationDialog(loc("هل تريد تصفير كل الإحصائيات؟"), isPresented: $showResetConfirm, titleVisibility: .visible) {
+                Button(loc("تصفير"), role: .destructive) {
                     store.resetAllProgress()
                     WidgetCenter.shared.reloadAllTimelines()
                 }
                 Button(loc("cancel"), role: .cancel) {}
             }
-            .alert("الإشعارات موقوفة", isPresented: $permissionDenied) {
-                Button("فتح الإعدادات") {
+            .alert(loc("الإشعارات موقوفة"), isPresented: $permissionDenied) {
+                Button(loc("فتح الإعدادات")) {
                     if let url = URL(string: UIApplication.openSettingsURLString) {
                         UIApplication.shared.open(url)
                     }
                 }
                 Button(loc("later"), role: .cancel) {}
             } message: {
-                Text("لتفعيل التذكير، اسمح للتطبيق بالإشعارات من إعدادات الجهاز.")
+                Text(loc("لتفعيل التذكير، اسمح للتطبيق بالإشعارات من إعدادات الجهاز."))
             }
         }
     }
@@ -82,7 +82,7 @@ struct SettingsView: View {
             SettingsCard {
                 SettingsRow(icon: "bell.badge.fill", tint: Theme.gold,
                             title: loc("rowAdhkarRem"),
-                            subtitle: store.remindersEnabled ? nil : "تنبيه لطيف للصباح والمساء") {
+                            subtitle: store.remindersEnabled ? nil : loc("تنبيه لطيف للصباح والمساء")) {
                     Toggle("", isOn: Binding(
                         get: { store.remindersEnabled },
                         set: { enabled in
@@ -214,10 +214,10 @@ struct SettingsView: View {
                     } label: {
                         SettingsRow(icon: testSent ? "checkmark.circle.fill" : "bell.badge.waveform.fill",
                                     tint: testSent ? Theme.accent : Theme.gold,
-                                    title: testSent ? "أُرسل — سيصلك خلال ٥ ثوانٍ" : "جرّب التنبيه الآن",
+                                    title: testSent ? loc("أُرسل — سيصلك خلال ٥ ثوانٍ") : loc("جرّب التنبيه الآن"),
                                     subtitle: scheduledAlerts > 0
                                         ? "\(scheduledAlerts.counterText) تنبيهًا مجدولًا للأيام القادمة"
-                                        : "اضغط لتتأكد أن الإشعارات تعمل") {
+                                        : loc("اضغط لتتأكد أن الإشعارات تعمل")) {
                             Image(systemName: "chevron.forward")
                                 .font(.system(size: 12, weight: .semibold))
                                 .foregroundStyle(Theme.inkFaint)
@@ -292,7 +292,7 @@ struct SettingsView: View {
                         Text("أ").font(.system(size: 21)).foregroundStyle(Theme.inkFaint)
                     }
 
-                    Text("سُبْحَانَ اللهِ وَبِحَمْدِهِ")
+                    Text(loc("سُبْحَانَ اللهِ وَبِحَمْدِهِ"))
                         .font(Theme.dhikrFont(size: 19, scale: store.fontScale))
                         .foregroundStyle(Theme.ink)
                         .frame(maxWidth: .infinity)
@@ -308,7 +308,7 @@ struct SettingsView: View {
                 SettingsDivider()
                 SettingsPickerRow(
                     icon: "hand.point.up.left.fill", tint: Theme.accent(for: "calm"),
-                    title: "منطقة العدّ", options: CountTapArea.allCases,
+                    title: loc("منطقة العدّ"), options: CountTapArea.allCases,
                     selection: Binding(
                         get: { store.countTapArea },
                         set: { store.countTapArea = $0 }))
@@ -389,7 +389,7 @@ struct SettingsView: View {
                 NavigationLink { SourcesView() } label: {
                     SettingsRow(icon: "text.book.closed.fill", tint: Theme.accent(for: "sea"),
                                 title: loc("rowSources"),
-                                subtitle: "نصوص المصحف والأذكار والخطوط") {
+                                subtitle: loc("نصوص المصحف والأذكار والخطوط")) {
                         Image(systemName: "chevron.forward")
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundStyle(Theme.inkFaint)
@@ -401,7 +401,7 @@ struct SettingsView: View {
                 Link(destination: URL(string: "https://ehsan.sa")!) {
                     SettingsRow(icon: "heart.fill", tint: Theme.gold,
                                 title: loc("rowSadaqah"),
-                                subtitle: "المنصة الوطنية للعمل الخيري") {
+                                subtitle: loc("المنصة الوطنية للعمل الخيري")) {
                         Image(systemName: "arrow.up.forward")
                             .font(.system(size: 11, weight: .semibold))
                             .foregroundStyle(Theme.inkFaint)
@@ -411,9 +411,9 @@ struct SettingsView: View {
 
                 SettingsDivider()
                 ShareLink(item: Self.appStoreURL,
-                          message: Text("تطبيق أثر — أذكار وأوقات الصلاة ومسبحة. مجاني بلا إعلانات، ويعمل بدون إنترنت.")) {
+                          message: Text(loc("تطبيق أثر — أذكار وأوقات الصلاة ومسبحة. مجاني بلا إعلانات، ويعمل بدون إنترنت."))) {
                     SettingsRow(icon: "square.and.arrow.up.fill", tint: Theme.accent,
-                                title: loc("rowShare"), subtitle: "دلَّ على خيرٍ فله مثل أجر فاعله") {
+                                title: loc("rowShare"), subtitle: loc("دلَّ على خيرٍ فله مثل أجر فاعله")) {
                         Image(systemName: "chevron.forward")
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundStyle(Theme.inkFaint)
@@ -446,7 +446,7 @@ struct SettingsView: View {
                 .font(Theme.dhikrFont(size: 15))
                 .foregroundStyle(Theme.inkSoft)
                 .multilineTextAlignment(.center)
-            Text("صدقة جارية عن كل من ساهم فيه أو دلَّ عليه")
+            Text(loc("صدقة جارية عن كل من ساهم فيه أو دلَّ عليه"))
                 .font(Theme.display(11))
                 .foregroundStyle(Theme.inkFaint)
         }

@@ -68,7 +68,7 @@ struct SurahReaderView: View {
             }
         }
         .overlay(alignment: .bottom) { positionBar }
-        .navigationTitle("سورة \(visibleSurahName)")
+        .navigationTitle(loc("سورة \(visibleSurahName)"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.hidden, for: .tabBar)
         .toolbar {
@@ -137,9 +137,9 @@ struct SurahReaderView: View {
         let juz = Quran.juz(of: ref)
         let pct = Int((Double(page) / Double(Quran.pageCount) * 100).rounded())
         return HStack(spacing: 10) {
-            Text("الجزء \(juz.counterText)")
+            Text(loc("الجزء \(juz.counterText)"))
             Rectangle().fill(palette.faint.opacity(0.4)).frame(width: 1, height: 12)
-            Text("صفحة \(page.counterText) من \(Quran.pageCount.counterText)")
+            Text(loc("صفحة \(page.counterText) من \(Quran.pageCount.counterText)"))
             Rectangle().fill(palette.faint.opacity(0.4)).frame(width: 1, height: 12)
             Text("\(pct.counterText)٪")
         }
@@ -175,7 +175,7 @@ struct SurahReaderView: View {
             if surahId < 114, let next = Quran.surah(surahId + 1) {
                 NavigationLink { SurahReaderView(surahId: next.id) } label: {
                     HStack(spacing: 8) {
-                        Text("سورة \(next.name)")
+                        Text(loc("سورة \(next.name)"))
                             .font(Theme.display(15, weight: .semibold))
                         Image(systemName: "chevron.forward").font(.system(size: 12, weight: .semibold))
                     }
@@ -185,7 +185,7 @@ struct SurahReaderView: View {
                 }
                 .pressable()
             } else {
-                Text("صدق الله العظيم")
+                Text(loc("صدق الله العظيم"))
                     .font(Theme.dhikrFont(size: 17))
                     .foregroundStyle(palette.faint)
             }
@@ -298,7 +298,7 @@ private struct MushafPageContent: View {
             VStack(spacing: 10) {
                 HStack(spacing: 10) {
                     ornamentLine
-                    Text("سُورَةُ \(su.name)")
+                    Text(loc("سُورَةُ \(su.name)"))
                         .font(Theme.naskhFont(size: 18, bold: true))
                         .foregroundStyle(palette.accent)
                         .lineLimit(1)
@@ -408,7 +408,7 @@ struct ReaderControls: View {
                             .tint(Theme.accent)
                         Button { bump(0.1) } label: { stepper("textformat.size.larger") }
                     }
-                    Text("بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ")
+                    Text(loc("بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ"))
                         .font(Theme.dhikrFont(size: 21, scale: store.mushafFontScale))
                         .foregroundStyle(Theme.ink)
                         .frame(maxWidth: .infinity)
@@ -537,7 +537,7 @@ struct AyahActions: View {
 
                 // ألوان التظليل — كما يُظلّل القارئ في مصحفه الورقي
                 VStack(alignment: .leading, spacing: 8) {
-                    Text("تظليل الآية")
+                    Text(loc("تظليل الآية"))
                         .font(Theme.display(12, weight: .semibold))
                         .foregroundStyle(Theme.inkFaint)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -590,8 +590,8 @@ struct AyahActions: View {
                 if let su = Quran.surah(ref.surah) {
                     HStack(spacing: 14) {
                         infoChip(su.revelation, icon: su.isMakki ? "cube.fill" : "building.2.fill")
-                        infoChip("الجزء \(Quran.juz(of: ref).counterText)", icon: "book.closed.fill")
-                        infoChip("صفحة \(Quran.page(of: ref).counterText)", icon: "doc.plaintext.fill")
+                        infoChip(loc("الجزء \(Quran.juz(of: ref).counterText)"), icon: "book.closed.fill")
+                        infoChip(loc("صفحة \(Quran.page(of: ref).counterText)"), icon: "doc.plaintext.fill")
                     }
                 }
 
@@ -602,8 +602,8 @@ struct AyahActions: View {
                         dismiss()
                     } label: {
                         SettingsRow(icon: "pin.fill", tint: Theme.accent,
-                                    title: store.stopMark == ref ? "إزالة علامة الوقوف" : "وقفتُ هنا",
-                                    subtitle: store.stopMark == ref ? nil : "علامة تعود إليها من شاشة المصحف")
+                                    title: store.stopMark == ref ? loc("إزالة علامة الوقوف") : loc("وقفتُ هنا"),
+                                    subtitle: store.stopMark == ref ? nil : loc("علامة تعود إليها من شاشة المصحف"))
                     }
                     .buttonStyle(.plain)
 
@@ -615,7 +615,7 @@ struct AyahActions: View {
                     } label: {
                         SettingsRow(icon: store.isBookmarked(ref) ? "bookmark.slash.fill" : "bookmark.fill",
                                     tint: Theme.gold,
-                                    title: store.isBookmarked(ref) ? "إزالة العلامة" : "وضع علامة")
+                                    title: store.isBookmarked(ref) ? loc("إزالة العلامة") : loc("وضع علامة"))
                     }
                     .buttonStyle(.plain)
 
@@ -626,14 +626,14 @@ struct AyahActions: View {
                         dismiss()
                     } label: {
                         SettingsRow(icon: "brain.head.profile", tint: Theme.accent(for: "sea"),
-                                    title: "أضِف إلى الحفظ",
-                                    subtitle: store.card(for: ref) == nil ? nil : "مضافة — للمراجعة")
+                                    title: loc("أضِف إلى الحفظ"),
+                                    subtitle: store.card(for: ref) == nil ? nil : loc("مضافة — للمراجعة"))
                     }
                     .buttonStyle(.plain)
 
                     SettingsDivider()
                     ShareLink(item: "\(text)\n\n[\(surahName): \(ref.ayah)]\n\nمن تطبيق أثر") {
-                        SettingsRow(icon: "square.and.arrow.up.fill", tint: Theme.accent, title: "مشاركة الآية")
+                        SettingsRow(icon: "square.and.arrow.up.fill", tint: Theme.accent, title: loc("مشاركة الآية"))
                     }
                     .buttonStyle(.plain)
                 }
@@ -679,7 +679,7 @@ struct AyahListPage: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
 
                         if Quran.isSajdah(ref) {
-                            Label("موضع سجدة", systemImage: "figure.and.child.holdinghands")
+                            Label(loc("موضع سجدة"), systemImage: "figure.and.child.holdinghands")
                                 .font(Theme.display(11, weight: .medium))
                                 .foregroundStyle(palette.accent)
                         }

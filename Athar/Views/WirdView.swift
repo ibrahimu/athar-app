@@ -40,7 +40,7 @@ struct WirdView: View {
             }
             .scrollIndicators(.hidden)
         }
-        .navigationTitle("الورد اليومي")
+        .navigationTitle(loc("الورد اليومي"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.hidden, for: .tabBar)
     }
@@ -53,10 +53,10 @@ struct WirdView: View {
                     .font(.system(size: 46, weight: .bold, design: .rounded))
                     .foregroundStyle(Theme.ink)
                     .contentTransition(.numericText())
-                Text("من \(store.wirdTarget.counterText) آية")
+                Text(loc("من \(store.wirdTarget.counterText) آية"))
                     .font(Theme.display(13)).foregroundStyle(Theme.inkFaint)
                 if done {
-                    Text("تمّ وردك اليوم")
+                    Text(loc("تمّ وردك اليوم"))
                         .font(Theme.display(12, weight: .semibold))
                         .foregroundStyle(Theme.accent)
                         .padding(.top, 2)
@@ -73,7 +73,7 @@ struct WirdView: View {
                 store.advanceWird(by: 1)
                 Haptics.step(enabled: store.hapticsEnabled)
             } label: {
-                Label("قرأت آية", systemImage: "plus")
+                Label(loc("قرأت آية"), systemImage: "plus")
                     .font(Theme.display(15, weight: .semibold))
                     .foregroundStyle(.white)
                     .frame(maxWidth: .infinity).padding(.vertical, 14)
@@ -98,9 +98,9 @@ struct WirdView: View {
 
     private var settings: some View {
         VStack(spacing: 8) {
-            SettingsGroupTitle(text: "الإعداد")
+            SettingsGroupTitle(text: loc("الإعداد"))
             SettingsCard {
-                SettingsRow(icon: "target", tint: Theme.accent(for: "sea"), title: "ورد اليوم") {
+                SettingsRow(icon: "target", tint: Theme.accent(for: "sea"), title: loc("ورد اليوم")) {
                     HStack(spacing: 8) {
                         ForEach([5, 10, 20, 50], id: \.self) { n in
                             Button {
@@ -122,7 +122,7 @@ struct WirdView: View {
                 }
 
                 SettingsDivider()
-                SettingsRow(icon: "bell.fill", tint: Theme.gold, title: "تذكير الورد") {
+                SettingsRow(icon: "bell.fill", tint: Theme.gold, title: loc("تذكير الورد")) {
                     Toggle("", isOn: Binding(
                         get: { store.wirdEnabled },
                         set: { on in
@@ -139,7 +139,7 @@ struct WirdView: View {
 
                 if store.wirdEnabled {
                     SettingsDivider()
-                    SettingsRow(icon: "clock.fill", tint: Theme.accent(for: "dusk"), title: "وقت التذكير") {
+                    SettingsRow(icon: "clock.fill", tint: Theme.accent(for: "dusk"), title: loc("وقت التذكير")) {
                         DatePicker("", selection: reminderBinding, displayedComponents: .hourAndMinute)
                             .labelsHidden()
                     }

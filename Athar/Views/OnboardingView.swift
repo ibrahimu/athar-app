@@ -35,13 +35,13 @@ struct OnboardingView: View {
                 actions
             }
         }
-        .alert("الإشعارات موقوفة", isPresented: $denied) {
-            Button("فتح الإعدادات") {
+        .alert(loc("الإشعارات موقوفة"), isPresented: $denied) {
+            Button(loc("فتح الإعدادات")) {
                 if let u = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(u) }
             }
             Button(loc("later"), role: .cancel) { finish() }
         } message: {
-            Text("لتصلك التذكيرات، اسمح للتطبيق بالإشعارات من إعدادات الجهاز. يمكنك تفعيلها لاحقًا من إعدادات أثر.")
+            Text(loc("لتصلك التذكيرات، اسمح للتطبيق بالإشعارات من إعدادات الجهاز. يمكنك تفعيلها لاحقًا من إعدادات أثر."))
         }
     }
 
@@ -59,11 +59,11 @@ struct OnboardingView: View {
             }
             .frame(height: 110)
 
-            Text("لا يفوتك ذِكر")
+            Text(loc("لا يفوتك ذِكر"))
                 .font(Theme.display(27, weight: .bold))
                 .foregroundStyle(Theme.ink)
 
-            Text("اختر ما تحب أن نُذكّرك به، ونتكفّل بالباقي.\nكل شيء يعمل على جهازك، ولا نجمع عنك شيئًا.")
+            Text(loc("اختر ما تحب أن نُذكّرك به، ونتكفّل بالباقي.\nكل شيء يعمل على جهازك، ولا نجمع عنك شيئًا."))
                 .font(Theme.display(14))
                 .foregroundStyle(Theme.inkSoft)
                 .multilineTextAlignment(.center)
@@ -75,20 +75,20 @@ struct OnboardingView: View {
 
     private var options: some View {
         SettingsCard {
-            row("sunrise.fill", Theme.accent(for: "dawn"), "أذكار الصباح والمساء",
-                "تذكير في الوقت الذي تختاره", $wantAdhkar)
+            row("sunrise.fill", Theme.accent(for: "dawn"), loc("أذكار الصباح والمساء"),
+                loc("تذكير في الوقت الذي تختاره"), $wantAdhkar)
             SettingsDivider()
-            row("bell.and.waves.left.and.right.fill", Theme.accent, "أوقات الصلاة",
-                "تنبيه عند دخول كل وقت", $wantAthan)
+            row("bell.and.waves.left.and.right.fill", Theme.accent, loc("أوقات الصلاة"),
+                loc("تنبيه عند دخول كل وقت"), $wantAthan)
             SettingsDivider()
-            row("moon.stars.fill", Theme.accent(for: "night"), "قيام الليل",
-                "عند دخول ثلث الليل الآخر", $wantQiyam)
+            row("moon.stars.fill", Theme.accent(for: "night"), loc("قيام الليل"),
+                loc("عند دخول ثلث الليل الآخر"), $wantQiyam)
             SettingsDivider()
-            row("drop.fill", Theme.accent(for: "sea"), "الاستغفار والتسبيح",
-                "تذكير خفيف على مدار اليوم", $wantIstighfar)
+            row("drop.fill", Theme.accent(for: "sea"), loc("الاستغفار والتسبيح"),
+                loc("تذكير خفيف على مدار اليوم"), $wantIstighfar)
             SettingsDivider()
-            row("book.pages.fill", Theme.gold, "ورد القرآن",
-                "تذكير بوردك اليومي", $wantWird)
+            row("book.pages.fill", Theme.gold, loc("ورد القرآن"),
+                loc("تذكير بوردك اليومي"), $wantWird)
         }
     }
 
@@ -105,7 +105,7 @@ struct OnboardingView: View {
                 .font(.system(size: 12))
                 .foregroundStyle(Theme.inkFaint)
                 .padding(.top, 2)
-            Text("لا إعلانات، ولا اشتراكات، ولا حسابات. ولا يجمع التطبيق أي بيانات عنك.")
+            Text(loc("لا إعلانات، ولا اشتراكات، ولا حسابات. ولا يجمع التطبيق أي بيانات عنك."))
                 .font(Theme.display(12))
                 .foregroundStyle(Theme.inkFaint)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -121,7 +121,7 @@ struct OnboardingView: View {
             Button { enable() } label: {
                 HStack(spacing: 8) {
                     if working { ProgressView().tint(.white) }
-                    Text(anySelected ? "فعّل التذكيرات" : "ابدأ")
+                    Text(anySelected ? loc("فعّل التذكيرات") : loc("ابدأ"))
                         .font(Theme.display(17, weight: .semibold))
                 }
                 .foregroundStyle(.white)

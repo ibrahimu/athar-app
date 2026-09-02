@@ -33,7 +33,7 @@ struct HifzView: View {
                 finished
             }
         }
-        .navigationTitle("الحفظ")
+        .navigationTitle(loc("الحفظ"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(isRootTab ? .visible : .hidden, for: .tabBar)
         .toolbar {
@@ -88,7 +88,7 @@ struct HifzView: View {
                     stageHint
 
                     if let card = store.card(for: ref), card.lapses > 0 {
-                        Label("تعثّرت فيها \(card.lapses.counterText) مرة — كرّرها",
+                        Label(loc("تعثّرت فيها \(card.lapses.counterText) مرة — كرّرها"),
                               systemImage: "arrow.trianglehead.counterclockwise")
                             .font(Theme.display(12))
                             .foregroundStyle(Theme.gold)
@@ -119,7 +119,7 @@ struct HifzView: View {
                 Text("\((index + 1).counterText) من \(queue.count.counterText)")
                 Spacer()
                 if sessionStumbled > 0 {
-                    Text("تعثّر \(sessionStumbled.counterText)")
+                    Text(loc("تعثّر \(sessionStumbled.counterText)"))
                         .foregroundStyle(Theme.gold)
                 }
             }
@@ -135,17 +135,17 @@ struct HifzView: View {
         switch stage {
         case .reading:
             Text(repeatsLeft > 0
-                 ? "اقرأها بصوتك — بقي \(repeatsLeft.counterText) من \(store.hifzRepeatCount.counterText)"
-                 : "أحسنت — انتقل للتلميح")
+                 ? loc("اقرأها بصوتك — بقي \(repeatsLeft.counterText) من \(store.hifzRepeatCount.counterText)")
+                 : loc("أحسنت — انتقل للتلميح"))
                 .font(Theme.display(13)).foregroundStyle(Theme.inkSoft)
         case .hinted:
-            Text("أوائل الكلمات — أكملها من حفظك")
+            Text(loc("أوائل الكلمات — أكملها من حفظك"))
                 .font(Theme.display(13)).foregroundStyle(Theme.inkSoft)
         case .testing:
-            Text("استرجعها كاملة من حفظك")
+            Text(loc("استرجعها كاملة من حفظك"))
                 .font(Theme.display(13)).foregroundStyle(Theme.inkSoft)
         case .revealed:
-            Text("لا بأس — اقرأها مرة أخرى، وستعود عليك قريبًا")
+            Text(loc("لا بأس — اقرأها مرة أخرى، وستعود عليك قريبًا"))
                 .font(Theme.display(13)).foregroundStyle(Theme.gold)
         }
     }
@@ -154,25 +154,25 @@ struct HifzView: View {
         VStack(spacing: 10) {
             switch stage {
             case .reading:
-                bigButton(repeatsLeft > 0 ? "قرأتها" : "التالي", Theme.accent) {
+                bigButton(repeatsLeft > 0 ? loc("قرأتها") : loc("التالي"), Theme.accent) {
                     Haptics.step(enabled: store.hapticsEnabled)
                     if repeatsLeft > 1 { repeatsLeft -= 1 }
                     else { repeatsLeft = 0; stage = .hinted }
                 }
             case .hinted:
-                bigButton("أخفِ الكل", Theme.accent) {
+                bigButton(loc("أخفِ الكل"), Theme.accent) {
                     Haptics.step(enabled: store.hapticsEnabled)
                     stage = .testing
                 }
             case .testing:
                 HStack(spacing: 10) {
-                    smallButton("علقت", Theme.gold) {
+                    smallButton(loc("علقت"), Theme.gold) {
                         Haptics.tap(enabled: store.hapticsEnabled)
                         store.recordReview(ref, passed: false)
                         sessionStumbled += 1
                         stage = .revealed
                     }
-                    smallButton("تذكرتها", Theme.accent) {
+                    smallButton(loc("تذكرتها"), Theme.accent) {
                         Haptics.done(enabled: store.hapticsEnabled)
                         store.recordReview(ref, passed: true)
                         sessionPassed += 1
@@ -180,7 +180,7 @@ struct HifzView: View {
                     }
                 }
             case .revealed:
-                bigButton("أعِدها الآن", Theme.gold) {
+                bigButton(loc("أعِدها الآن"), Theme.gold) {
                     // «إذا علق يعيدها» — ترجع الآية نفسها من أولها.
                     repeatsLeft = store.hifzRepeatCount
                     stage = .reading
@@ -225,16 +225,16 @@ struct HifzView: View {
             Image(systemName: "brain.head.profile")
                 .font(.system(size: 52))
                 .foregroundStyle(Theme.accent.opacity(0.5))
-            Text("ابدأ حفظك")
+            Text(loc("ابدأ حفظك"))
                 .font(Theme.display(22, weight: .bold))
                 .foregroundStyle(Theme.ink)
-            Text("اختر سورة أو مدى من الآيات، ونلقّنك إياها بالتكرار ثم التلميح ثم الاسترجاع.\nوما تعثّرت فيه يعود عليك حتى يثبت.")
+            Text(loc("اختر سورة أو مدى من الآيات، ونلقّنك إياها بالتكرار ثم التلميح ثم الاسترجاع.\nوما تعثّرت فيه يعود عليك حتى يثبت."))
                 .font(Theme.display(14))
                 .foregroundStyle(Theme.inkSoft)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 34)
             Button { showPicker = true } label: {
-                Label("اختر ما تحفظ", systemImage: "plus")
+                Label(loc("اختر ما تحفظ"), systemImage: "plus")
                     .font(Theme.display(16, weight: .semibold))
                     .foregroundStyle(.white)
                     .padding(.horizontal, 26).padding(.vertical, 14)
@@ -255,15 +255,15 @@ struct HifzView: View {
         VStack(spacing: 16) {
             Image(systemName: "checkmark.seal.fill")
                 .font(.system(size: 56)).foregroundStyle(Theme.accent)
-            Text("أتممت مراجعة اليوم")
+            Text(loc("أتممت مراجعة اليوم"))
                 .font(Theme.display(22, weight: .bold)).foregroundStyle(Theme.ink)
-            Text("ثبت \(sessionPassed.counterText) · تعثّر \(sessionStumbled.counterText)")
+            Text(loc("ثبت \(sessionPassed.counterText) · تعثّر \(sessionStumbled.counterText)"))
                 .font(Theme.display(14)).foregroundStyle(Theme.inkSoft)
-            Text("المتعثّر يعود عليك اليوم، وما ثبت يعود بعد أيام.")
+            Text(loc("المتعثّر يعود عليك اليوم، وما ثبت يعود بعد أيام."))
                 .font(Theme.display(12)).foregroundStyle(Theme.inkFaint)
                 .multilineTextAlignment(.center).padding(.horizontal, 40)
             Button { loadQueue() } label: {
-                Text("تحديث")
+                Text(loc("تحديث"))
                     .font(Theme.display(15, weight: .semibold)).foregroundStyle(Theme.accent)
             }
             .buttonStyle(.plain).padding(.top, 4)

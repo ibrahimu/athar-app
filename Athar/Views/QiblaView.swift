@@ -57,7 +57,7 @@ struct QiblaView: View {
                 .readableWidth(520)
             }
         }
-        .navigationTitle("القبلة")
+        .navigationTitle(loc("القبلة"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(isRootTab ? .visible : .hidden, for: .tabBar)
         .onAppear { compass.start() }
@@ -147,15 +147,15 @@ struct QiblaView: View {
             }
 
             if isAligned {
-                Label("أنت تواجه القبلة", systemImage: "checkmark.seal.fill")
+                Label(loc("أنت تواجه القبلة"), systemImage: "checkmark.seal.fill")
                     .font(Theme.display(14, weight: .semibold))
                     .foregroundStyle(Theme.accent)
                     .padding(.horizontal, 14).padding(.vertical, 7)
                     .background(Capsule().fill(Theme.accentSoft))
                     .transition(.scale.combined(with: .opacity))
             } else if let off = offBy {
-                Text(String(format: "أدِر الجهاز %.0f° %@", off,
-                            turnDirection == .right ? "يمينًا" : "يسارًا"))
+                Text(String(format: loc("أدِر الجهاز %.0f° %@"), off,
+                            turnDirection == .right ? loc("يمينًا") : loc("يسارًا")))
                     .font(Theme.display(13, weight: .medium))
                     .foregroundStyle(Theme.inkFaint)
                     .monospacedDigit()
@@ -199,10 +199,10 @@ struct QiblaView: View {
                 Image(systemName: "cube.fill")
                     .font(.system(size: 44))
                     .foregroundStyle(Theme.accent)
-                Text("أنت عند الكعبة")
+                Text(loc("أنت عند الكعبة"))
                     .font(Theme.display(22, weight: .bold))
                     .foregroundStyle(Theme.ink)
-                Text("استقبل البيت مباشرة — لا حاجة إلى بوصلة.")
+                Text(loc("استقبل البيت مباشرة — لا حاجة إلى بوصلة."))
                     .font(Theme.display(14))
                     .foregroundStyle(Theme.inkSoft)
                     .multilineTextAlignment(.center)
@@ -213,7 +213,7 @@ struct QiblaView: View {
 
     private var unavailableCard: some View {
         AtharCard(padding: 22) {
-            Text("تعذّر تحديد اتجاه القبلة لهذا الموقع.")
+            Text(loc("تعذّر تحديد اتجاه القبلة لهذا الموقع."))
                 .font(Theme.display(15))
                 .foregroundStyle(Theme.inkSoft)
                 .frame(maxWidth: .infinity)
@@ -237,24 +237,24 @@ struct QiblaView: View {
 
     private var calibrationNote: some View {
         note("dot.circle.and.hand.point.up.left.fill",
-             "البوصلة تحتاج معايرة — حرّك الجهاز على هيئة الرقم ٨ في الهواء، وابتعد عن المعادن والمغانط.",
+             loc("البوصلة تحتاج معايرة — حرّك الجهاز على هيئة الرقم ٨ في الهواء، وابتعد عن المعادن والمغانط."),
              color: Theme.gold)
     }
 
     private var noCompassNote: some View {
         note("exclamationmark.triangle.fill",
-             "لا توجد بوصلة في هذا الجهاز، فالسهم ثابت. استعن بزاوية القبلة أعلاه مع بوصلة أخرى.",
+             loc("لا توجد بوصلة في هذا الجهاز، فالسهم ثابت. استعن بزاوية القبلة أعلاه مع بوصلة أخرى."),
              color: Theme.gold)
     }
 
     private var magneticNote: some View {
         note("info.circle.fill",
-             "القراءة بالشمال المغناطيسي لأن خدمات الموقع مغلقة. فعّل الموقع لقراءة أدق بالشمال الحقيقي.",
+             loc("القراءة بالشمال المغناطيسي لأن خدمات الموقع مغلقة. فعّل الموقع لقراءة أدق بالشمال الحقيقي."),
              color: Theme.inkFaint)
     }
 
     private var accuracyNote: some View {
-        Text("الاتجاه محسوب بالدائرة العظمى إلى الكعبة من موقعك المحدَّد. دقّته تتبع دقّة موقعك ودقّة بوصلة جهازك.")
+        Text(loc("الاتجاه محسوب بالدائرة العظمى إلى الكعبة من موقعك المحدَّد. دقّته تتبع دقّة موقعك ودقّة بوصلة جهازك."))
             .font(Theme.display(11))
             .foregroundStyle(Theme.inkFaint)
             .multilineTextAlignment(.center)

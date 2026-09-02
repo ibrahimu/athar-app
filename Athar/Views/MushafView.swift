@@ -44,7 +44,7 @@ struct MushafView: View {
                         }
 
                         if !searchHits.isEmpty {
-                            SettingsGroupTitle(text: "آيات مطابقة")
+                            SettingsGroupTitle(text: loc("آيات مطابقة"))
                             ForEach(searchHits) { ref in
                                 NavigationLink { SurahReaderView(surahId: ref.surah, scrollTo: ref) } label: {
                                     SearchHitRow(ref: ref, query: query)
@@ -56,8 +56,8 @@ struct MushafView: View {
                         if query.isEmpty { sourceCredit }
 
                         if filtered.isEmpty && searchHits.isEmpty && !query.isEmpty {
-                            ContentUnavailableView("لا توجد نتائج", systemImage: "magnifyingglass",
-                                                   description: Text("جرّب اسم سورة أو جزءًا من آية"))
+                            ContentUnavailableView(loc("لا توجد نتائج"), systemImage: "magnifyingglass",
+                                                   description: Text(loc("جرّب اسم سورة أو جزءًا من آية")))
                                 .padding(.top, 50)
                         }
                     }
@@ -78,18 +78,18 @@ struct MushafView: View {
         VStack(spacing: 7) {
             Rectangle().fill(Theme.hairline.opacity(0.6))
                 .frame(height: 0.7).padding(.horizontal, 40).padding(.top, 10)
-            Text("نص المصحف بالرسم العثماني من")
+            Text(loc("نص المصحف بالرسم العثماني من"))
                 .font(Theme.display(11))
                 .foregroundStyle(Theme.inkFaint)
             Link(destination: URL(string: "https://tanzil.net")!) {
                 HStack(spacing: 4) {
-                    Text("مشروع تنزيل — tanzil.net")
+                    Text(loc("مشروع تنزيل — tanzil.net"))
                         .font(Theme.display(12, weight: .medium))
                     Image(systemName: "arrow.up.forward").font(.system(size: 9, weight: .semibold))
                 }
                 .foregroundStyle(Theme.accent)
             }
-            Text("مُدقَّق على مصحف المدينة · يُنقل كما هو دون تغيير")
+            Text(loc("مُدقَّق على مصحف المدينة · يُنقل كما هو دون تغيير"))
                 .font(Theme.display(10))
                 .foregroundStyle(Theme.inkFaint)
         }
@@ -114,7 +114,7 @@ struct MushafView: View {
                             Text(loc("myStop"))
                                 .font(Theme.display(12, weight: .semibold))
                                 .foregroundStyle(Theme.gold)
-                            Text("سورة \(su.name) · آية \(mark.ayah.counterText) · ص \(Quran.page(of: mark).counterText)")
+                            Text(loc("سورة \(su.name) · آية \(mark.ayah.counterText) · ص \(Quran.page(of: mark).counterText)"))
                                 .font(Theme.display(16, weight: .semibold))
                                 .foregroundStyle(Theme.ink)
                         }
@@ -146,7 +146,7 @@ struct MushafView: View {
                             Text(loc("continueReading"))
                                 .font(Theme.display(12, weight: .semibold))
                                 .foregroundStyle(Theme.accent)
-                            Text("سورة \(s.name) · ص \(Quran.page(of: last).counterText) · الجزء \(Quran.juz(of: last).counterText)")
+                            Text(loc("سورة \(s.name) · ص \(Quran.page(of: last).counterText) · الجزء \(Quran.juz(of: last).counterText)"))
                                 .font(Theme.display(16, weight: .semibold))
                                 .foregroundStyle(Theme.ink)
                         }
@@ -214,7 +214,7 @@ struct MushafView: View {
 
     private var bookmarksCard: some View {
         VStack(spacing: 8) {
-            SettingsGroupTitle(text: "علاماتي")
+            SettingsGroupTitle(text: loc("علاماتي"))
             SettingsCard {
                 ForEach(Array(store.bookmarks.prefix(5).enumerated()), id: \.element) { i, ref in
                     NavigationLink { SurahReaderView(surahId: ref.surah, scrollTo: ref) } label: {
@@ -260,7 +260,7 @@ struct SurahRow: View {
                 SurahMedallion(number: surah.id, size: 46)
 
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("سورة \(surah.name)")
+                    Text(loc("سورة \(surah.name)"))
                         .font(Theme.display(17, weight: .semibold))
                         .foregroundStyle(Theme.ink)
                     Text("\(surah.revelation) · \(surah.ayahCount.counterText) آية")

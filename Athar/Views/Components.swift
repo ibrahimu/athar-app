@@ -61,7 +61,7 @@ struct ProgressRing: View {
 struct SectionHeader: View {
     let title: String
     var action: (() -> Void)?
-    var actionTitle: String = "الكل"
+    var actionTitle: String = loc("الكل")
 
     var body: some View {
         HStack {
@@ -384,7 +384,7 @@ struct AyahMedallion: View {
                 .frame(width: size * 0.64)
         }
         .frame(width: size, height: size)
-        .accessibilityLabel("الآية \(number)")
+        .accessibilityLabel(loc("الآية \(number)"))
     }
 }
 

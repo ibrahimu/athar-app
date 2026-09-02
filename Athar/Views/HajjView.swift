@@ -6,10 +6,10 @@ struct HajjView: View {
         NavigationStack {
             ZStack {
                 AtharBackground()
-                ContentUnavailableView("قريبًا", systemImage: "building.columns.fill",
-                                       description: Text("دليل الحج والعمرة قيد الإعداد."))
+                ContentUnavailableView(loc("قريبًا"), systemImage: "building.columns.fill",
+                                       description: Text(loc("دليل الحج والعمرة قيد الإعداد.")))
             }
-            .navigationTitle("الحج والعمرة")
+            .navigationTitle(loc("الحج والعمرة"))
             .navigationBarTitleDisplayMode(.inline)
         }
     }

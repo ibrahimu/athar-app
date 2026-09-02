@@ -132,7 +132,7 @@ enum Reminders {
             else { continue }
 
             let content = UNMutableNotificationContent()
-            content.title = "ثلث الليل الآخر"
+            content.title = loc("ثلث الليل الآخر")
             content.body = "«ينزل ربنا إلى السماء الدنيا حين يبقى ثلث الليل الآخر فيقول: من يدعوني فأستجيب له»"
             content.sound = .default
             let c = cal.dateComponents([.year, .month, .day, .hour, .minute], from: q.lastThird)

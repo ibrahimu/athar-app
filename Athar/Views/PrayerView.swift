@@ -43,7 +43,7 @@ struct PrayerView: View {
                     .readableWidth()
                 }
             }
-            .navigationTitle("الصلاة")
+            .navigationTitle(loc("الصلاة"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -68,7 +68,7 @@ struct PrayerView: View {
         AtharCard(padding: 22) {
             VStack(spacing: 14) {
                 if let upcoming {
-                    Text("الصلاة القادمة")
+                    Text(loc("الصلاة القادمة"))
                         .font(Theme.display(13, weight: .medium))
                         .foregroundStyle(Theme.inkSoft)
 
@@ -92,7 +92,7 @@ struct PrayerView: View {
                         .padding(.horizontal, 14).padding(.vertical, 7)
                         .background(Capsule().fill(Theme.accentSoft))
                 } else {
-                    Text("تعذّر حساب أوقات الصلاة لهذا الموقع")
+                    Text(loc("تعذّر حساب أوقات الصلاة لهذا الموقع"))
                         .font(Theme.display(15))
                         .foregroundStyle(Theme.inkSoft)
                         .multilineTextAlignment(.center)
@@ -106,8 +106,8 @@ struct PrayerView: View {
         let seconds = max(0, Int(date.timeIntervalSince(now)))
         let h = seconds / 3600, m = (seconds % 3600) / 60, s = seconds % 60
         return h > 0
-            ? String(format: "بعد %d:%02d:%02d", h, m, s)
-            : String(format: "بعد %d:%02d", m, s)
+            ? String(format: loc("بعد %d:%02d:%02d"), h, m, s)
+            : String(format: loc("بعد %d:%02d"), m, s)
     }
 
     // MARK: List
@@ -164,7 +164,7 @@ struct PrayerView: View {
 
                     VStack(alignment: .leading, spacing: 4) {
                         HStack(spacing: 6) {
-                            Text("اتجاه القبلة")
+                            Text(loc("اتجاه القبلة"))
                                 .font(Theme.display(17, weight: .semibold))
                                 .foregroundStyle(Theme.ink)
                             Spacer()
@@ -184,7 +184,7 @@ struct PrayerView: View {
     }
 
     private var qiblaSubtitle: String {
-        guard let b = Qibla.bearing(from: store.coordinate) else { return "أنت عند الكعبة" }
+        guard let b = Qibla.bearing(from: store.coordinate) else { return loc("أنت عند الكعبة") }
         return String(format: "%.0f° — %@ من %@", b, Qibla.compassName(for: b), store.placeName)
     }
 
@@ -212,10 +212,10 @@ struct PrayerView: View {
                             .frame(width: 40, height: 40)
                             .background(Circle().fill(Theme.accent(for: "night").opacity(0.14)))
                         VStack(alignment: .leading, spacing: 2) {
-                            Text("قيام الليل")
+                            Text(loc("قيام الليل"))
                                 .font(Theme.display(16, weight: .semibold))
                                 .foregroundStyle(Theme.ink)
-                            Text(inWindow ? "أنت في ثلث الليل الآخر" : "ثلث الليل الآخر")
+                            Text(inWindow ? loc("أنت في ثلث الليل الآخر") : loc("ثلث الليل الآخر"))
                                 .font(Theme.display(11))
                                 .foregroundStyle(inWindow ? Theme.accent : Theme.inkFaint)
                         }
@@ -226,11 +226,11 @@ struct PrayerView: View {
                     }
 
                     HStack(spacing: 0) {
-                        qiyamSlot("منتصف الليل", q.midnight)
+                        qiyamSlot(loc("منتصف الليل"), q.midnight)
                         Rectangle().fill(Theme.hairline).frame(width: 1, height: 30)
-                        qiyamSlot("الثلث الأخير", q.lastThird)
+                        qiyamSlot(loc("الثلث الأخير"), q.lastThird)
                         Rectangle().fill(Theme.hairline).frame(width: 1, height: 30)
-                        qiyamSlot("ينتهي بالفجر", q.end)
+                        qiyamSlot(loc("ينتهي بالفجر"), q.end)
                     }
 
                     Text("«ينزل ربنا إلى السماء الدنيا حين يبقى ثلث الليل الآخر» — متفق عليه")
@@ -269,7 +269,7 @@ struct PrayerView: View {
                     .font(.system(size: 13))
                     .foregroundStyle(Theme.gold)
                     .padding(.top, 2)
-                Text("في هذا الوقت من السنة لا تنزل الشمس إلى الزاوية المطلوبة في \(store.placeName)، فقُدِّر الفجر والعشاء بقاعدة سُبع الليل.")
+                Text(loc("في هذا الوقت من السنة لا تنزل الشمس إلى الزاوية المطلوبة في \(store.placeName)، فقُدِّر الفجر والعشاء بقاعدة سُبع الليل."))
                     .font(Theme.display(12))
                     .foregroundStyle(Theme.inkSoft)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -281,8 +281,8 @@ struct PrayerView: View {
 
     private var methodNote: some View {
         VStack(spacing: 4) {
-            Text("طريقة الحساب: \(store.calculationMethod.title)")
-            Text("الأوقات محسوبة على جهازك فلكيًا — قد تختلف دقائق عن مسجد حيّك.")
+            Text(loc("طريقة الحساب: \(store.calculationMethod.title)"))
+            Text(loc("الأوقات محسوبة على جهازك فلكيًا — قد تختلف دقائق عن مسجد حيّك."))
         }
         .font(Theme.display(11))
         .foregroundStyle(Theme.inkFaint)
@@ -333,7 +333,7 @@ struct LocationPickerView: View {
                         location.request()
                     } label: {
                         HStack {
-                            Label("استخدام موقعي الحالي", systemImage: "location.fill")
+                            Label(loc("استخدام موقعي الحالي"), systemImage: "location.fill")
                             Spacer()
                             if location.isResolving { ProgressView() }
                             else if store.usesDeviceLocation {
@@ -342,15 +342,15 @@ struct LocationPickerView: View {
                         }
                     }
                     if location.failed {
-                        Text("تعذّر تحديد الموقع. تأكد من السماح للتطبيق بالوصول للموقع، أو اختر مدينتك يدويًا.")
+                        Text(loc("تعذّر تحديد الموقع. تأكد من السماح للتطبيق بالوصول للموقع، أو اختر مدينتك يدويًا."))
                             .font(Theme.display(12))
                             .foregroundStyle(Theme.inkSoft)
                     }
                 } footer: {
-                    Text("موقعك يُستخدم على جهازك فقط لحساب أوقات الصلاة، ولا يُرسل إلى أي جهة.")
+                    Text(loc("موقعك يُستخدم على جهازك فقط لحساب أوقات الصلاة، ولا يُرسل إلى أي جهة."))
                 }
 
-                Section("المدن") {
+                Section(loc("المدن")) {
                     ForEach(cities) { city in
                         Button {
                             store.setCity(city)
@@ -373,12 +373,12 @@ struct LocationPickerView: View {
                     }
                 }
             }
-            .searchable(text: $query, prompt: "ابحث عن مدينة")
-            .navigationTitle("الموقع")
+            .searchable(text: $query, prompt: loc("ابحث عن مدينة"))
+            .navigationTitle(loc("الموقع"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("تم") { dismiss() }
+                    Button(loc("تم")) { dismiss() }
                 }
             }
             .onChange(of: store.usesDeviceLocation) { _, uses in
