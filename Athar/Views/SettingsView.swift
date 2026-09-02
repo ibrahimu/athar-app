@@ -109,7 +109,7 @@ struct SettingsView: View {
                 }
             }
         }
-        .animation(.smooth(duration: 0.28), value: store.remindersEnabled)
+        .animation(Motion.smooth, value: store.remindersEnabled)
     }
 
     // MARK: الصلاة
@@ -213,7 +213,7 @@ struct SettingsView: View {
                             RoundedRectangle(cornerRadius: 14, style: .continuous)
                                 .fill(Theme.surfaceAlt)
                         )
-                        .animation(.smooth(duration: 0.2), value: store.fontScale)
+                        .animation(Motion.snappy, value: store.fontScale)
                 }
                 .padding(14)
 

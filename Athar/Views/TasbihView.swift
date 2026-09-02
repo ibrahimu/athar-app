@@ -163,9 +163,9 @@ struct TasbihView: View {
         store.totalDhikrCount += 1
         store.touchStreak()
 
-        withAnimation(.spring(duration: 0.18)) { pulse = true }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.18) {
-            withAnimation(.spring(duration: 0.18)) { pulse = false }
+        withAnimation(Motion.press) { pulse = true }
+        DispatchQueue.main.asyncAfter(deadline: .now() + Motion.instant) {
+            withAnimation(.smooth(duration: Motion.exit)) { pulse = false }
         }
 
         if store.tasbihCount % store.tasbihTarget == 0 {

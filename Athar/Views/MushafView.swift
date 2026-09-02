@@ -34,11 +34,12 @@ struct MushafView: View {
                             SettingsGroupTitle(text: "السور")
                         }
 
-                        ForEach(filtered) { surah in
+                        ForEach(Array(filtered.enumerated()), id: \.element.id) { i, surah in
                             NavigationLink { SurahReaderView(surahId: surah.id) } label: {
                                 SurahRow(surah: surah)
                             }
-                            .buttonStyle(.plain)
+                            .pressable()
+                            .appearStagger(i)
                         }
 
                         if !searchHits.isEmpty {
@@ -47,7 +48,7 @@ struct MushafView: View {
                                 NavigationLink { SurahReaderView(surahId: ref.surah, scrollTo: ref) } label: {
                                     SearchHitRow(ref: ref, query: query)
                                 }
-                                .buttonStyle(.plain)
+                                .pressable()
                             }
                         }
 
@@ -124,7 +125,7 @@ struct MushafView: View {
                     }
                 }
             }
-            .buttonStyle(.plain)
+            .pressable()
         }
     }
 
@@ -139,14 +140,14 @@ struct MushafView: View {
                             : "\(store.dueForReview.count.counterText) للمراجعة اليوم",
                          badge: !store.dueForReview.isEmpty)
             }
-            .buttonStyle(.plain)
+            .pressable()
 
             NavigationLink { WirdView() } label: {
                 toolTile("calendar.badge.clock", Theme.gold, "الورد اليومي",
                          "\(store.wirdDoneToday.counterText) من \(store.wirdTarget.counterText)",
                          badge: false)
             }
-            .buttonStyle(.plain)
+            .pressable()
         }
     }
 
@@ -206,7 +207,7 @@ struct MushafView: View {
                         .padding(.vertical, 11)
                         .contentShape(Rectangle())
                     }
-                    .buttonStyle(.plain)
+                    .pressable()
                     if i < min(4, store.bookmarks.count - 1) { SettingsDivider() }
                 }
             }

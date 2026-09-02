@@ -34,7 +34,7 @@ struct AppearanceView: View {
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 86), spacing: 12)], spacing: 12) {
                 ForEach(AppTheme.allCases) { theme in
                     Button {
-                        withAnimation(.smooth(duration: 0.25)) { store.appTheme = theme }
+                        withAnimation(Motion.smooth) { store.appTheme = theme }
                         Haptics.tap(enabled: store.hapticsEnabled)
                     } label: {
                         swatch(theme)
@@ -76,7 +76,7 @@ struct AppearanceView: View {
             HStack(spacing: 10) {
                 ForEach(AppearanceMode.allCases) { mode in
                     Button {
-                        withAnimation(.smooth(duration: 0.25)) { store.appearance = mode }
+                        withAnimation(Motion.smooth) { store.appearance = mode }
                         Haptics.tap(enabled: store.hapticsEnabled)
                     } label: {
                         let on = store.appearance == mode
@@ -155,7 +155,7 @@ struct AppearanceView: View {
             .padding(.horizontal, 12).padding(.vertical, 10)
             .background(RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .fill(editing ? Theme.accentSoft : Theme.surfaceAlt))
-            .animation(.smooth(duration: 0.2), value: editing)
+            .animation(Motion.snappy, value: editing)
 
             SettingsCard {
                 ForEach(Array(store.visibleTabs.enumerated()), id: \.element) { i, tab in
@@ -251,7 +251,7 @@ struct AppearanceView: View {
     private var isDefaultOrder: Bool { store.visibleTabs == AppTab.defaultOrder }
 
     private func resetTabs() {
-        withAnimation(.smooth(duration: 0.25)) { store.visibleTabs = AppTab.defaultOrder }
+        withAnimation(Motion.smooth) { store.visibleTabs = AppTab.defaultOrder }
         Haptics.done(enabled: store.hapticsEnabled)
     }
 
@@ -260,12 +260,12 @@ struct AppearanceView: View {
         let j = i + delta
         guard v.indices.contains(i), v.indices.contains(j), j > 0 else { return }
         v.swapAt(i, j)
-        withAnimation(.smooth(duration: 0.2)) { store.visibleTabs = v }
+        withAnimation(Motion.snappy) { store.visibleTabs = v }
         Haptics.tap(enabled: store.hapticsEnabled)
     }
 
     private func remove(_ tab: AppTab) {
-        withAnimation(.smooth(duration: 0.2)) {
+        withAnimation(Motion.snappy) {
             store.visibleTabs = store.visibleTabs.filter { $0 != tab }
         }
         Haptics.tap(enabled: store.hapticsEnabled)
@@ -273,7 +273,7 @@ struct AppearanceView: View {
 
     private func add(_ tab: AppTab) {
         guard store.visibleTabs.count < AppTab.maxVisible else { return }
-        withAnimation(.smooth(duration: 0.2)) { store.visibleTabs.append(tab) }
+        withAnimation(Motion.snappy) { store.visibleTabs.append(tab) }
         Haptics.tap(enabled: store.hapticsEnabled)
     }
 }

@@ -80,7 +80,7 @@ struct HifzView: View {
                         .lineSpacing(15)
                         .multilineTextAlignment(.center)
                         .frame(maxWidth: .infinity, minHeight: 150)
-                        .animation(.smooth(duration: 0.22), value: stage)
+                        .animation(Motion.snappy, value: stage)
                     }
 
                     stageHint
@@ -109,7 +109,7 @@ struct HifzView: View {
                     Capsule().fill(Theme.accent.opacity(0.15))
                     Capsule().fill(Theme.accent)
                         .frame(width: max(4, g.size.width * Double(index) / Double(max(1, queue.count))))
-                        .animation(.smooth(duration: 0.3), value: index)
+                        .animation(Motion.smooth, value: index)
                 }
             }
             .frame(height: 6)

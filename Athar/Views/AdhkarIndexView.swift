@@ -22,14 +22,15 @@ struct AdhkarIndexView: View {
                 AtharBackground()
                 ScrollView {
                     LazyVStack(spacing: 12) {
-                        ForEach(filtered) { category in
+                        ForEach(Array(filtered.enumerated()), id: \.element.id) { i, category in
                             NavigationLink {
                                 DhikrSessionView(category: category)
                             } label: {
                                 CategoryRow(category: category,
                                             completed: store.completedToday.contains(category.id))
                             }
-                            .buttonStyle(.plain)
+                            .pressable()
+                            .appearStagger(i)
                         }
 
                         if filtered.isEmpty {

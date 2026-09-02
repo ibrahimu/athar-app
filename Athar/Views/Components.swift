@@ -51,7 +51,7 @@ struct ProgressRing: View {
                 .trim(from: 0, to: max(0.001, min(1, progress)))
                 .stroke(color, style: StrokeStyle(lineWidth: lineWidth, lineCap: .round))
                 .rotationEffect(.degrees(-90))
-                .animation(.smooth(duration: 0.35), value: progress)
+                .animation(Motion.smooth, value: progress)
         }
     }
 }

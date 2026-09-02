@@ -61,7 +61,7 @@ struct DhikrSessionView: View {
         }
         .onAppear(perform: seed)
         .overlay { if showCompletion { completionOverlay } }
-        .animation(.smooth, value: showCompletion)
+        .animation(Motion.smooth, value: showCompletion)
     }
 
     // MARK: Pieces
@@ -73,7 +73,7 @@ struct DhikrSessionView: View {
                     Capsule().fill(color.opacity(0.15))
                     Capsule().fill(color)
                         .frame(width: max(4, geo.size.width * overallProgress))
-                        .animation(.smooth(duration: 0.3), value: overallProgress)
+                        .animation(Motion.smooth, value: overallProgress)
                 }
             }
             .frame(height: 6)
@@ -255,7 +255,7 @@ struct DhikrSessionView: View {
 
     private func advance() {
         guard index < category.items.count - 1 else { return }
-        withAnimation(.smooth) { index += 1 }
+        withAnimation(Motion.smooth) { index += 1 }
     }
 
     private func resetCounts() {

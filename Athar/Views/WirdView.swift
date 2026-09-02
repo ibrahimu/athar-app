@@ -146,7 +146,7 @@ struct WirdView: View {
                 }
             }
         }
-        .animation(.smooth(duration: 0.25), value: store.wirdEnabled)
+        .animation(Motion.smooth, value: store.wirdEnabled)
     }
 
     private var note: some View {

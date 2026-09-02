@@ -41,6 +41,7 @@ struct SurahReaderView: View {
     var body: some View {
         ZStack {
             palette.paper.ignoresSafeArea()
+                .animation(Motion.smooth, value: store.readingTheme)
 
             ScrollViewReader { proxy in
                 ScrollView {
@@ -249,7 +250,7 @@ struct ReaderControls: View {
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
                         .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Theme.surfaceAlt))
-                        .animation(.smooth(duration: 0.18), value: store.mushafFontScale)
+                        .animation(Motion.snappy, value: store.mushafFontScale)
                 }
 
                 VStack(alignment: .leading, spacing: 10) {

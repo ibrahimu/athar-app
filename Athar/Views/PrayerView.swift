@@ -137,6 +137,7 @@ struct PrayerView: View {
                     .padding(.vertical, 14)
                     .padding(.horizontal, 18)
                     .background(isNext ? Theme.accentSoft : .clear)
+                    .animation(Motion.smooth, value: isNext)
 
                     if index < times.ordered.count - 1 {
                         Divider().overlay(Theme.hairline).padding(.horizontal, 18)
@@ -179,7 +180,7 @@ struct PrayerView: View {
                 }
             }
         }
-        .buttonStyle(.plain)
+        .pressable()
     }
 
     private var qiblaSubtitle: String {
@@ -193,7 +194,7 @@ struct PrayerView: View {
             NavigationLink { DhikrSessionView(category: category) } label: {
                 CategoryRow(category: category, completed: store.completedToday.contains(category.id))
             }
-            .buttonStyle(.plain)
+            .pressable()
         }
     }
 

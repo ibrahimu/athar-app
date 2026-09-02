@@ -135,7 +135,7 @@ struct HomeView: View {
                     }
                 }
             }
-            .buttonStyle(.plain)
+            .pressable()
         }
     }
 
@@ -221,7 +221,7 @@ struct HomeView: View {
                 }
             }
         }
-        .buttonStyle(.plain)
+        .pressable()
     }
 
     // MARK: Daily dhikr
@@ -248,7 +248,7 @@ struct HomeView: View {
                         Label("انشر الأجر", systemImage: "square.and.arrow.up")
                             .font(Theme.display(13, weight: .semibold))
                     }
-                    .buttonStyle(.plain)
+                    .pressable()
                     .foregroundStyle(Theme.accent)
                 }
             }
@@ -268,7 +268,7 @@ struct HomeView: View {
                         CategoryTile(category: category,
                                      completed: store.completedToday.contains(category.id))
                     }
-                    .buttonStyle(.plain)
+                    .pressable()
                 }
             }
         }
@@ -301,7 +301,7 @@ struct HomeView: View {
                 }
             }
         }
-        .buttonStyle(.plain)
+        .pressable()
     }
 
     private var footerNote: some View {
