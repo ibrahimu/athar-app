@@ -7,5 +7,6 @@ struct AtharWidgetBundle: WidgetBundle {
         PrayerWidget()
         DhikrWidget()
         AtharProgressWidget()
+        KhatmahWidget()
     }
 }

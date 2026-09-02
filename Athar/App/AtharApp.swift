@@ -29,6 +29,7 @@ struct AtharApp: App {
                 Task { await Reminders.rescheduleAll(store: store) }
             case .background:
                 WidgetCenter.shared.reloadAllTimelines()
+                CloudSync.shared.push()   // ارفع التقدّم إلى iCloud
             default:
                 break
             }

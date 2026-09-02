@@ -6,5 +6,7 @@
 	<array>
 		<string>group.com.ibrahim.athar</string>
 	</array>
+	<key>com.apple.developer.ubiquity-kvstore-identifier</key>
+	<string>$(TeamIdentifierPrefix)com.ibrahim.athar</string>
 </dict>
 </plist>

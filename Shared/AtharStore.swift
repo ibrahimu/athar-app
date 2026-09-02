@@ -63,6 +63,15 @@ final class AtharStore: ObservableObject {
         // قبل أول رسم: وإلا رُسمت الشاشات بالطابع الافتراضي ولم تُعد.
         Theme.current = AppTheme(rawValue: self.defaults.string(forKey: "athar.theme") ?? "") ?? .green
         BackgroundPattern.current = BackgroundPattern(rawValue: self.defaults.string(forKey: "athar.bgPattern") ?? "") ?? .stars
+
+        // مزامنة iCloud: اسحب حالة الأجهزة الأخرى، وأعِد بناء الواجهة عند وصول تغيير.
+        CloudSync.shared.onExternalChange = { [weak self] in
+            guard let self else { return }
+            Theme.current = AppTheme(rawValue: self.defaults.string(forKey: "athar.theme") ?? "") ?? .green
+            BackgroundPattern.current = BackgroundPattern(rawValue: self.defaults.string(forKey: "athar.bgPattern") ?? "") ?? .stars
+            self.objectWillChange.send()
+        }
+        CloudSync.shared.start()
     }
 
     private func registerDefaults() {
