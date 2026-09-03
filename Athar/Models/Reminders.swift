@@ -12,6 +12,7 @@ enum Reminders {
     private static let jumuahId = "athar.jumuah"
     private static let fastingPrefix = "athar.fasting."
     private static let whitePrefix = "athar.white."
+    private static let hadithPrefix = "athar.hadith."
 
     static func requestAuthorization() async -> Bool {
         (try? await UNUserNotificationCenter.current()
@@ -51,8 +52,13 @@ enum Reminders {
 
         let calendar = Calendar.current
         let now = Date()
+        let preMinutes = store.preAthanMinutes
+        // مع تنبيه ما قبل الأذان يتضاعف عدد الطلبات لكل يوم (١٠ بدل ٥)، فنقصر
+        // الأفق على خمسة أيام كي لا نتجاوز سقف iOS (٦٤) مع بقية التذكيرات؛
+        // والجدولة تتجدّد عند كل فتح للتطبيق على كل حال.
+        let days = preMinutes > 0 ? 5 : 7
 
-        for dayOffset in 0..<7 {
+        for dayOffset in 0..<days {
             guard let day = calendar.date(byAdding: .day, value: dayOffset, to: now),
                   let times = store.prayerTimes(for: day) else { continue }
 
@@ -75,8 +81,83 @@ enum Reminders {
                     trigger: UNCalendarNotificationTrigger(dateMatching: comps, repeats: false)
                 )
                 try? await center.add(request)
+
+                // تنبيه الاستعداد قبل الأذان: بنغمة النظام لا بالأذان، حتى لا يظنّه
+                // المستخدم دخولَ الوقت. يحمل بادئة الأذان نفسها فيُمحى معه.
+                guard preMinutes > 0 else { continue }
+                let preDate = entry.date.addingTimeInterval(-Double(preMinutes) * 60)
+                guard preDate > now else { continue }
+
+                let pre = UNMutableNotificationContent()
+                pre.title = "\(entry.prayer.title) \(minutesPhrase(preMinutes))"
+                pre.body = "استعدّ للصلاة — \(store.placeName)"
+                pre.sound = .default
+                pre.interruptionLevel = .timeSensitive
+                let preComps = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: preDate)
+                let preRequest = UNNotificationRequest(
+                    identifier: "\(athanPrefix)pre.\(dayOffset).\(entry.prayer.rawValue)",
+                    content: pre,
+                    trigger: UNCalendarNotificationTrigger(dateMatching: preComps, repeats: false)
+                )
+                try? await center.add(preRequest)
             }
         }
+    }
+
+    /// «بعد ٥ دقائق» / «بعد ١٥ دقيقة»: تمييز العدد يتبدّل بعد العشرة.
+    private static func minutesPhrase(_ n: Int) -> String {
+        switch n {
+        case 1:       return "بعد دقيقة"
+        case 2:       return "بعد دقيقتين"
+        case 3...10:  return "بعد \(n.counterText) دقائق"
+        default:      return "بعد \(n.counterText) دقيقة"
+        }
+    }
+
+    /// تذكير حديث اليوم: يُجدوَل كل يوم على حدة (لا تكرارًا) لأن نصّ الحديث
+    /// يتغيّر مع اليوم، فيصل مع التنبيه الحديثُ نفسه الذي تعرضه البطاقة.
+    static func rescheduleHadith(store: AtharStore) async {
+        let center = UNUserNotificationCenter.current()
+        let pending = await center.pendingNotificationRequests()
+        center.removePendingNotificationRequests(
+            withIdentifiers: pending.map(\.identifier).filter { $0.hasPrefix(hadithPrefix) })
+        guard store.hadithReminder else { return }
+
+        let calendar = Calendar.current
+        let now = Date()
+        let minutes = store.hadithReminderMinutes
+
+        for dayOffset in 0..<7 {
+            guard let day = calendar.date(byAdding: .day, value: dayOffset, to: now),
+                  let fire = calendar.date(bySettingHour: minutes / 60, minute: minutes % 60,
+                                           second: 0, of: day),
+                  fire > now,
+                  let hadith = HadithLibrary.daily(for: day) else { continue }
+
+            let content = UNMutableNotificationContent()
+            content.title = "حديث اليوم"
+            content.body = "\(truncated(hadith.text, to: 180)) — \(hadith.citation)"
+            content.sound = .default
+
+            let comps = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: fire)
+            let request = UNNotificationRequest(
+                identifier: "\(hadithPrefix)\(dayOffset)",
+                content: content,
+                trigger: UNCalendarNotificationTrigger(dateMatching: comps, repeats: false)
+            )
+            try? await center.add(request)
+        }
+    }
+
+    /// يقصّ النص عند آخر كلمة كاملة قبل الحدّ ويختمه بعلامة الحذف — لا يغيّر
+    /// حرفًا مما بقي، فالحديث يصل بلفظه إلى حيث قُطع.
+    private static func truncated(_ text: String, to limit: Int) -> String {
+        guard text.count > limit else { return text }
+        let head = text.prefix(limit)
+        if let cut = head.lastIndex(of: " ") {
+            return String(head[..<cut]) + "…"
+        }
+        return String(head) + "…"
     }
 
     /// تذكير الورد اليومي من القرآن.
@@ -204,35 +285,13 @@ enum Reminders {
         await rescheduleIstighfar(store: store)
         await rescheduleQiyam(store: store)
         await rescheduleSunan(store: store)
+        await rescheduleHadith(store: store)
     }
 
     /// صوت تنبيه الأذان الذي اختاره المستخدم — مقطع مضمَّن ≤ ٣٠ ث، أو نغمة النظام.
     private static func athanSound(_ store: AtharStore) -> UNNotificationSound {
         guard let name = store.athanSound.fileName else { return .defaultCritical }
         return UNNotificationSound(named: UNNotificationSoundName(name + ".caf"))
-    }
-
-    /// تنبيه تجريبي بعد ٥ ثوانٍ — ليتأكد المستخدم أن الإشعارات تعمل
-    /// دون أن ينتظر دخول وقت صلاة.
-    static func sendTestAlert(store: AtharStore) async -> Bool {
-        guard await requestAuthorization() else { return false }
-        let content = UNMutableNotificationContent()
-        content.title = "تنبيه تجريبي"
-        content.body = "هكذا سيصلك تنبيه دخول وقت الصلاة."
-        content.sound = athanSound(store)
-        content.interruptionLevel = .timeSensitive
-        let request = UNNotificationRequest(
-            identifier: "athar.test.\(UUID().uuidString)",
-            content: content,
-            trigger: UNTimeIntervalNotificationTrigger(timeInterval: 5, repeats: false))
-        try? await UNUserNotificationCenter.current().add(request)
-        return true
-    }
-
-    /// عدد تنبيهات الأذان المجدولة فعليًا — للتشخيص في الإعدادات.
-    static func scheduledAthanCount() async -> Int {
-        await UNUserNotificationCenter.current().pendingNotificationRequests()
-            .filter { $0.identifier.hasPrefix(athanPrefix) }.count
     }
 
     private static func add(id: String, title: String, body: String, minutes: Int) async {
@@ -251,5 +310,44 @@ enum Reminders {
             trigger: UNCalendarNotificationTrigger(dateMatching: components, repeats: true)
         )
         try? await UNUserNotificationCenter.current().add(request)
+    }
+}
+
+// MARK: - خيارات التنبيه قبل الأذان
+
+/// كم دقيقة يسبق تنبيهُ الاستعداد الأذانَ — صفر يعني لا تنبيه. القيمة الخام
+/// هي الدقائق نفسها فتُخزَّن في المتجر مباشرةً بلا جدول تحويل.
+enum PreAthanChoice: Int, CaseIterable, SettingsChoice {
+    case off = 0
+    case m5 = 5
+    case m10 = 10
+    case m15 = 15
+    case m20 = 20
+    case m30 = 30
+
+    var id: Int { rawValue }
+
+    var title: String {
+        switch self {
+        case .off: return loc("بدون")
+        case .m5:  return loc("قبل ٥ دقائق")
+        case .m10: return loc("قبل ١٠ دقائق")
+        case .m15: return loc("قبل ١٥ دقيقة")
+        case .m20: return loc("قبل ٢٠ دقيقة")
+        case .m30: return loc("قبل ٣٠ دقيقة")
+        }
+    }
+
+    var shortTitle: String { title }
+
+    var detail: String {
+        self == .off
+            ? loc("تنبيه دخول الوقت فقط")
+            : loc("تنبيه هادئ بنغمة النظام يسبق الأذان، للوضوء والتهيّؤ")
+    }
+
+    /// يطابق الدقائق المخزَّنة بأقرب خيار، فلا تنكسر القائمة لو تغيّرت القيمة من خارجها.
+    static func from(minutes: Int) -> PreAthanChoice {
+        allCases.first { $0.rawValue == minutes } ?? .off
     }
 }

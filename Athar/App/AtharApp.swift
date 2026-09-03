@@ -38,6 +38,13 @@ struct AtharApp: App {
             case .active:
                 // Prayer alerts are only scheduled a week out; top them up on every launch.
                 Task { await Reminders.rescheduleAll(store: store) }
+                // النشاط الحيّ يُزامَن مع كل عودة: يُنهي ما انقضى ويطلب الصلاة القادمة —
+                // وإن عطّله المستخدم أُنهي ما كان قائمًا حتى لا يبقى عدّ يتيم على شاشة القفل.
+                if store.liveActivityEnabled {
+                    LiveActivityManager.sync(store: store)
+                } else {
+                    LiveActivityManager.endAll()
+                }
             case .background:
                 WidgetCenter.shared.reloadAllTimelines()
             default:

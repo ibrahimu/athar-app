@@ -29,6 +29,50 @@ struct SourcesView: View {
                     )
 
                     block(
+                        icon: "character.book.closed.fill",
+                        title: loc("التفسير"),
+                        body: loc("تفسير **السعدي** (تيسير الكريم الرحمن في تفسير كلام المنّان) وتفسير **الجلالين** للمحلّي والسيوطي، وكلاهما تراث عام. النص من بيانات quran.com المفتوحة (مشروع tafsir_api) منقولًا كما هو."),
+                        linkTitle: "quran.com",
+                        url: "https://quran.com",
+                        note: loc("تفسيران موجزان يناسبان القراءة على الجوال، ولمن أراد التوسّع كتب التفسير المطوّلة."),
+                        accent: Theme.accent(for: "green"),
+                        index: 2
+                    )
+
+                    block(
+                        icon: "text.quote",
+                        title: loc("الحديث"),
+                        body: loc("**رياض الصالحين** و**الأربعون النووية** للإمام النووي رحمه الله، والنص من موقع sunnah.com. والعزو (متفق عليه، رواه مسلم…) من كلام النووي نفسه، ولا يُنقل في التطبيق تصحيحُ أحدٍ ولا تضعيفه."),
+                        linkTitle: "sunnah.com",
+                        url: "https://sunnah.com",
+                        note: loc("حديث اليوم يُختار مما عزاه المؤلف إلى الصحيحين أو أحدهما."),
+                        accent: Theme.accent(for: "dusk"),
+                        index: 3
+                    )
+
+                    block(
+                        icon: "sparkles",
+                        title: loc("الأسماء الحسنى"),
+                        body: loc("شرح الشيخ عبد الرحمن **السعدي** رحمه الله من كتابه «تفسير أسماء الله الحسنى»، منقول عبر المكتبة الشاملة."),
+                        linkTitle: "shamela.ws",
+                        url: "https://shamela.ws/book/10090",
+                        note: loc("كل اسم مقرون بدليله من الكتاب أو السنّة."),
+                        accent: Theme.accent(for: "gold"),
+                        index: 4
+                    )
+
+                    block(
+                        icon: "checklist",
+                        title: loc("الأحكام العملية"),
+                        body: loc("مكتوبة بأسلوب التطبيق اختصارًا على القارئ، وأدلّتها من الكتاب والصحيحين تُعرض بنصّها، وروابطها إلى موقعَي الشيخ **ابن باز** والشيخ **ابن عثيمين** رحمهما الله لمن أراد الفتوى بتمامها."),
+                        linkTitle: "binbaz.org.sa",
+                        url: "https://binbaz.org.sa",
+                        note: loc("الأحكام إرشاد عام، وما اختلفت فيه الأحوال فاسأل أهل العلم في بلدك."),
+                        accent: Theme.accent(for: "sea"),
+                        index: 5
+                    )
+
+                    block(
                         icon: "textformat",
                         title: loc("الخط"),
                         body: loc("خط **Noto Naskh Arabic** من مشروع Noto، مرخّص برخصة الخطوط المفتوحة SIL Open Font License 1.1 التي تتيح التضمين في التطبيقات."),
@@ -36,7 +80,7 @@ struct SourcesView: View {
                         url: "https://notofonts.github.io",
                         note: nil,
                         accent: Theme.accent(for: "calm"),
-                        index: 2
+                        index: 6
                     )
 
                     block(
@@ -46,7 +90,7 @@ struct SourcesView: View {
                         linkTitle: nil, url: nil,
                         note: loc("الأوقات تقريبية وقد تختلف دقائق عن تقويم مسجد حيّك."),
                         accent: Theme.accent(for: "green"),
-                        index: 3
+                        index: 7
                     )
 
                     block(
@@ -57,7 +101,7 @@ struct SourcesView: View {
                         url: "https://mp3quran.net",
                         note: loc("لا يتصل التطبيق بالشبكة إلا حين تضغط «تشغيل» أو «تنزيل». وما نزّلته يعمل بلا إنترنت."),
                         accent: Theme.accent(for: "dusk"),
-                        index: 4
+                        index: 8
                     )
 
                     block(
@@ -66,12 +110,12 @@ struct SourcesView: View {
                         body: loc("«أذان المسجد النبوي»: تسجيل ejaz215 على Freesound برخصة CC BY 3.0. «أذان سعيد حاتم‌زاده» و«أذان عاقب عزيز»: ويكيميديا كومنز برخصة CC BY-SA 4.0. «أذان (تسجيل مفتوح)»: ويكيميديا كومنز، CC0. «أذان صباح فخري»: ويكيميديا كومنز، موسومٌ هناك ملكًا عامًّا."),
                         linkTitle: "commons.wikimedia.org",
                         url: "https://commons.wikimedia.org/wiki/Category:Adhan",
-                        note: loc("مقاطع التنبيه مقتطعة من أوائل التسجيلات (٣٠ ثانية حدّ iOS للإشعارات)، والتسجيل الكامل يُسمع من الإعدادات."),
+                        note: loc("مقاطع التنبيه مقتطعة من أوائل التسجيلات (٣٠ ثانية حدّ iOS للإشعارات)، والتسجيل الكامل يُسمع من شاشة اختيار الصوت."),
                         accent: Theme.accent(for: "gold"),
-                        index: 5
+                        index: 9
                     )
 
-                    closing.appearStagger(6)
+                    closing.appearStagger(10)
                 }
                 .padding(.horizontal, 18)
                 .padding(.top, 8)
@@ -159,10 +203,16 @@ struct SourcesView: View {
 
     // MARK: - ختام الصفحة
 
-    /// نصّ الدعوة إلى التصحيح، تسبقه زخرفة نجمة ذهبية كفاصلة المصاحف.
+    /// إعلان المنهج ثم الدعوة إلى التصحيح، تسبقهما زخرفة نجمة ذهبية كفاصلة المصاحف.
     private var closing: some View {
         VStack(spacing: 14) {
             goldStarDivider
+            Text(loc("كل ما في التطبيق من مصادر أهل السنّة والجماعة، ولا يُنقل عن كتب أهل البدع شيء."))
+                .font(Theme.display(12, weight: .medium))
+                .foregroundStyle(Theme.inkSoft)
+                .multilineTextAlignment(.center)
+                .lineSpacing(3)
+                .frame(maxWidth: .infinity)
             Text(loc("إن رأيت خطأً في نصّ أو إسناد، فأخبرنا — تصحيح النص الشرعي أولى من كل شيء."))
                 .font(Theme.display(12))
                 .foregroundStyle(Theme.inkFaint)

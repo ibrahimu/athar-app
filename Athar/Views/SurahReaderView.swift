@@ -734,6 +734,7 @@ struct AyahActions: View {
     let ref: AyahRef
     @EnvironmentObject private var store: AtharStore
     @Environment(\.dismiss) private var dismiss
+    @State private var showTafsir = false
 
     private var text: String { Quran.text(ref) ?? "" }
     private var surahName: String { Quran.surah(ref.surah)?.name ?? "" }
@@ -813,6 +814,17 @@ struct AyahActions: View {
                         }
                         .frame(maxWidth: .infinity)
                     }
+
+                    // التفسير — أوّل ما يُطلب بعد قراءة الآية، فيتقدّم التظليل والعلامات.
+                    Button {
+                        Haptics.tap(enabled: store.hapticsEnabled)
+                        showTafsir = true
+                    } label: {
+                        AtharLinkRow(icon: "text.book.closed.fill", tint: Theme.accent(for: "sea"),
+                                     title: loc("التفسير"),
+                                     subtitle: loc("السعدي والجلالين — معنى الآية وبيانها"))
+                    }
+                    .pressable()
 
                     // ألوان التظليل — كما يُظلّل القارئ في مصحفه الورقي
                     VStack(alignment: .leading, spacing: 8) {
@@ -930,6 +942,12 @@ struct AyahActions: View {
                 .padding(.bottom, 16)
             }
             .scrollIndicators(.hidden)
+        }
+        .sheet(isPresented: $showTafsir) {
+            TafsirSheet(ref: ref)
+                .presentationDetents([.large])
+                .presentationDragIndicator(.visible)
+                .environment(\.layoutDirection, AppConfig.arabicOnly ? .rightToLeft : store.appLanguage.layoutDirection)
         }
     }
 }

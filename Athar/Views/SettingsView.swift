@@ -8,12 +8,6 @@ struct SettingsView: View {
     @EnvironmentObject private var store: AtharStore
     @State private var showResetConfirm = false
     @State private var permissionDenied = false
-    @State private var scheduledAlerts = 0
-    @State private var testSent = false
-    @StateObject private var preview = AthanPreview.shared
-    /// ختم آخر ضغطة على «جرّب التنبيه الآن»: لا يُطفئ التأكيدَ إلا مؤقّتُ
-    /// أحدث ضغطة، وإلا محا مؤقّتُ الضغطة الأولى تأكيدَ الضغطة التي تلتها.
-    @State private var testToken = 0
     @State private var showCityPicker = false
 
     private var morningBinding: Binding<Date> {
@@ -27,6 +21,16 @@ struct SettingsView: View {
         Binding(
             get: { Self.date(fromMinutes: store.eveningReminderMinutes) },
             set: { store.eveningReminderMinutes = Self.minutes(from: $0); scheduleReminders() }
+        )
+    }
+
+    private var hadithBinding: Binding<Date> {
+        Binding(
+            get: { Self.date(fromMinutes: store.hadithReminderMinutes) },
+            set: {
+                store.hadithReminderMinutes = Self.minutes(from: $0)
+                Task { await Reminders.rescheduleHadith(store: store) }
+            }
         )
     }
 
@@ -65,7 +69,6 @@ struct SettingsView: View {
             }
             .navigationTitle(loc("settings"))
             .navigationBarTitleDisplayMode(.inline)
-            .task { scheduledAlerts = await Reminders.scheduledAthanCount() }
             .confirmationDialog(loc("هل تريد تصفير كل الإحصائيات؟"), isPresented: $showResetConfirm, titleVisibility: .visible) {
                 Button(loc("تصفير"), role: .destructive) {
                     store.resetAllProgress()
@@ -146,9 +149,41 @@ struct SettingsView: View {
                             .accessibilityLabel(loc("rowEvening"))
                     }
                 }
+
+                SettingsDivider()
+                SettingsRow(icon: "text.quote", tint: Theme.accent(for: "sea"),
+                            title: loc("تذكير حديث اليوم"),
+                            subtitle: store.hadithReminder ? nil : loc("حديث من الصحيحين كل يوم")) {
+                    Toggle("", isOn: Binding(
+                        get: { store.hadithReminder },
+                        set: { enabled in
+                            store.hadithReminder = enabled
+                            Task {
+                                if enabled, await !Reminders.requestAuthorization() {
+                                    store.hadithReminder = false
+                                    permissionDenied = true
+                                    return
+                                }
+                                await Reminders.rescheduleHadith(store: store)
+                            }
+                        }
+                    ))
+                    .labelsHidden()
+                    .accessibilityLabel(loc("تذكير حديث اليوم"))
+                }
+
+                if store.hadithReminder {
+                    SettingsDivider()
+                    SettingsRow(icon: "clock.fill", tint: Theme.accent(for: "dusk"), title: loc("وقت التذكير")) {
+                        DatePicker("", selection: hadithBinding, displayedComponents: .hourAndMinute)
+                            .labelsHidden()
+                            .accessibilityLabel(loc("وقت تذكير الحديث"))
+                    }
+                }
             }
         }
         .animation(Motion.smooth, value: store.remindersEnabled)
+        .animation(Motion.smooth, value: store.hadithReminder)
     }
 
     // MARK: اللغة
@@ -246,50 +281,34 @@ struct SettingsView: View {
 
                 if store.athanAlerts {
                     SettingsDivider()
-                    SettingsPickerRow(icon: "speaker.wave.2.fill", tint: Theme.accent(for: "dusk"),
-                                            title: loc("صوت الأذان"), options: AthanSound.allCases,
-                                            selection: Binding(get: { store.athanSound },
-                                                               set: { store.athanSound = $0; refreshPrayers() }))
-                    if store.athanSound != .system {
-                        SettingsDivider()
-                        Button { preview.toggle(store.athanSound) } label: {
-                            SettingsRow(icon: preview.playing == store.athanSound ? "stop.circle.fill" : "play.circle.fill",
-                                              tint: Theme.accent(for: "dusk"),
-                                              title: preview.playing == store.athanSound ? loc("إيقاف الاستماع") : loc("استمع للأذان كاملًا"),
-                                              subtitle: loc("التنبيه يصلك بأوّل ثلاثين ثانية منه")) { EmptyView() }
+                    // شاشة مخصّصة لا SettingsChoiceList: فيها استماع لكل صوت،
+                    // والاختيار لا يُغلقها حتى يقارن المستخدم بين الأصوات.
+                    NavigationLink { AthanSoundPicker(onChange: refreshPrayers) } label: {
+                        SettingsRow(icon: "speaker.wave.2.fill", tint: Theme.accent(for: "dusk"),
+                                    title: loc("صوت الأذان")) {
+                            HStack(spacing: 6) {
+                                Text(store.athanSound.shortTitle)
+                                    .font(Theme.display(15, weight: .medium))
+                                    .foregroundStyle(Theme.inkSoft)
+                                    .lineLimit(1)
+                                Image(systemName: "chevron.forward")
+                                    .font(.system(size: 12, weight: .semibold))
+                                    .foregroundStyle(Theme.inkFaint)
+                            }
                         }
-                        .buttonStyle(.plain)
                     }
+                    .buttonStyle(.plain)
+
                     SettingsDivider()
-                    Button {
-                        Task {
-                            // التأكيد مؤقّت: يعود الصف بعد ثوانٍ إلى «جرّب التنبيه الآن»
-                            // حتى تُنتج كل ضغطة تغيّرًا مرئيًا، ولا يبقى وعدٌ بتنبيهٍ وصل.
-                            guard await Reminders.sendTestAlert(store: store) else {
-                                permissionDenied = true
-                                return
-                            }
-                            testToken &+= 1
-                            let token = testToken
-                            withAnimation(Motion.snappy) { testSent = true }
-                            try? await Task.sleep(for: .seconds(8))
-                            if testToken == token {
-                                withAnimation(Motion.snappy) { testSent = false }
-                            }
-                        }
-                    } label: {
-                        SettingsRow(icon: testSent ? "checkmark.circle.fill" : "bell.badge.waveform.fill",
-                                    tint: testSent ? Theme.accent : Theme.gold,
-                                    title: testSent ? loc("أُرسل — سيصلك خلال ٥ ثوانٍ") : loc("جرّب التنبيه الآن"),
-                                    subtitle: scheduledAlerts > 0
-                                        ? "\(scheduledAlerts.counterText) تنبيهًا مجدولًا للأيام القادمة"
-                                        : loc("اضغط لتتأكد أن الإشعارات تعمل")) {
-                            Image(systemName: "chevron.forward")
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundStyle(Theme.inkFaint)
-                        }
-                    }
-                    .pressable()
+                    SettingsPickerRow(
+                        icon: "alarm.fill", tint: Theme.accent(for: "gold"),
+                        title: loc("تنبيه قبل الأذان"), options: PreAthanChoice.allCases,
+                        selection: Binding(
+                            get: { PreAthanChoice.from(minutes: store.preAthanMinutes) },
+                            set: { choice in
+                                store.preAthanMinutes = choice.rawValue
+                                Task { await Reminders.rescheduleAthan(store: store) }
+                            }))
                 }
 
                 SettingsDivider()

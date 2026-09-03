@@ -58,6 +58,9 @@ targets:
           - "AtharWidget.entitlements"
       - path: Shared
         excludes:
+          - hadith.json
+          - ahkam.json
+          - names.json
           # محرّك التلاوة للتطبيق وحده — لا داعي لحمله في الودجة.
           - "Recitation.swift"
     settings:
