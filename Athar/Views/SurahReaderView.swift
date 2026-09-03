@@ -169,8 +169,15 @@ struct SurahReaderView: View {
         .toolbarBackground(.visible, for: .navigationBar)
         .toolbarColorScheme(store.readingTheme == .night ? .dark : .light, for: .navigationBar)
         // القارئ يُمسك المصحف دقائق دون لمس — لا تنطفئ الشاشة عليه.
-        .onAppear { ReaderWake.enter() }
-        .onDisappear { ReaderWake.exit() }
+        .onAppear {
+            ReaderWake.enter()
+            store.readerScheme = store.readingTheme == .night ? .dark : .light
+        }
+        .onDisappear {
+            ReaderWake.exit()
+            store.readerScheme = .none
+        }
+        .onChange(of: store.readingTheme) { _, t in store.readerScheme = t == .night ? .dark : .light }
     }
 
     // MARK: عرض آية آية (تمرير عمودي)

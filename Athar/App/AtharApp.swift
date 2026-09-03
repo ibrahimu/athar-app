@@ -23,7 +23,14 @@ struct AtharApp: App {
                 .environment(\.layoutDirection, AppConfig.arabicOnly ? .rightToLeft : store.appLanguage.layoutDirection)
                 .id(AppConfig.arabicOnly ? AppLanguage.ar : store.appLanguage)
                 .tint(Theme.accent)
-                .preferredColorScheme(store.appearance.colorScheme)
+                // القارئ الظاهر يفرض سِمة ورقه على شريط الحالة أيضًا.
+                .preferredColorScheme({
+                    switch store.readerScheme {
+                    case .light: return .light
+                    case .dark:  return .dark
+                    case .none:  return store.appearance.colorScheme
+                    }
+                }())
 
         }
         .onChange(of: scenePhase) { _, phase in

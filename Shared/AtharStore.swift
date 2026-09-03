@@ -23,6 +23,12 @@ final class AtharStore: ObservableObject {
 
     let defaults: UserDefaults
 
+    /// سِمة يفرضها القارئ على التطبيق كله ما دام ظاهرًا: ورقُه فاتح أو ليلي بمعزل عن
+    /// مظهر النظام، وشريط الحالة لا يتبع إلا preferredColorScheme في الجذر —
+    /// فلولا هذا بقيت ساعة النظام بيضاء فوق ورقٍ كريمي في الوضع الداكن.
+    enum SchemeOverride { case none, light, dark }
+    var readerScheme: SchemeOverride = .none { didSet { if readerScheme != oldValue { objectWillChange.send() } } }
+
     private enum Key {
         static let totalDhikrCount   = "athar.totalDhikrCount"
         static let tasbihCount       = "athar.tasbihCount"
