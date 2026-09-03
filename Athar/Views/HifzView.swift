@@ -53,7 +53,8 @@ struct HifzView: View {
     private func stageLabel(_ s: HifzStage) -> String {
         switch s {
         case .reading:  return loc("اقرأ")
-        case .hinted:   return loc("لمّح")
+        // اسمٌ لا أمرٌ: في هذه المرحلة التطبيق هو الذي يلمّح والمستخدم يُكمل.
+        case .hinted:   return loc("التلميح")
         case .testing:  return loc("استرجع")
         case .revealed: return loc("راجع")
         }
@@ -62,8 +63,11 @@ struct HifzView: View {
     var body: some View {
         ZStack {
             AtharBackground(tint: sea)
-            if queue.isEmpty {
+            // شاشة البداية لمن لا حفظ عنده فقط؛ ومن عنده بطاقات ولا مستحقّ اليوم يرى حالة راحة.
+            if store.memoryCards.isEmpty {
                 emptyState
+            } else if queue.isEmpty {
+                restState
             } else if let ref = current {
                 session(ref)
             } else {
@@ -76,6 +80,7 @@ struct HifzView: View {
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 Button { showPicker = true } label: { Image(systemName: "plus.circle") }
+                    .accessibilityLabel(loc("أضِف آيات"))
             }
         }
         .sheet(isPresented: $showPicker) {
@@ -117,8 +122,7 @@ struct HifzView: View {
                     ayahCard(ref)
 
                     if let card = store.card(for: ref), card.lapses > 0 {
-                        Label(loc("تعثّرت فيها %1$@ مرة — كرّرها", card.lapses.counterText),
-                              systemImage: "arrow.trianglehead.counterclockwise")
+                        Label(lapseText(card.lapses), systemImage: "arrow.trianglehead.counterclockwise")
                             .font(Theme.display(12, weight: .medium))
                             .foregroundStyle(Theme.gold)
                             .padding(.horizontal, 12).padding(.vertical, 6)
@@ -191,7 +195,7 @@ struct HifzView: View {
             .animation(Motion.press, value: lit)
     }
 
-    // MARK: شريط المراحل — أربع حبّات ملوّنة (اقرأ/لمّح/استرجع/راجع)
+    // MARK: شريط المراحل — أربع حبّات ملوّنة (اقرأ/التلميح/استرجع/راجع)
 
     private var stageRail: some View {
         HStack(spacing: 8) {
@@ -201,7 +205,7 @@ struct HifzView: View {
                 let passed = i < currentStageIndex
 
                 Text(stageLabel(s))
-                    .font(Theme.display(11.5, weight: active ? .bold : .medium))
+                    .font(Theme.display(12, weight: active ? .bold : .medium))
                     .foregroundStyle(active ? Theme.onAccent : (passed ? acc : Theme.inkFaint))
                     .lineLimit(1).minimumScaleFactor(0.8)
                     .frame(maxWidth: .infinity)
@@ -426,11 +430,74 @@ struct HifzView: View {
             Text(loc("المتعثّر يعود عليك اليوم، وما ثبت يعود بعد أيام."))
                 .font(Theme.display(12)).foregroundStyle(Theme.inkFaint)
                 .multilineTextAlignment(.center).padding(.horizontal, 40)
-            Button { loadQueue() } label: {
-                Text(loc("تحديث"))
+            // «تحديث» كان يعيد التحميل فيسقط في شاشة البداية؛ الخروج بزر الرجوع،
+            // وما ينفع هنا هو إضافة آيات جديدة.
+            Button { showPicker = true } label: {
+                Text(loc("أضِف آيات"))
                     .font(Theme.display(15, weight: .semibold)).foregroundStyle(sea)
             }
             .buttonStyle(.plain).padding(.top, 4)
+        }
+    }
+
+    /// لا مستحقّ اليوم والحفظ قائم: حالة راحة لا شاشة البداية، حتى لا يقرأ العائد
+    /// «ابدأ حفظك» وعنده بطاقات قيد الحفظ لم تثبت بعد (لا يعدّها memorizedCount).
+    private var restState: some View {
+        let today = AtharStore.dayNumber()
+        let nextDue = store.memoryCards.values.map(\.dueDay).min() ?? today
+        let inProgress = store.memoryCards.count - store.memorizedCount
+        return VStack(spacing: 18) {
+            Image(systemName: "clock.badge.checkmark")
+                .font(.system(size: 52))
+                .foregroundStyle(Theme.gradient(for: "hifz"))
+                .frame(width: 120, height: 120)
+                .background(
+                    EightPointStar(innerRatio: 0.66)
+                        .fill(sea.opacity(0.04))
+                )
+                .appearStagger(0)
+            Text(loc("لا مراجعة اليوم"))
+                .font(Theme.display(22, weight: .bold))
+                .foregroundStyle(Theme.ink)
+                .appearStagger(1)
+            Text(nextReviewText(daysAhead: nextDue - today))
+                .font(Theme.display(14))
+                .foregroundStyle(Theme.inkSoft)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 34)
+                .appearStagger(2)
+            Text(loc("ثبت %1$@ · قيد الحفظ %2$@", store.memorizedCount.counterText, inProgress.counterText))
+                .font(Theme.display(12))
+                .foregroundStyle(Theme.inkFaint)
+                .appearStagger(3)
+            AtharPrimaryButton(title: loc("أضِف آيات"), icon: "plus",
+                               gradient: Theme.gradient(for: "hifz"), glowTint: sea) {
+                showPicker = true
+            }
+            .frame(maxWidth: 300)
+            .padding(.horizontal, 40)
+            .appearStagger(4)
+        }
+    }
+
+    /// تمييز العدد للأيام: غدًا، بعد يومين، بعد ٣–١٠ أيام، ثم ١١ فأكثر يومًا.
+    private func nextReviewText(daysAhead n: Int) -> String {
+        switch n {
+        case ...1:   return loc("المراجعة القادمة غدًا")
+        case 2:      return loc("المراجعة القادمة بعد يومين")
+        case 3...10: return loc("المراجعة القادمة بعد %1$@ أيام", n.counterText)
+        default:     return loc("المراجعة القادمة بعد %1$@ يومًا", n.counterText)
+        }
+    }
+
+    /// تمييز العدد للتعثّر: مرة، مرتين، ٣–١٠ مرات، ثم ١١ فأكثر مرة — التعثّر يبدأ
+    /// من واحد ويزيد واحدًا، فالأعداد الصغيرة هي الشائعة.
+    private func lapseText(_ n: Int) -> String {
+        switch n {
+        case 1:      return loc("تعثّرت فيها مرة — كرّرها")
+        case 2:      return loc("تعثّرت فيها مرتين — كرّرها")
+        case 3...10: return loc("تعثّرت فيها %1$@ مرات — كرّرها", n.counterText)
+        default:     return loc("تعثّرت فيها %1$@ مرة — كرّرها", n.counterText)
         }
     }
 

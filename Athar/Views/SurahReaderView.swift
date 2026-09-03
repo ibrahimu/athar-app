@@ -5,6 +5,9 @@ struct ReadingPalette {
     let paper: Color
     let ink: Color
     let faint: Color
+    /// حبر ثانٍ للإرشاد الوظيفي (رقم الصفحة والجزء والنسبة): «الخافت» يبلغ ٢٫٨:١
+    /// على الورق الفاتح فلا يقرأه ضعيف البصر، وهذا فوق ٥:١ وما زال أهدأ من الحبر.
+    let secondary: Color
     let accent: Color
     let hairline: Color
 
@@ -12,17 +15,17 @@ struct ReadingPalette {
         switch theme {
         case .paper:
             return .init(paper: Color(hex: 0xFBF9F3), ink: Color(hex: 0x14201B),
-                         faint: Color(hex: 0x8A9992), accent: Color(hex: 0x1F6B4F),
-                         hairline: Color(hex: 0xE6E1D4))
+                         faint: Color(hex: 0x8A9992), secondary: Color(hex: 0x5A6560),
+                         accent: Color(hex: 0x1F6B4F), hairline: Color(hex: 0xE6E1D4))
         case .sepia:
             return .init(paper: Color(hex: 0xF4E9D6), ink: Color(hex: 0x3E3327),
-                         faint: Color(hex: 0x9A8B72), accent: Color(hex: 0x8A6A2F),
-                         hairline: Color(hex: 0xE0D2B8))
+                         faint: Color(hex: 0x9A8B72), secondary: Color(hex: 0x6E5E43),
+                         accent: Color(hex: 0x8A6A2F), hairline: Color(hex: 0xE0D2B8))
         case .night:
             // بطلب المستخدم: عكس النهاري — حبر أبيض على ورق أزرق داكن.
             return .init(paper: Color(hex: 0x0E1726), ink: Color(hex: 0xF2F5F8),
-                         faint: Color(hex: 0x7C8AA0), accent: Color(hex: 0x6FC3A0),
-                         hairline: Color(hex: 0x1F2C42))
+                         faint: Color(hex: 0x7C8AA0), secondary: Color(hex: 0xA6B2C4),
+                         accent: Color(hex: 0x6FC3A0), hairline: Color(hex: 0x1F2C42))
         }
     }
 }
@@ -116,13 +119,15 @@ struct SurahReaderView: View {
                 Button { showControls = true } label: {
                     Image(systemName: "textformat.size")
                 }
+                .accessibilityLabel(loc("ضوابط القراءة"))
             }
             // استماعٌ للسورة المفتوحة — بثًّا أو من التنزيل إن كانت محمَّلة.
             ToolbarItem(placement: .topBarTrailing) {
+                let playing = audio.surah == visibleSurahId && audio.isPlaying
                 Button { audio.toggle(surah: visibleSurahId) } label: {
-                    Image(systemName: audio.surah == visibleSurahId && audio.isPlaying
-                          ? "pause.circle" : "play.circle")
+                    Image(systemName: playing ? "pause.circle" : "play.circle")
                 }
+                .accessibilityLabel(playing ? loc("إيقاف التلاوة مؤقتًا") : loc("تشغيل تلاوة السورة"))
             }
         }
         .sheet(isPresented: $showControls) {
@@ -199,7 +204,8 @@ struct SurahReaderView: View {
             Text("\(pct.counterText)٪")
         }
         .font(.system(size: 12, weight: .medium, design: .rounded))
-        .foregroundStyle(palette.faint)
+        // الحبر الثاني لا الخافت: هذا موضع القارئ لا زخرفة، فلا بدّ أن يُقرأ.
+        .foregroundStyle(palette.secondary)
         .monospacedDigit()
         .padding(.horizontal, Theme.Space.lg).padding(.vertical, 9)
         .background(
@@ -242,7 +248,7 @@ struct SurahReaderView: View {
 
                 Text("\(surah.revelation) · \(surah.ayahCount.ayahCountText)")
                     .font(Theme.display(12, weight: .medium))
-                    .foregroundStyle(palette.faint)
+                    .foregroundStyle(palette.secondary)
                     .padding(.horizontal, 12).padding(.vertical, 5)
                     .background(Capsule().fill(palette.accent.opacity(0.10)))
             }
@@ -290,7 +296,7 @@ struct SurahReaderView: View {
             } else {
                 Text(loc("صدق الله العظيم"))
                     .font(Theme.dhikrFont(size: 17))
-                    .foregroundStyle(palette.faint)
+                    .foregroundStyle(palette.secondary)
             }
         }
     }
@@ -407,16 +413,29 @@ private struct MushafPageContent: View {
                     // جوهري: FlowLayout يرصّ من اليمين يدويًا، وبيئة RTL
                     // تعكسه تلقائيًا — فيثبَّت LTR هنا وإلا انقلب النص.
                     .environment(\.layoutDirection, .leftToRight)
+                    // قارئ الشاشة كان يمشي على كلّ كلمة عنصرًا مستقلًّا بترتيب هندسي
+                    // معكوس (بسبب التثبيت LTR) وبلا سمة زرّ؛ فيُقدَّم له بدلها
+                    // زرٌّ واحد لكلّ آية بترتيب الآي، مستقلًّا عن هندسة الرصّ.
+                    .accessibilityRepresentation {
+                        VStack {
+                            ForEach(run, id: \.id) { ref in
+                                Button(Quran.text(ref) ?? "") { onTapAyah(ref) }
+                                    .accessibilityLabel(loc("%1$@ — الآية %2$@", Quran.text(ref) ?? "", ref.ayah.counterText))
+                                    .accessibilityHint(loc("يفتح خيارات الآية"))
+                            }
+                        }
+                    }
                 }
 
                 Text(page.counterText)
                     .font(.system(size: 13, weight: .medium, design: .rounded))
-                    .foregroundStyle(palette.faint)
+                    .foregroundStyle(palette.secondary)
                     .monospacedDigit()
                     .padding(.horizontal, 12).padding(.vertical, 4)
                     .background(Capsule().fill(palette.ink.opacity(0.04)))
                     .overlay(Capsule().strokeBorder(palette.hairline.opacity(0.6), lineWidth: 0.5))
                     .padding(.top, 6)
+                    .accessibilityLabel(loc("صفحة %1$@", page.counterText))
             }
     }
 
@@ -540,11 +559,14 @@ struct ReaderControls: View {
                         }
                         HStack(spacing: 12) {
                             Button { bump(-0.1) } label: { stepper("textformat.size.smaller") }
+                                .accessibilityLabel(loc("تصغير الخط"))
                             Slider(value: Binding(get: { store.mushafFontScale },
                                                   set: { store.mushafFontScale = $0 }),
                                    in: 0.7...2.2, step: 0.05)
                                 .tint(Theme.accent)
+                                .accessibilityLabel(loc("readerFont"))
                             Button { bump(0.1) } label: { stepper("textformat.size.larger") }
+                                .accessibilityLabel(loc("تكبير الخط"))
                         }
                         Text(loc("بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ"))
                             .font(Theme.dhikrFont(size: 21, scale: store.mushafFontScale))
@@ -575,6 +597,7 @@ struct ReaderControls: View {
                                         .fill(on ? Theme.accent : Theme.surfaceAlt))
                                 }
                                 .pressable()
+                                .accessibilityAddTraits(on ? .isSelected : [])
                             }
                         }
                     }
@@ -607,6 +630,9 @@ struct ReaderControls: View {
             .foregroundStyle(Theme.inkSoft)
             .frame(width: 38, height: 34)
             .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Theme.surfaceAlt))
+            // هدف اللمس ٤٤ نقطة حول زرٍّ رسمُه ٣٨×٣٤.
+            .frame(minWidth: 44, minHeight: 44)
+            .contentShape(Rectangle())
     }
 
     private func themeChip(_ theme: ReadingTheme) -> some View {
@@ -631,7 +657,9 @@ struct ReaderControls: View {
                     .foregroundStyle(on ? Theme.accent : Theme.inkSoft)
             }
         }
-        .buttonStyle(.plain)
+        // كرقائق وضع العرض المجاورة: انضغاطة واحدة لكلّ رقاقة حرّة في الورقة.
+        .pressable()
+        .accessibilityAddTraits(on ? .isSelected : [])
     }
 }
 
@@ -700,135 +728,159 @@ struct AyahActions: View {
     var body: some View {
         ZStack {
             AtharBackground()
-            VStack(spacing: Theme.Space.lg) {
-                Capsule().fill(Theme.hairline).frame(width: 36, height: 5).padding(.top, 10)
+            // القائمة تطول مع حجم نصّ النظام وطول الآية، والورقة تُفتح على الارتفاع
+            // المتوسط؛ فبلا تمرير تُدفن «العلامة» و«الحفظ» و«المشاركة» تحت الحافة.
+            ScrollView {
+                VStack(spacing: Theme.Space.lg) {
+                    Capsule().fill(Theme.hairline).frame(width: 36, height: 5).padding(.top, 10)
 
-                // بطاقة الآية — سطح وعمق، والنصّ الشرعي سيّدها
-                AtharCard(padding: Theme.Space.lg, elevation: .e2) {
-                    VStack(spacing: Theme.Space.md) {
-                        // خيط ذهبي علوي — كحاشية المصحف المذهّبة
-                        Capsule().fill(Theme.goldGradient)
-                            .frame(width: 46, height: 3)
-                            .opacity(0.8)
+                    // بطاقة الآية — سطح وعمق، والنصّ الشرعي سيّدها
+                    AtharCard(padding: Theme.Space.lg, elevation: .e2) {
+                        VStack(spacing: Theme.Space.md) {
+                            // خيط ذهبي علوي — كحاشية المصحف المذهّبة
+                            Capsule().fill(Theme.goldGradient)
+                                .frame(width: 46, height: 3)
+                                .opacity(0.8)
 
-                        Text("\(surahName) · الآية \(ref.ayah.counterText)")
-                            .font(Theme.display(13, weight: .semibold))
-                            .foregroundStyle(Theme.accent)
+                            Text("\(surahName) · الآية \(ref.ayah.counterText)")
+                                .font(Theme.display(13, weight: .semibold))
+                                .foregroundStyle(Theme.accent)
 
-                        Text(text)
-                            .font(Theme.dhikrFont(size: 19))
-                            .foregroundStyle(Theme.ink)
-                            .lineSpacing(10)
-                            .multilineTextAlignment(.center)
-                            .lineLimit(4)
-                            .padding(.horizontal, 4)
+                            Text(text)
+                                .font(Theme.dhikrFont(size: 19))
+                                .foregroundStyle(Theme.ink)
+                                .lineSpacing(10)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 4)
 
-                        // معلومات الموضع — ذهبية أنيقة، مكية/مدنية والجزء والصفحة
-                        if let su = Quran.surah(ref.surah) {
-                            HStack(spacing: Theme.Space.sm) {
-                                infoChip(su.revelation, icon: su.isMakki ? "cube.fill" : "building.2.fill")
-                                infoChip(loc("الجزء %1$@", Quran.juz(of: ref).counterText), icon: "book.closed.fill")
-                                infoChip(loc("صفحة %1$@", Quran.page(of: ref).counterText), icon: "doc.plaintext.fill")
+                            // معلومات الموضع — ذهبية أنيقة، مكية/مدنية والجزء والصفحة
+                            if let su = Quran.surah(ref.surah) {
+                                HStack(spacing: Theme.Space.sm) {
+                                    infoChip(su.revelation, icon: su.isMakki ? "cube.fill" : "building.2.fill")
+                                    infoChip(loc("الجزء %1$@", Quran.juz(of: ref).counterText), icon: "book.closed.fill")
+                                    infoChip(loc("صفحة %1$@", Quran.page(of: ref).counterText), icon: "doc.plaintext.fill")
+                                }
                             }
                         }
+                        .frame(maxWidth: .infinity)
                     }
-                    .frame(maxWidth: .infinity)
-                }
 
-                // ألوان التظليل — كما يُظلّل القارئ في مصحفه الورقي
-                VStack(alignment: .leading, spacing: 8) {
-                    Text(loc("تظليل الآية"))
-                        .font(Theme.display(12, weight: .semibold))
-                        .foregroundStyle(Theme.inkFaint)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    // ألوان التظليل — كما يُظلّل القارئ في مصحفه الورقي
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(loc("تظليل الآية"))
+                            .font(Theme.display(12, weight: .semibold))
+                            .foregroundStyle(Theme.inkFaint)
+                            .frame(maxWidth: .infinity, alignment: .leading)
 
-                    HStack(spacing: 10) {
-                        ForEach(HighlightColor.allCases) { c in
-                            let on = store.highlight(ref) == c
-                            Button {
-                                store.setHighlight(on ? nil : c, for: ref)
-                                Haptics.tap(enabled: store.hapticsEnabled)
-                            } label: {
-                                Circle()
-                                    .fill(c.color(dark: actionScheme == .dark))
-                                    .frame(width: 34, height: 34)
-                                    .overlay(
-                                        Circle().stroke(on ? Theme.ink : Theme.hairline,
-                                                        lineWidth: on ? 2.5 : 1)
-                                    )
-                                    .overlay {
-                                        if on {
-                                            Image(systemName: "checkmark")
-                                                .font(.system(size: 13, weight: .bold))
-                                                .foregroundStyle(Theme.ink)
+                        // الدوائر ٣٤ نقطة وهدف اللمس ٤٤؛ فتضيق المسافة كي لا يتباعد الصف.
+                        HStack(spacing: 4) {
+                            ForEach(HighlightColor.allCases) { c in
+                                let on = store.highlight(ref) == c
+                                Button {
+                                    store.setHighlight(on ? nil : c, for: ref)
+                                    Haptics.tap(enabled: store.hapticsEnabled)
+                                } label: {
+                                    Circle()
+                                        .fill(c.color(dark: actionScheme == .dark))
+                                        .frame(width: 34, height: 34)
+                                        .overlay(
+                                            Circle().stroke(on ? Theme.ink : Theme.hairline,
+                                                            lineWidth: on ? 2.5 : 1)
+                                        )
+                                        .overlay {
+                                            if on {
+                                                Image(systemName: "checkmark")
+                                                    .font(.system(size: 13, weight: .bold))
+                                                    .foregroundStyle(Theme.ink)
+                                            }
                                         }
-                                    }
+                                        .frame(minWidth: 44, minHeight: 44)
+                                        .contentShape(Rectangle())
+                                }
+                                .pressable(scale: 0.9)
+                                .accessibilityLabel(c.title)
+                                .accessibilityAddTraits(on ? .isSelected : [])
                             }
-                            .pressable(scale: 0.9)
-                        }
 
-                        if store.highlight(ref) != nil {
-                            Button {
-                                store.setHighlight(nil, for: ref)
+                            if store.highlight(ref) != nil {
+                                Button {
+                                    store.setHighlight(nil, for: ref)
+                                    Haptics.tap(enabled: store.hapticsEnabled)
+                                } label: {
+                                    Image(systemName: "xmark")
+                                        .font(.system(size: 12, weight: .semibold))
+                                        .foregroundStyle(Theme.inkSoft)
+                                        .frame(width: 34, height: 34)
+                                        .background(Circle().fill(Theme.surfaceAlt))
+                                        .frame(minWidth: 44, minHeight: 44)
+                                        .contentShape(Rectangle())
+                                }
+                                .pressable(scale: 0.9)
+                                .accessibilityLabel(loc("إزالة التظليل"))
+                                .transition(.scale.combined(with: .opacity))
+                            }
+                            Spacer()
+                        }
+                    }
+                    .animation(Motion.snappy, value: store.highlight(ref))
+
+                    // علامة الوقوف — الإجراء الأبرز، ذهبيّ أنيق
+                    stopMarkButton
+
+                    SettingsCard {
+                        Button {
+                            store.toggleBookmark(ref)
+                            Haptics.tap(enabled: store.hapticsEnabled)
+                            dismiss()
+                        } label: {
+                            SettingsRow(icon: store.isBookmarked(ref) ? "bookmark.slash.fill" : "bookmark.fill",
+                                        tint: Theme.gold,
+                                        title: store.isBookmarked(ref) ? loc("إزالة العلامة") : loc("وضع علامة"))
+                        }
+                        .buttonStyle(.plain)
+
+                        SettingsDivider()
+                        if store.card(for: ref) != nil {
+                            // المضافة سلفًا تُزال من هنا: كان الصف يُعطَّل فلا مخرج من الحفظ
+                            // في التطبيق كلّه، ولا حتى «تصفير الإحصائيات» يمسّ البطاقات.
+                            Button(role: .destructive) {
+                                store.forget(ref)
                                 Haptics.tap(enabled: store.hapticsEnabled)
+                                dismiss()
                             } label: {
-                                Image(systemName: "xmark")
-                                    .font(.system(size: 12, weight: .semibold))
-                                    .foregroundStyle(Theme.inkSoft)
-                                    .frame(width: 34, height: 34)
-                                    .background(Circle().fill(Theme.surfaceAlt))
+                                SettingsRow(icon: "brain.head.profile", tint: Theme.danger,
+                                            title: loc("إزالة من الحفظ"),
+                                            subtitle: loc("مضافة — للمراجعة"))
                             }
-                            .pressable(scale: 0.9)
-                            .transition(.scale.combined(with: .opacity))
+                            .buttonStyle(.plain)
+                        } else {
+                            Button {
+                                // بطاقةٌ جديدة موعدها اليوم — كما تُضيف شاشة الحفظ تمامًا.
+                                // لا مراجعةً راسبة: تلك تُولَد بـ «تعثّرت فيها ١ مرة» في
+                                // آيةٍ لم تُعرض بعد، ولا ناجحة: تلك تزعم حفظًا لم يقع.
+                                store.enroll([ref])
+                                Haptics.done(enabled: store.hapticsEnabled)
+                                dismiss()
+                            } label: {
+                                SettingsRow(icon: "brain.head.profile", tint: Theme.accent(for: "sea"),
+                                            title: loc("أضِف إلى الحفظ"))
+                            }
+                            .buttonStyle(.plain)
                         }
-                        Spacer()
+
+                        SettingsDivider()
+                        ShareLink(item: "\(text)\n\n[\(surahName): \(ref.ayah)]\n\nمن تطبيق أثر") {
+                            SettingsRow(icon: "square.and.arrow.up.fill", tint: Theme.accent, title: loc("مشاركة الآية"))
+                        }
+                        .buttonStyle(.plain)
                     }
+
+                    Spacer(minLength: 0)
                 }
-                .animation(Motion.snappy, value: store.highlight(ref))
-
-                // علامة الوقوف — الإجراء الأبرز، ذهبيّ أنيق
-                stopMarkButton
-
-                SettingsCard {
-                    Button {
-                        store.toggleBookmark(ref)
-                        Haptics.tap(enabled: store.hapticsEnabled)
-                        dismiss()
-                    } label: {
-                        SettingsRow(icon: store.isBookmarked(ref) ? "bookmark.slash.fill" : "bookmark.fill",
-                                    tint: Theme.gold,
-                                    title: store.isBookmarked(ref) ? loc("إزالة العلامة") : loc("وضع علامة"))
-                    }
-                    .buttonStyle(.plain)
-
-                    SettingsDivider()
-                    Button {
-                        // بطاقةٌ جديدة موعدها اليوم — كما تُضيف شاشة الحفظ تمامًا.
-                        // لا مراجعةً راسبة: تلك تُولَد بـ «تعثّرت فيها ١ مرة» في
-                        // آيةٍ لم تُعرض بعد، ولا ناجحة: تلك تزعم حفظًا لم يقع.
-                        store.enroll([ref])
-                        Haptics.done(enabled: store.hapticsEnabled)
-                        dismiss()
-                    } label: {
-                        SettingsRow(icon: "brain.head.profile", tint: Theme.accent(for: "sea"),
-                                    title: loc("أضِف إلى الحفظ"),
-                                    subtitle: store.card(for: ref) == nil ? nil : loc("مضافة — للمراجعة"))
-                    }
-                    .buttonStyle(.plain)
-                    // المضافة سلفًا: الضغط لا يفعل شيئًا، فلا يُوعَد بتأكيدٍ كاذب.
-                    .disabled(store.card(for: ref) != nil)
-
-                    SettingsDivider()
-                    ShareLink(item: "\(text)\n\n[\(surahName): \(ref.ayah)]\n\nمن تطبيق أثر") {
-                        SettingsRow(icon: "square.and.arrow.up.fill", tint: Theme.accent, title: loc("مشاركة الآية"))
-                    }
-                    .buttonStyle(.plain)
-                }
-
-                Spacer(minLength: 0)
+                .padding(.horizontal, 20)
+                .padding(.bottom, 16)
             }
-            .padding(.horizontal, 20)
-            .padding(.bottom, 16)
+            .scrollIndicators(.hidden)
         }
     }
 }
@@ -890,6 +942,10 @@ struct AyahListPage: View {
                 )
                 .contentShape(Rectangle())
                 .onTapGesture { onTapAyah(ref) }
+                // البطاقة عنصر واحد لقارئ الشاشة بسمة زرّ، لا ميدالية ونصّ وعلامة متفرّقة.
+                .accessibilityElement(children: .combine)
+                .accessibilityAddTraits(.isButton)
+                .accessibilityHint(loc("يفتح خيارات الآية"))
                 .onAppear { onVisible(ref) }
             }
         }

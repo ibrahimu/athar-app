@@ -8,6 +8,7 @@ struct TasbihView: View {
     @State private var pulse = false
     @State private var bloom = false        // وميض إتمام لمرّة عند بلوغ الهدف
     @State private var bloomToken = 0        // يُجدّد الوميض في كل بلوغ
+    @State private var confirmReset = false  // تأكيد التصفير قبل محو العدّ
 
     private let phrases = [
         loc("سُبْحَانَ اللهِ"),
@@ -39,7 +40,7 @@ struct TasbihView: View {
                     targetPicker.appearStagger(2)
                     controls.appearStagger(3)
                 }
-                .padding(.horizontal, 20)
+                .padding(.horizontal, Theme.gutter)
                 .padding(.bottom, 12)
                 .readableWidth(560)
             }
@@ -70,6 +71,7 @@ struct TasbihView: View {
                             .shadow(color: selected ? Theme.accent.opacity(0.25) : .clear, radius: 6, y: 3)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityAddTraits(selected ? .isSelected : [])
                 }
             }
             .padding(.horizontal, 2)
@@ -109,6 +111,8 @@ struct TasbihView: View {
                         .foregroundStyle(Theme.ink)
                         .multilineTextAlignment(.center)
                         .padding(.horizontal, 34)
+                        .lineLimit(3)
+                        .minimumScaleFactor(0.7)
 
                     // الرقم «جوهرة»: تعبئة متدرّجة بلون القسم
                     Text((store.tasbihCount % store.tasbihTarget).counterText)
@@ -121,6 +125,9 @@ struct TasbihView: View {
                         .font(Theme.display(13))
                         .foregroundStyle(Theme.inkFaint)
                 }
+                // الدائرة مسقوفة بـ٣٠٠ نقطة، فلو كبر نصّها مع أحجام الإتاحة الكبرى لغطّى
+                // الحلقة والرقائق حولها. شريط العبارات فوقها يبقى بحجمه الكامل للقراءة.
+                .dynamicTypeSize(...DynamicTypeSize.accessibility1)
             }
             .frame(maxWidth: 300, maxHeight: 300)
             .contentShape(Circle())
@@ -145,8 +152,7 @@ struct TasbihView: View {
                     Text(target.counterText)
                         .font(Theme.display(14, weight: .semibold))
                         .foregroundStyle(selected ? Theme.onAccent : Theme.inkSoft)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 11)
+                        .frame(maxWidth: .infinity, minHeight: 44)   // هدف لمس لا يقلّ عن ٤٤ نقطة
                         .background(RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous)
                             .fill(selected ? Theme.accentGradient : Theme.surfaceGradient))
                         .overlay(RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous)
@@ -154,6 +160,8 @@ struct TasbihView: View {
                         .shadow(color: selected ? Theme.accent.opacity(0.22) : .clear, radius: 6, y: 3)
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel(loc("الهدف %1$@", target.counterText))
+                .accessibilityAddTraits(selected ? .isSelected : [])
             }
         }
     }
@@ -161,8 +169,10 @@ struct TasbihView: View {
     private var controls: some View {
         HStack(spacing: Theme.Space.md) {
             Button {
-                store.tasbihCount = 0
-                Haptics.tap(enabled: store.hapticsEnabled)
+                // التصفير يمحو العدّ التراكمي والأشواط بلا رجعة، فيُؤكَّد كسائر المسح في
+                // التطبيق بدل ضغطة واحدة — ولا شيء يُؤكَّد على عدّاد فارغ.
+                guard store.tasbihCount > 0 else { return }
+                confirmReset = true
             } label: {
                 Label(loc("تصفير"), systemImage: "arrow.counterclockwise")
                     .font(Theme.display(15, weight: .semibold))
@@ -188,6 +198,16 @@ struct TasbihView: View {
                     .overlay(RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous)
                         .strokeBorder(Theme.accent.opacity(0.14), lineWidth: 0.5))
             )
+        }
+        .confirmationDialog(loc("تصفير العدّاد؟"), isPresented: $confirmReset, titleVisibility: .visible) {
+            Button(loc("تصفير"), role: .destructive) {
+                store.tasbihCount = 0
+                Haptics.tap(enabled: store.hapticsEnabled)
+                WidgetCenter.shared.reloadAllTimelines()
+            }
+            Button(loc("cancel"), role: .cancel) {}
+        } message: {
+            Text(loc("سيُصفَّر العدّ وتُمحى الأشواط كلّها، ولا يمكن استرجاعها."))
         }
     }
 

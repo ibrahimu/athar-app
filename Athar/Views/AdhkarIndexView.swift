@@ -41,13 +41,14 @@ struct AdhkarIndexView: View {
                                 .padding(.top, 60)
                         }
                     }
-                    .padding(.horizontal, 18)
+                    .padding(.horizontal, Theme.gutter)
                     .padding(.bottom, 32)
                     .readableWidth()
                 }
             }
             .navigationTitle(loc("الأذكار"))
-            .navigationBarTitleDisplayMode(.large)
+            // كل شاشات التطبيق بعنوان مضمَّن، والمصحف يجمعه مع البحث بالشكل نفسه.
+            .navigationBarTitleDisplayMode(.inline)
             .searchable(text: $query, prompt: loc("ابحث في الأذكار"))
         }
     }
@@ -56,16 +57,20 @@ struct AdhkarIndexView: View {
 struct CategoryRow: View {
     let category: DhikrCategory
     var completed: Bool
+    /// لون القسم يُقرأ عند الإنشاء في جسد الأب لا داخل الصف: الصف قيمةٌ متساوية قبل تبديل
+    /// الطابع وبعده، فلو قرأ اللون ساكنًا في جسده لبقيت أيقونته خضراء بعد اختيار الوردي.
+    let color: Color
+
+    init(category: DhikrCategory, completed: Bool, color: Color? = nil) {
+        self.category = category
+        self.completed = completed
+        self.color = color ?? Theme.accent(for: category.accent)
+    }
 
     var body: some View {
-        let color = Theme.accent(for: category.accent)
-        return AtharCard(padding: 16) {
+        AtharCard(padding: 16) {
             HStack(spacing: 14) {
-                Image(systemName: category.icon)
-                    .font(.system(size: 22))
-                    .foregroundStyle(color)
-                    .frame(width: 46, height: 46)
-                    .background(Circle().fill(color.opacity(0.13)))
+                IconChip(icon: category.icon, tint: color, size: .lg)
 
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(spacing: 6) {
@@ -83,6 +88,7 @@ struct CategoryRow: View {
                         .font(Theme.display(12))
                         .foregroundStyle(Theme.inkSoft)
                         .multilineTextAlignment(.leading)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
 
                 Image(systemName: "chevron.forward")

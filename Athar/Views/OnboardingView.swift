@@ -11,6 +11,7 @@ struct OnboardingView: View {
     @State private var wantQiyam = false
     @State private var wantIstighfar = false
     @State private var wantWird = false
+    @State private var showCityPicker = false
     @State private var working = false
     @State private var denied = false
     @State private var breathing = false
@@ -25,7 +26,7 @@ struct OnboardingView: View {
                     options
                     note
                 }
-                .padding(.horizontal, 22)
+                .padding(.horizontal, Theme.gutter)
                 .padding(.top, 24)
                 .padding(.bottom, 140)
                 .readableWidth(520)
@@ -44,6 +45,12 @@ struct OnboardingView: View {
             Button(loc("later"), role: .cancel) { finish() }
         } message: {
             Text(loc("لتصلك التذكيرات، اسمح للتطبيق بالإشعارات من إعدادات الجهاز. يمكنك تفعيلها لاحقًا من إعدادات أثر."))
+        }
+        .sheet(isPresented: $showCityPicker) {
+            // الأوراق لا ترث اتجاه الكتابة من جذر التطبيق، فنثبّته صراحةً كما في الإعدادات.
+            OnboardingLocationHost(store: store)
+                .environment(\.layoutDirection,
+                             AppConfig.arabicOnly ? .rightToLeft : store.appLanguage.layoutDirection)
         }
     }
 
@@ -103,6 +110,23 @@ struct OnboardingView: View {
             row("bell.and.waves.left.and.right.fill", Theme.accent, loc("أوقات الصلاة"),
                 loc("تنبيه عند دخول كل وقت"), $wantAthan)
             SettingsDivider()
+            // تنبيه الأذان مفعّل افتراضيًا، ومواقيته تُحسب لمكة ما لم يُختر موقع؛
+            // فيرى المستخدم المدينة هنا ويبدّلها قبل «فعّل التذكيرات» لا بعد أن تصله في غير وقتها.
+            Button { showCityPicker = true } label: {
+                SettingsRow(icon: "location.fill", tint: Theme.accent(for: "calm"),
+                            title: loc("الموقع: %1$@", store.placeName)) {
+                    HStack(spacing: 4) {
+                        Text(loc("تغيير"))
+                            .font(Theme.display(14, weight: .medium))
+                            .foregroundStyle(Theme.accent)
+                        Image(systemName: "chevron.forward")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(Theme.inkFaint)
+                    }
+                }
+            }
+            .buttonStyle(.plain)
+            SettingsDivider()
             row("moon.stars.fill", Theme.accent(for: "night"), loc("قيام الليل"),
                 loc("عند دخول ثلث الليل الآخر"), $wantQiyam)
             SettingsDivider()
@@ -117,7 +141,9 @@ struct OnboardingView: View {
     private func row(_ icon: String, _ tint: Color, _ title: String,
                      _ sub: String, _ on: Binding<Bool>) -> some View {
         SettingsRow(icon: icon, tint: tint, title: title, subtitle: sub) {
+            // المفتاح بلا عنوان مرئي، فيقرأ VoiceOver اسم الصف بدل «مفتاح» فقط.
             Toggle("", isOn: on).labelsHidden()
+                .accessibilityLabel(title)
         }
     }
 
@@ -133,7 +159,7 @@ struct OnboardingView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(14)
-        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Theme.surfaceAlt))
+        .background(RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous).fill(Theme.surfaceAlt))
     }
 
     // MARK: الأزرار
@@ -144,17 +170,10 @@ struct OnboardingView: View {
                 HStack(spacing: 8) {
                     if working { ProgressView().tint(Theme.onAccent) }
                     Text(anySelected ? loc("فعّل التذكيرات") : loc("ابدأ"))
-                        .font(Theme.display(17, weight: .semibold))
                 }
-                .foregroundStyle(Theme.onAccent)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
-                .background(
-                    RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous)
-                        .fill(LinearGradient(colors: [Theme.accent, Theme.accent2],
-                                             startPoint: .top, endPoint: .bottom))
-                )
-                .shadow(color: Theme.accent.opacity(0.35), radius: 12, y: 6)
+                .font(Theme.display(16, weight: .semibold))
+                // الزر الأساسي الموحّد: التدرّج باتجاه العربية والتوهّج نفسه في كل الشاشات.
+                .gradientButton()
             }
             .pressable()
             .disabled(working)
@@ -163,7 +182,7 @@ struct OnboardingView: View {
                 .font(Theme.display(14))
                 .foregroundStyle(Theme.inkSoft)
         }
-        .padding(.horizontal, 22)
+        .padding(.horizontal, Theme.gutter)
         .padding(.bottom, 18)
         .padding(.top, 14)
         .background(
@@ -204,5 +223,20 @@ struct OnboardingView: View {
     private func finish() {
         store.didOnboard = true
         dismiss()
+    }
+}
+
+/// مضيف صغير يملك مزوّد الموقع طوال عمر الورقة: LocationPickerView يستقبله
+/// كـ@ObservedObject أي أنه لا يملكه، فلو أُنشئ داخل مغلِّف الورقة لضاع مع كل
+/// إعادة رسم وانقطع تتبّع الموقع في منتصفه.
+private struct OnboardingLocationHost: View {
+    @StateObject private var location: LocationProvider
+
+    init(store: AtharStore) {
+        _location = StateObject(wrappedValue: LocationProvider(store: store))
+    }
+
+    var body: some View {
+        LocationPickerView(location: location)
     }
 }

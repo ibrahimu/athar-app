@@ -6,6 +6,9 @@ import SwiftUI
 /// يبقى في متناول اليد هنا: الحج والعمرة، والقبلة، والحفظ، والتلاوة.
 struct SectionsView: View {
     @EnvironmentObject private var store: AtharStore
+    @Environment(\.dismiss) private var dismiss
+    /// تبديل التبويب الحيّ — تمرّره «اليوم» كي لا تُدفع نسخة ثانية من قسم قائم في الشريط.
+    var onOpenTab: ((AppTab) -> Void)? = nil
 
     private var inBar: [AppTab] { store.visibleTabs.filter { $0 != .home } }
     private var offBar: [AppTab] {
@@ -19,39 +22,23 @@ struct SectionsView: View {
                 VStack(alignment: .leading, spacing: 20) {
                     if !offBar.isEmpty {
                         group(title: loc("ليست في الشريط"),
-                              subtitle: loc("افتحها من هنا، أو أضِفها للشريط من المظهر."),
-                              tabs: offBar)
+                              subtitle: loc("افتحها من هنا، أو أضِفها إلى الشريط من «ترتيب الشريط السفلي» أدناه."),
+                              tabs: offBar, pushes: true)
+                            .appearStagger(0)
                     }
                     if !inBar.isEmpty {
-                        group(title: loc("في الشريط السفلي"), subtitle: nil, tabs: inBar)
+                        group(title: loc("في الشريط السفلي"), subtitle: nil, tabs: inBar, pushes: false)
+                            .appearStagger(1)
                     }
                     NavigationLink { AppearanceView() } label: {
-                        AtharCard(padding: 14) {
-                            HStack(spacing: 12) {
-                                Image(systemName: "square.grid.2x2")
-                                    .font(.system(size: 15))
-                                    .foregroundStyle(Theme.accent)
-                                    .frame(width: 36, height: 36)
-                                    .background(Circle().fill(Theme.accent.opacity(0.12)))
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(loc("ترتيب الشريط السفلي"))
-                                        .font(Theme.display(15, weight: .semibold))
-                                        .foregroundStyle(Theme.ink)
-                                    Text(loc("اختر الأقسام الخمسة التي تظهر أسفل الشاشة"))
-                                        .font(Theme.display(11))
-                                        .foregroundStyle(Theme.inkFaint)
-                                        .lineLimit(1).minimumScaleFactor(0.8)
-                                }
-                                Spacer()
-                                Image(systemName: "chevron.forward")
-                                    .font(.system(size: 12, weight: .semibold))
-                                    .foregroundStyle(Theme.inkFaint)
-                            }
-                        }
+                        AtharLinkRow(icon: "square.grid.2x2",
+                                     title: loc("ترتيب الشريط السفلي"),
+                                     subtitle: loc("اختر الأقسام الخمسة التي تظهر أسفل الشاشة"))
                     }
                     .pressable()
+                    .appearStagger(2)
                 }
-                .padding(.horizontal, 18)
+                .padding(.horizontal, Theme.gutter)
                 .padding(.top, 6)
                 .padding(.bottom, 30)
                 .readableWidth(620)
@@ -63,21 +50,30 @@ struct SectionsView: View {
         .toolbar(.hidden, for: .tabBar)
     }
 
-    private func group(title: String, subtitle: String?, tabs: [AppTab]) -> some View {
+    /// الأقسام الغائبة عن الشريط تُدفع هنا؛ أما الحاضرة فيه فيُبدَّل إليها ويُغلق هذا المكدّس،
+    /// وإلا صار للمصحف والصلاة نسختان بحالتين منفصلتين.
+    private func group(title: String, subtitle: String?, tabs: [AppTab], pushes: Bool) -> some View {
         VStack(alignment: .leading, spacing: 9) {
             SettingsGroupTitle(text: title)
             if let subtitle {
                 Text(subtitle)
-                    .font(Theme.display(11.5))
+                    .font(Theme.display(12))
                     .foregroundStyle(Theme.inkFaint)
                     .padding(.horizontal, 6)
                     .padding(.bottom, 2)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             LazyVGrid(columns: [GridItem(.flexible(), spacing: 12),
                                 GridItem(.flexible(), spacing: 12)], spacing: 12) {
                 ForEach(tabs) { tab in
-                    NavigationLink { SectionDestination(tab: tab) } label: { SectionTile(tab: tab) }
-                        .pressable()
+                    let tile = SectionTile(tab: tab, tint: Theme.accent(for: tab.accentKey))
+                    if !pushes, let open = onOpenTab {
+                        Button { open(tab); dismiss() } label: { tile }
+                            .pressable()
+                    } else {
+                        NavigationLink { SectionDestination(tab: tab) } label: { tile }
+                            .pressable()
+                    }
                 }
             }
         }
@@ -88,14 +84,15 @@ struct SectionsView: View {
 
 struct SectionTile: View {
     let tab: AppTab
-    @EnvironmentObject private var store: AtharStore
-
-    private var tint: Color { Theme.accent(for: tab.accentKey) }
+    /// اللون يُمرَّر قيمةً من الأب لا يُقرأ ساكنًا، ليُعاد رسم البلاطة فور تبديل الطابع.
+    var tint: Color
 
     var body: some View {
-        AtharCard(padding: 14, elevation: .e2, tint: tint) {
-            VStack(alignment: .leading, spacing: 9) {
-                TabGlyph(tab: tab, size: 17)
+        AtharCard(padding: 14, tint: tint) {
+            VStack(alignment: .leading, spacing: Theme.Space.sm) {
+                // الصلاة والحج رمزاهما مرسومان (سجّادة وكعبة) فلا يسعهما IconChip؛
+                // تُرسم الرقاقة بمقاسه المتوسّط نفسه: ٤٠ نقطة، ورمز ٤٥٪ منها، وصبغة ٠٫١٣.
+                TabGlyph(tab: tab, size: 18)
                     .foregroundStyle(tint)
                     .frame(width: 40, height: 40)
                     .background(Circle().fill(tint.opacity(0.13)))

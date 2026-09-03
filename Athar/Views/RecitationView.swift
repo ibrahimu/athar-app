@@ -84,7 +84,7 @@ struct RecitationView: View {
                     if surahs.isEmpty { emptyList }
                     credit
                 }
-                .padding(.horizontal, 18)
+                .padding(.horizontal, Theme.gutter)
                 .padding(.top, 6)
                 .padding(.bottom, selecting ? 96 : (audio.surah == nil ? 30 : 112))
                 .readableWidth(620)
@@ -95,11 +95,14 @@ struct RecitationView: View {
             if selecting { selectionBar } else { MiniPlayer() }
         }
         .searchable(text: $query, prompt: loc("ابحث عن سورة"))
+        // العدد والحجم من المُنسِّقَين نفسيهما اللذين تستعملهما رقاقة «المحمَّل» وشريط
+        // الطابور، فلا تُكتب ١١٤ و٨٠٠ هنا بأرقام هندية وهناك بأرقام غربية.
         .confirmationDialog(loc("تنزيل المصحف كاملًا؟"), isPresented: $confirmAll, titleVisibility: .visible) {
-            Button(loc("نزّل ١١٤ سورة")) { audio.downloadMany(Array(1...114)) }
+            Button(loc("نزّل %1$@", surahCountText(114))) { audio.downloadMany(Array(1...114)) }
             Button(loc("cancel"), role: .cancel) {}
         } message: {
-            Text(loc("يقارب حجمه ٨٠٠ م.ب لهذا القارئ. يُفضَّل أن تكون على شبكة واي‑فاي."))
+            Text(loc("يقارب حجمه %1$@ لهذا القارئ. يُفضَّل أن تكون على شبكة واي‑فاي.",
+                     (Int64(800) * 1_048_576).fileSizeText))
         }
         .navigationTitle(loc("التلاوة"))
         .navigationBarTitleDisplayMode(.inline)
@@ -196,11 +199,7 @@ struct RecitationView: View {
         Button { showReciters = true } label: {
             AtharCard(padding: 13) {
                 HStack(spacing: 13) {
-                    Image(systemName: "person.wave.2.fill")
-                        .font(.system(size: 15))
-                        .foregroundStyle(Theme.accent)
-                        .frame(width: 38, height: 38)
-                        .background(Circle().fill(Theme.accent.opacity(0.12)))
+                    IconChip(icon: "person.wave.2.fill", tint: Theme.accent, size: .md)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(loc("القارئ"))
                             .font(Theme.display(11)).foregroundStyle(Theme.inkFaint)
@@ -256,18 +255,19 @@ struct RecitationView: View {
                     .foregroundStyle(Theme.ink)
                     .lineLimit(1).minimumScaleFactor(0.7)
                 Text(sub)
-                    .font(Theme.display(9.5))
+                    .font(Theme.display(11))
                     .foregroundStyle(Theme.inkFaint)
-                    .lineLimit(1).minimumScaleFactor(0.7)
+                    .lineLimit(1).minimumScaleFactor(0.85)
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 11)
-            .background(RoundedRectangle(cornerRadius: 14, style: .continuous)
+            .background(RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous)
                 .fill(on ? Theme.accent.opacity(0.10) : Theme.surfaceAlt))
-            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous)
+            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous)
                 .strokeBorder(on ? Theme.accent.opacity(0.25) : Theme.hairline.opacity(0.5), lineWidth: 0.6))
         }
         .pressable()
+        .accessibilityAddTraits(on ? .isSelected : [])
     }
 
     // MARK: القائمة
@@ -282,11 +282,11 @@ struct RecitationView: View {
                 Button(loc("إلغاء")) {
                     withAnimation(Motion.snappy) { selecting = false; picked.removeAll() }
                 }
-                .font(Theme.display(12.5, weight: .medium))
+                .font(Theme.display(13, weight: .medium))
                 .foregroundStyle(Theme.inkFaint)
             } else if onlyDownloaded {
                 Button(loc("عرض الكل")) { withAnimation(Motion.snappy) { onlyDownloaded = false } }
-                    .font(Theme.display(12.5, weight: .medium))
+                    .font(Theme.display(13, weight: .medium))
                     .foregroundStyle(Theme.accent)
             } else {
                 downloadMenu
@@ -317,7 +317,7 @@ struct RecitationView: View {
         } label: {
             HStack(spacing: 4) {
                 Image(systemName: "arrow.down.circle").font(.system(size: 12, weight: .semibold))
-                Text(loc("تنزيل")).font(Theme.display(12.5, weight: .medium))
+                Text(loc("تنزيل")).font(Theme.display(13, weight: .medium))
             }
             .foregroundStyle(Theme.accent)
         }
@@ -337,7 +337,7 @@ struct RecitationView: View {
                     .foregroundStyle(Theme.accent)
             }
             .padding(.horizontal, 13).padding(.vertical, 10)
-            .background(RoundedRectangle(cornerRadius: 13, style: .continuous)
+            .background(RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous)
                 .fill(Theme.accent.opacity(0.08)))
         }
     }
@@ -361,9 +361,10 @@ struct RecitationView: View {
                     audio.downloadMany(Array(picked))
                     withAnimation(Motion.snappy) { selecting = false; picked.removeAll() }
                 } label: {
+                    // «نزّل سورتين» و«نزّل 3 سور» — العدد بمعدوده، كشريط الطابور لا رقمًا عاريًا.
                     Text(picked.isEmpty
                          ? loc("اختر سورًا")
-                         : loc("نزّل %1$@", picked.count.counterText))
+                         : loc("نزّل %1$@", surahCountText(picked.count, genitive: true)))
                         .font(Theme.display(14, weight: .semibold))
                         .foregroundStyle(picked.isEmpty ? Theme.inkFaint : Theme.onAccent)
                         .padding(.horizontal, 20).padding(.vertical, 11)
@@ -375,13 +376,8 @@ struct RecitationView: View {
                 .disabled(picked.isEmpty)
             }
             .padding(.horizontal, 14).padding(.vertical, 10)
-            .background(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(Theme.surface)
-                    .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous)
-                        .strokeBorder(Theme.hairline.opacity(0.6), lineWidth: 0.5))
-            )
-            .atharElevation(.e2)
+            // السطح المشترك نفسه الذي يطفو فوقه، لا نسخة يدوية بتعبئة مسطّحة وحدّ أثقل.
+            .background(CardSurface(radius: Theme.Radius.md, elevation: .e2))
             .padding(.horizontal, 14)
             .padding(.bottom, 8)
             .transition(.move(edge: .bottom).combined(with: .opacity))
@@ -445,7 +441,7 @@ struct RecitationView: View {
             Rectangle().fill(Theme.hairline.opacity(0.6))
                 .frame(height: 0.7).padding(.horizontal, 50).padding(.top, 10)
             Text(loc("التلاوات من MP3Quran.net — متاحة للعموم، برواية حفص عن عاصم."))
-                .font(Theme.display(10.5))
+                .font(Theme.display(11))
                 .foregroundStyle(Theme.inkFaint)
                 .multilineTextAlignment(.center)
         }
@@ -592,24 +588,27 @@ struct PlayerView: View {
     /// يمينًا، فالرجوع يسار والتقديم يمين — ولو عكسناه لخالف اتجاه الشريط فوقه.
     private var transport: some View {
         HStack(spacing: 12) {
-            roundButton("backward.end.fill", diameter: 44, icon: 15,
+            roundButton("backward.end.fill", label: loc("السورة السابقة"), diameter: 44, icon: 15,
                         enabled: (audio.surah ?? 1) > 1 || audio.elapsed > 3) { audio.previous() }
-            roundButton("gobackward.10", diameter: 50, icon: 20, tinted: true) { audio.seek(by: -10) }
+            roundButton("gobackward.10", label: loc("ترجيع عشر ثوانٍ"), diameter: 50, icon: 20,
+                        tinted: true) { audio.seek(by: -10) }
 
             PlayGlyph(playing: audio.isPlaying, buffering: audio.isBuffering,
                       size: 68, filled: true, iconSize: 25) {
                 audio.isPlaying ? audio.pause() : audio.resume()
             }
 
-            roundButton("goforward.10", diameter: 50, icon: 20, tinted: true) { audio.seek(by: 10) }
-            roundButton("forward.end.fill", diameter: 44, icon: 15,
+            roundButton("goforward.10", label: loc("تقديم عشر ثوانٍ"), diameter: 50, icon: 20,
+                        tinted: true) { audio.seek(by: 10) }
+            roundButton("forward.end.fill", label: loc("السورة التالية"), diameter: 44, icon: 15,
                         enabled: (audio.surah ?? 114) < 114) { audio.next() }
         }
         .frame(maxWidth: .infinity)
         .environment(\.layoutDirection, .leftToRight)
     }
 
-    private func roundButton(_ icon: String, diameter: CGFloat, icon size: CGFloat,
+    /// الأزرار أيقونات بلا نصّ، فالاسم المنطوق يُمرَّر معها كي يقرأه قارئ الشاشة.
+    private func roundButton(_ icon: String, label: String, diameter: CGFloat, icon size: CGFloat,
                              tinted: Bool = false, enabled: Bool = true,
                              _ action: @escaping () -> Void) -> some View {
         Button(action: action) {
@@ -622,6 +621,7 @@ struct PlayerView: View {
         }
         .pressable()
         .disabled(!enabled)
+        .accessibilityLabel(label)
     }
 
     // MARK: الخيارات — تكرار، سرعة، مؤقّت، تنزيل
@@ -660,10 +660,18 @@ struct PlayerView: View {
                 optionCell(icon: "checkmark.circle.fill", label: loc("محمَّلة"), on: true) {
                     confirmDelete = true
                 }
+            // «إيقاف التنزيل» في القائمة يترك ما بدأ فعلًا يكمل؛ هاتان الخليّتان كانتا
+            // خاملتين، فصارتا زرّ إلغاء لهذه السورة وحدها: الحالة في النصّ والفعل في الأيقونة.
             case .downloading(let f):
-                optionCell(icon: "arrow.down.circle", label: "\(Int(f * 100).counterText)٪", on: true) {}
+                optionCell(icon: "xmark.circle", label: "\(Int(f * 100).counterText)٪", on: true) {
+                    audio.cancel(surah: s)
+                }
+                .accessibilityLabel(loc("إلغاء التنزيل"))
             case .waiting:
-                optionCell(icon: "arrow.down.circle", label: loc("ينتظر"), on: true) {}
+                optionCell(icon: "xmark.circle", label: loc("ينتظر"), on: true) {
+                    audio.cancel(surah: s)
+                }
+                .accessibilityLabel(loc("إلغاء التنزيل"))
             case .idle, .failed:
                 optionCell(icon: "arrow.down.circle", label: loc("تنزيل"), on: false) {
                     audio.download(surah: s)
@@ -681,7 +689,7 @@ struct PlayerView: View {
                     .foregroundStyle(on ? Theme.accent : Theme.inkSoft)
                     .frame(height: 18)
                 Text(label)
-                    .font(Theme.display(10, weight: .medium))
+                    .font(Theme.display(11, weight: .medium))
                     .foregroundStyle(on ? Theme.accent : Theme.inkFaint)
                     .lineLimit(1).minimumScaleFactor(0.6)
             }
@@ -700,14 +708,10 @@ struct PlayerView: View {
                 if su.id < 114, let nx = Quran.surah(su.id + 1) {
                     Button { audio.play(surah: nx.id) } label: {
                         HStack(spacing: 12) {
-                            Image(systemName: "text.line.first.and.arrowtriangle.forward")
-                                .font(.system(size: 14))
-                                .foregroundStyle(Theme.accent)
-                                .frame(width: 32, height: 32)
-                                .background(Circle().fill(Theme.accent.opacity(0.10)))
+                            IconChip(icon: "text.line.first.and.arrowtriangle.forward", tint: Theme.accent, size: .sm)
                             VStack(alignment: .leading, spacing: 1) {
                                 Text(loc("التالية"))
-                                    .font(Theme.display(10.5)).foregroundStyle(Theme.inkFaint)
+                                    .font(Theme.display(11)).foregroundStyle(Theme.inkFaint)
                                 Text(loc("سورة %1$@", nx.name))
                                     .font(Theme.display(14, weight: .medium)).foregroundStyle(Theme.ink)
                             }
@@ -728,11 +732,7 @@ struct PlayerView: View {
                     SurahReaderView(surahId: su.id).environment(\.insidePlayerSheet, true)
                 } label: {
                     HStack(spacing: 12) {
-                        Image(systemName: "book.pages")
-                            .font(.system(size: 14))
-                            .foregroundStyle(Theme.accent)
-                            .frame(width: 32, height: 32)
-                            .background(Circle().fill(Theme.accent.opacity(0.10)))
+                        IconChip(icon: "book.pages", tint: Theme.accent, size: .sm)
                         Text(loc("اقرأ السورة وأنت تسمعها"))
                             .font(Theme.display(14, weight: .medium)).foregroundStyle(Theme.ink)
                         Spacer()
@@ -769,7 +769,7 @@ struct PlayerView: View {
                 .foregroundStyle(Theme.accent)
         }
         .padding(.horizontal, 13).padding(.vertical, 10)
-        .background(RoundedRectangle(cornerRadius: 13, style: .continuous)
+        .background(RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous)
             .fill(Theme.accent.opacity(0.07)))
     }
 
@@ -781,13 +781,14 @@ struct PlayerView: View {
     private var failureNote: some View {
         HStack(spacing: 9) {
             Image(systemName: "wifi.exclamationmark")
-                .font(.system(size: 13)).foregroundStyle(Color.red.opacity(0.8))
+                .font(.system(size: 13)).foregroundStyle(Theme.danger)
             Text(loc("تعذّر التشغيل. تحقّق من الاتصال، أو نزّل السورة لتعمل بلا إنترنت."))
                 .font(Theme.display(12)).foregroundStyle(Theme.inkSoft)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .padding(.horizontal, 13).padding(.vertical, 10)
-        .background(RoundedRectangle(cornerRadius: 13, style: .continuous)
-            .fill(Color.red.opacity(0.06)))
+        .background(RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous)
+            .fill(Theme.danger.opacity(0.08)))
     }
 
     private func speedText(_ r: Float) -> String {
@@ -831,11 +832,12 @@ struct SleepTimerSheet: View {
                                     .contentShape(Rectangle())
                                 }
                                 .buttonStyle(.plain)
+                                .accessibilityAddTraits(audio.sleep == t ? .isSelected : [])
                                 if i < SleepTimer.choices.count - 1 { SettingsDivider() }
                             }
                         }
                     }
-                    .padding(.horizontal, 18)
+                    .padding(.horizontal, Theme.gutter)
                     .padding(.bottom, 20)
                     .readableWidth(520)
                 }
@@ -878,16 +880,17 @@ struct SpeedSheet: View {
                                     .foregroundStyle(on ? Theme.onAccent : Theme.ink)
                                     .frame(maxWidth: .infinity)
                                     .padding(.vertical, 14)
-                                    .background(RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                    .background(RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous)
                                         .fill(on ? AnyShapeStyle(Theme.accentGradient)
                                                  : AnyShapeStyle(Theme.surfaceAlt)))
                             }
                             .pressable()
+                            .accessibilityAddTraits(on ? .isSelected : [])
                         }
                     }
                     Spacer()
                 }
-                .padding(.horizontal, 18)
+                .padding(.horizontal, Theme.gutter)
                 .readableWidth(520)
             }
             .navigationTitle(loc("سرعة التلاوة"))
@@ -917,13 +920,13 @@ struct ReciterPicker: View {
                             }
                         }
                         Text(loc("التلاوات من موقع MP3Quran.net، متاحة للعموم بلا مقابل، برواية حفص عن عاصم."))
-                            .font(Theme.display(11.5))
+                            .font(Theme.display(12))
                             .foregroundStyle(Theme.inkFaint)
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, 10)
                             .padding(.top, 4)
                     }
-                    .padding(.horizontal, 18)
+                    .padding(.horizontal, Theme.gutter)
                     .padding(.top, 8)
                     .padding(.bottom, 30)
                     .readableWidth(560)
@@ -953,7 +956,7 @@ struct ReciterPicker: View {
                         .foregroundStyle(Theme.ink)
                     if sum.count > 0 {
                         Text("\(downloadedSurahsText(sum.count)) · \(sum.bytes.fileSizeText)")
-                            .font(Theme.display(10.5))
+                            .font(Theme.display(11))
                             .foregroundStyle(Theme.inkFaint)
                     }
                 }
@@ -967,13 +970,17 @@ struct ReciterPicker: View {
                         Image(systemName: "ellipsis.circle")
                             .font(.system(size: 15))
                             .foregroundStyle(Theme.inkFaint)
+                            .frame(width: 34, height: 34)
+                            .contentShape(Rectangle().inset(by: -5))
                     }
+                    .accessibilityLabel(loc("خيارات تنزيلات القارئ"))
                 }
             }
             .padding(.horizontal, 14).padding(.vertical, 12)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityAddTraits(on ? .isSelected : [])
     }
 }
 
@@ -985,7 +992,8 @@ struct SurahDisc: View {
     var size: CGFloat = 60
     var playing: Bool = false
 
-    @State private var pulse = false
+    /// النبض يتوقّف مع «تقليل الحركة» كسائر حركات التطبيق.
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         ZStack {
@@ -1001,10 +1009,13 @@ struct SurahDisc: View {
                 .foregroundStyle(Theme.accent)
         }
         .frame(width: size, height: size)
-        .scaleEffect(playing && pulse ? 1.025 : 1)
-        .animation(playing ? .easeInOut(duration: 1.6).repeatForever(autoreverses: true) : .default,
-                   value: pulse)
-        .onAppear { pulse = true }
+        // الحركة مربوطة بـ playing نفسها: كانت مربوطة بعلمٍ يتبدّل مرّةً عند الظهور،
+        // فلا ينبض القرص إلا إن كان يُتلى لحظة ظهوره، وإلا قفز إلى ١٫٠٢٥ وجمد.
+        .scaleEffect(playing && !reduceMotion ? 1.025 : 1)
+        .animation(playing && !reduceMotion
+                   ? .easeInOut(duration: 1.6).repeatForever(autoreverses: true)
+                   : Motion.snappy,
+                   value: playing)
     }
 }
 
@@ -1034,8 +1045,12 @@ struct PlayGlyph: View {
                 }
             }
             .frame(width: size, height: size)
+            // الأقراص الصغيرة (٣٤ و٣٨) تحتفظ بحجمها المرسوم، ويتّسع ملمسها إلى ٤٤ نقطة.
+            .contentShape(Rectangle().inset(by: min(0, (size - 44) / 2)))
         }
         .pressable()
+        // في حال التحميل لا أيقونة أصلًا، فقارئ الشاشة لا يجد ما يقرؤه بلا اسم صريح.
+        .accessibilityLabel(buffering ? loc("جارٍ التحميل") : (playing ? loc("إيقاف مؤقّت") : loc("تشغيل")))
     }
 }
 
@@ -1087,7 +1102,7 @@ struct ProgressStrip: View {
                     Spacer()
                     Text(duration > 0 ? "−" + max(0, duration - elapsed).clockText : "—")
                 }
-                .font(.system(size: 11.5, weight: .medium, design: .rounded))
+                .font(.system(size: 12, weight: .medium, design: .rounded))
                 .foregroundStyle(Theme.inkFaint)
                 .monospacedDigit()
             }
@@ -1149,7 +1164,7 @@ struct MiniPlayer: View {
                         Text(audio.failed ? loc("تعذّر التشغيل — تحقّق من الاتصال")
                                           : audio.reciter.name)
                             .font(Theme.display(11))
-                            .foregroundStyle(audio.failed ? Color.red.opacity(0.8) : Theme.inkFaint)
+                            .foregroundStyle(audio.failed ? Theme.danger : Theme.inkFaint)
                             .lineLimit(1)
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -1157,35 +1172,36 @@ struct MiniPlayer: View {
                 }
                 .buttonStyle(.plain)
 
+                // الرمزان صغيران عمدًا، لكن ملمسهما ٤٤ نقطة؛ و«×» يوقف التلاوة لا يغلق شيئًا،
+                // فاسمه المنطوق يقول ذلك بدل وصف الرمز الافتراضي.
                 Button { audio.next() } label: {
                     Image(systemName: "forward.end.fill")
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(Theme.inkSoft)
-                        .frame(width: 30, height: 30)
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .disabled(s >= 114)
+                .accessibilityLabel(loc("السورة التالية"))
 
                 Button { audio.stop() } label: {
                     Image(systemName: "xmark")
                         .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(Theme.inkFaint)
-                        .frame(width: 28, height: 28)
+                        .frame(width: 44, height: 44)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel(loc("إيقاف التلاوة"))
             }
 
             ProgressStrip(progress: audio.progress, elapsed: audio.elapsed,
                           duration: 0, seekable: false) { _ in }
         }
         .padding(.horizontal, 13).padding(.vertical, 9)
-        .background(
-            RoundedRectangle(cornerRadius: 18, style: .continuous)
-                .fill(Theme.surface)
-                .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .strokeBorder(Theme.hairline.opacity(0.6), lineWidth: 0.5))
-        )
-        .atharElevation(.e2)
+        // السطح المشترك نفسه الذي يطفو فوقه، لا نسخة يدوية بتعبئة مسطّحة وحدّ أثقل.
+        .background(CardSurface(radius: Theme.Radius.md, elevation: .e2))
         .padding(.horizontal, 14)
         .padding(.bottom, 8)
         .transition(.move(edge: .bottom).combined(with: .opacity))
@@ -1198,6 +1214,9 @@ struct DownloadGlyph: View {
     let surah: Int
     @StateObject private var audio = Recitation.shared
 
+    /// الرمز ٣٤ نقطة كي لا يرتفع الصفّ، وملمسه يتّسع إلى ٤٤.
+    private var hitArea: some Shape { Rectangle().inset(by: -5) }
+
     var body: some View {
         switch audio.state(reciter: audio.reciterId, surah: surah) {
         case .idle, .failed:
@@ -1205,22 +1224,25 @@ struct DownloadGlyph: View {
             Button { audio.download(surah: surah) } label: {
                 Image(systemName: failed ? "exclamationmark.arrow.circlepath" : "arrow.down.circle")
                     .font(.system(size: 18))
-                    .foregroundStyle(failed ? Color.red.opacity(0.7) : Theme.inkFaint)
+                    .foregroundStyle(failed ? Theme.danger : Theme.inkFaint)
                     .frame(width: 34, height: 34)
+                    .contentShape(hitArea)
             }
             .buttonStyle(.plain)
+            .accessibilityLabel(failed ? loc("إعادة محاولة التنزيل") : loc("تنزيل السورة"))
         case .waiting:
-            ProgressView().controlSize(.small).frame(width: 34, height: 34)
+            cancelButton { ProgressView().controlSize(.small) }
         case .downloading(let f):
-            ZStack {
-                Circle().stroke(Theme.accent.opacity(0.15), lineWidth: 2.5)
-                Circle().trim(from: 0, to: max(0.02, f))
-                    .stroke(Theme.accent, style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
-                    .rotationEffect(.degrees(-90))
+            cancelButton {
+                ZStack {
+                    Circle().stroke(Theme.accent.opacity(0.15), lineWidth: 2.5)
+                    Circle().trim(from: 0, to: max(0.02, f))
+                        .stroke(Theme.accent, style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
+                        .rotationEffect(.degrees(-90))
+                }
+                .frame(width: 20, height: 20)
+                .animation(Motion.snappy, value: f)
             }
-            .frame(width: 20, height: 20)
-            .frame(width: 34, height: 34)
-            .animation(Motion.snappy, value: f)
         case .done:
             Menu {
                 Button(loc("حذف التنزيل"), systemImage: "trash", role: .destructive) {
@@ -1231,7 +1253,24 @@ struct DownloadGlyph: View {
                     .font(.system(size: 18))
                     .foregroundStyle(Theme.accent)
                     .frame(width: 34, height: 34)
+                    .contentShape(hitArea)
             }
+            .accessibilityLabel(loc("محمَّلة — خيارات"))
         }
+    }
+
+    /// الدوّامة والحلقة كانتا خاملتين، و«إيقاف التنزيل» يترك ما بدأ يكمل؛ فصارتا
+    /// زرّ إلغاء لهذه السورة وحدها، بعلامة × صغيرة في وسطهما تقول ذلك.
+    private func cancelButton<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
+        Button { audio.cancel(surah: surah) } label: {
+            content()
+                .overlay(Image(systemName: "xmark")
+                    .font(.system(size: 7, weight: .bold))
+                    .foregroundStyle(Theme.accent))
+                .frame(width: 34, height: 34)
+                .contentShape(hitArea)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(loc("إلغاء التنزيل"))
     }
 }

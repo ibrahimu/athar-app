@@ -50,9 +50,11 @@ struct HifzPicker: View {
                                             .font(Theme.display(11)).foregroundStyle(Theme.inkFaint)
                                     }
                                     .padding(.horizontal, 14).padding(.vertical, 11)
+                                    .frame(minHeight: 44)   // هدف لمس كافٍ للصفوف القصيرة
                                     .contentShape(Rectangle())
                                 }
                                 .buttonStyle(.plain)
+                                .accessibilityAddTraits(surahId == s.id ? .isSelected : [])
                                 if i < filtered.prefix(query.isEmpty ? 114 : 12).count - 1 { SettingsDivider() }
                             }
                         }
@@ -67,7 +69,7 @@ struct HifzPicker: View {
 
                             Text(count > 0 ? addLine(count) : loc("المدى غير صحيح"))
                                 .font(Theme.display(12))
-                                .foregroundStyle(count > 0 ? Theme.inkFaint : Color.red.opacity(0.8))
+                                .foregroundStyle(count > 0 ? Theme.inkFaint : Theme.danger)
                         }
                     }
                     .padding(.horizontal, 18)

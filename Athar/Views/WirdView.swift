@@ -4,6 +4,8 @@ import SwiftUI
 struct WirdView: View {
     @EnvironmentObject private var store: AtharStore
     @State private var showTargetPicker = false
+    @State private var confirmReset = false
+    @State private var permissionDenied = false
 
     private var progress: Double {
         min(1, Double(store.wirdDoneToday) / Double(max(1, store.wirdTarget)))
@@ -46,6 +48,17 @@ struct WirdView: View {
         .navigationTitle(loc("الورد اليومي"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.hidden, for: .tabBar)
+        // رفض الإذن لا يُترك صامتًا: التذكير يرتدّ موقوفًا ونقول له لماذا، كما في الإعدادات.
+        .alert(loc("الإشعارات موقوفة"), isPresented: $permissionDenied) {
+            Button(loc("فتح الإعدادات")) {
+                if let url = URL(string: UIApplication.openSettingsURLString) {
+                    UIApplication.shared.open(url)
+                }
+            }
+            Button(loc("later"), role: .cancel) {}
+        } message: {
+            Text(loc("لتفعيل التذكير، اسمح للتطبيق بالإشعارات من إعدادات الجهاز."))
+        }
     }
 
     private var ring: some View {
@@ -62,7 +75,8 @@ struct WirdView: View {
                     .foregroundStyle(LinearGradient(colors: [ringColor, ringColor.opacity(0.7)],
                                                     startPoint: .top, endPoint: .bottom))
                     .contentTransition(.numericText())
-                Text(loc("من %1$@ آية", store.wirdTarget.counterText))
+                // «من ٥ آيات» لا «من ٥ آية»: تمييز العدد في Int.ayahCountText.
+                Text("من \(store.wirdTarget.ayahCountText)")
                     .font(Theme.display(13)).foregroundStyle(Theme.inkFaint)
                 if done {
                     Text(loc("تمّ وردك اليوم"))
@@ -89,9 +103,10 @@ struct WirdView: View {
             }
             .pressable()
 
+            // التصفير يمحو عدّ اليوم كله بلا رجعة، فيُستأذن قبله كما في «إنهاء التحدي»،
+            // ويُعطَّل حين لا شيء يُصفَّر.
             Button {
-                store.wirdDoneToday = 0
-                Haptics.tap(enabled: store.hapticsEnabled)
+                confirmReset = true
             } label: {
                 Image(systemName: "arrow.counterclockwise")
                     .font(.system(size: 15, weight: .medium))
@@ -99,8 +114,18 @@ struct WirdView: View {
                     .frame(width: 52).padding(.vertical, 14)
                     .background(RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous).fill(Theme.surface))
                     .overlay(RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous).stroke(Theme.hairline))
+                    .opacity(store.wirdDoneToday == 0 ? 0.5 : 1)
             }
             .pressable()
+            .disabled(store.wirdDoneToday == 0)
+            .accessibilityLabel(loc("تصفير ورد اليوم"))
+        }
+        .confirmationDialog(loc("تصفير ورد اليوم؟"), isPresented: $confirmReset, titleVisibility: .visible) {
+            Button(loc("تصفير"), role: .destructive) {
+                store.wirdDoneToday = 0
+                Haptics.tap(enabled: store.hapticsEnabled)
+            }
+            Button(loc("cancel"), role: .cancel) {}
         }
     }
 
@@ -109,7 +134,7 @@ struct WirdView: View {
             SettingsGroupTitle(text: loc("الإعداد"), tint: dawn)
             SettingsCard {
                 SettingsRow(icon: "target", tint: dawn, title: loc("ورد اليوم")) {
-                    HStack(spacing: 7) {
+                    HStack(spacing: 2) {
                         ForEach([5, 10, 20, 50], id: \.self) { n in
                             let on = store.wirdTarget == n
                             Button {
@@ -127,8 +152,12 @@ struct WirdView: View {
                                     )
                                     .shadow(color: on ? dawn.opacity(0.35) : .clear,
                                             radius: on ? 6 : 0, y: on ? 3 : 0)
+                                    // هدف لمس ٤٤ نقطة حول الرقاقة دون تكبيرها بصريًا.
+                                    .frame(minWidth: 44, minHeight: 44)
+                                    .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
+                            .accessibilityAddTraits(on ? .isSelected : [])
                         }
                     }
                     .animation(Motion.press, value: store.wirdTarget)
@@ -142,12 +171,16 @@ struct WirdView: View {
                             store.wirdEnabled = on
                             Task {
                                 if on, await !Reminders.requestAuthorization() {
-                                    store.wirdEnabled = false; return
+                                    store.wirdEnabled = false
+                                    permissionDenied = true
+                                    return
                                 }
                                 await Reminders.rescheduleWird(store: store)
                             }
                         }
-                    )).labelsHidden()
+                    ))
+                    .labelsHidden()
+                    .accessibilityLabel(loc("تذكير الورد"))
                 }
 
                 if store.wirdEnabled {
@@ -169,7 +202,7 @@ struct WirdView: View {
                 .font(Theme.naskhFont(size: 14, scale: store.fontScale))
                 .foregroundStyle(Theme.inkSoft)
             Text(loc("القليل الدائم خير من الكثير المنقطع."))
-                .font(Theme.display(11.5))
+                .font(Theme.display(12))
                 .foregroundStyle(Theme.inkFaint)
         }
         .multilineTextAlignment(.center)

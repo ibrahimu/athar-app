@@ -4,6 +4,10 @@ import SwiftUI
 struct HajjView: View {
     /// حين تُفتح من شاشة «الأقسام» تكون داخل مكدّس قائم، فلا تصنع مكدّسًا آخر.
     var embedded = false
+    /// الشاشة تقرأ ألوان الطابع من Theme ساكنةً ولا تحمل قيمةً تتغيّر معه، فلولا مراقبة
+    /// المخزن لبقيت بألوانها القديمة بعد تبديل الطابع من «المظهر» حتى إعادة التشغيل.
+    @EnvironmentObject private var store: AtharStore
+
     var body: some View {
         MaybeStack(embedded: embedded) {
             ZStack {
@@ -21,7 +25,7 @@ struct HajjView: View {
                         }
                         footer.appearStagger(3)
                     }
-                    .padding(.horizontal, 18)
+                    .padding(.horizontal, Theme.gutter)
                     .padding(.top, 8)
                     .padding(.bottom, 30)
                     .readableWidth(560)
@@ -118,6 +122,8 @@ struct HajjView: View {
 struct HajjGuideView: View {
     let guide: HajjGuide
     var tint: Color = Theme.gold
+    /// الذهبي والحبر يُقرآن ساكنين في الجسد؛ مراقبة المخزن تُعيد رسمهما مع تبديل الطابع.
+    @EnvironmentObject private var store: AtharStore
 
     var body: some View {
         ZStack {
@@ -141,7 +147,7 @@ struct HajjGuideView: View {
                             .appearStagger(i)
                     }
                 }
-                .padding(.horizontal, 18)
+                .padding(.horizontal, Theme.gutter)
                 .padding(.bottom, 34)
                 .readableWidth(620)
             }
@@ -178,7 +184,7 @@ struct HajjGuideView: View {
 
                 // الشرح
                 Text(step.detail)
-                    .font(Theme.display(14.5))
+                    .font(Theme.display(15))
                     .foregroundStyle(Theme.inkSoft)
                     .lineSpacing(7)
                     .fixedSize(horizontal: false, vertical: true)

@@ -37,7 +37,7 @@ struct HomeView: View {
                         sadaqahCard.appearStagger(7)
                         footerNote.appearStagger(8)
                     }
-                    .padding(.horizontal, 18)
+                    .padding(.horizontal, Theme.gutter)
                     .padding(.bottom, 32)
                     .readableWidth()
                 }
@@ -51,11 +51,14 @@ struct HomeView: View {
                     NavigationLink { SettingsSheet() } label: {
                         Image(systemName: "gearshape.fill")
                     }
+                    .accessibilityLabel(loc("settings"))
                 }
                 ToolbarItem(placement: .topBarTrailing) {
-                    NavigationLink { SectionsView() } label: {
+                    // تُمرَّر onOpenTab كي تبدّل «الأقسام» التبويبَ الحيّ بدل دفع نسخة ثانية منه.
+                    NavigationLink { SectionsView(onOpenTab: onOpenTab) } label: {
                         Image(systemName: "square.grid.2x2.fill")
                     }
+                    .accessibilityLabel(loc("الأقسام"))
                 }
             }
         }
@@ -90,7 +93,7 @@ struct HomeView: View {
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(dayTint)
                 Text(hijriDate)
-                    .font(Theme.display(12.5, weight: .medium))
+                    .font(Theme.display(12, weight: .medium))
                     .foregroundStyle(Theme.inkSoft)
             }
             .padding(.horizontal, 11).padding(.vertical, 6)
@@ -152,43 +155,52 @@ struct HomeView: View {
     @ViewBuilder
     private var prayerStrip: some View {
         if let upcoming = upcomingPrayer {
-            let pcolor = Theme.accent(for: upcoming.prayer.accentKey)
-            Button { onOpenTab(.prayer) } label: {
-                AtharCard(padding: 14, elevation: .e2, tint: pcolor) {
-                    HStack(spacing: 12) {
-                        ZStack {
-                            ProgressRing(progress: prayerArc, color: pcolor, lineWidth: 3, gradient: true)
-                                .frame(width: 46, height: 46)
-                            Image(systemName: upcoming.prayer.icon)
-                                .font(.system(size: 18))
-                                .foregroundStyle(pcolor)
-                        }
+            // تبويب الصلاة قد يُخفى من الشريط؛ عندها يُدفع القسم في المكدّس نفسه
+            // كبلاطات «أقسام أخرى»، لا كورقة بلا زرّ إغلاق.
+            if store.visibleTabs.contains(.prayer) {
+                Button { onOpenTab(.prayer) } label: { prayerCard(upcoming) }
+                    .pressable()
+            } else {
+                NavigationLink { SectionDestination(tab: .prayer) } label: { prayerCard(upcoming) }
+                    .pressable()
+            }
+        }
+    }
 
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(upcoming.prayer.title)
-                                .font(Theme.display(17, weight: .bold))
-                                .foregroundStyle(Theme.ink)
-                            Text(store.placeName)
-                                .font(Theme.display(11))
-                                .foregroundStyle(Theme.inkFaint)
-                        }
+    private func prayerCard(_ upcoming: (prayer: Prayer, date: Date)) -> some View {
+        let pcolor = Theme.accent(for: upcoming.prayer.accentKey)
+        return AtharCard(padding: 14, elevation: .e2, tint: pcolor) {
+            HStack(spacing: 12) {
+                ZStack {
+                    ProgressRing(progress: prayerArc, color: pcolor, lineWidth: 3, gradient: true)
+                        .frame(width: 46, height: 46)
+                    Image(systemName: upcoming.prayer.icon)
+                        .font(.system(size: 18))
+                        .foregroundStyle(pcolor)
+                }
 
-                        Spacer()
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(upcoming.prayer.title)
+                        .font(Theme.display(17, weight: .bold))
+                        .foregroundStyle(Theme.ink)
+                    Text(store.placeName)
+                        .font(Theme.display(11))
+                        .foregroundStyle(Theme.inkFaint)
+                }
 
-                        VStack(alignment: .trailing, spacing: 2) {
-                            Text(PrayerView.time(upcoming.date, in: store.placeTimeZone))
-                                .font(.system(size: 18, weight: .bold, design: .rounded))
-                                .foregroundStyle(LinearGradient(colors: [pcolor, pcolor.opacity(0.7)],
-                                                                startPoint: .top, endPoint: .bottom))
-                            Text(countdown(to: upcoming.date))
-                                .font(.system(size: 11, weight: .medium, design: .rounded))
-                                .foregroundStyle(Theme.inkFaint)
-                                .monospacedDigit()
-                        }
-                    }
+                Spacer()
+
+                VStack(alignment: .trailing, spacing: 2) {
+                    Text(PrayerView.time(upcoming.date, in: store.placeTimeZone))
+                        .font(.system(size: 18, weight: .bold, design: .rounded))
+                        .foregroundStyle(LinearGradient(colors: [pcolor, pcolor.opacity(0.7)],
+                                                        startPoint: .top, endPoint: .bottom))
+                    Text(countdown(to: upcoming.date))
+                        .font(.system(size: 11, weight: .medium, design: .rounded))
+                        .foregroundStyle(Theme.inkFaint)
+                        .monospacedDigit()
                 }
             }
-            .pressable()
         }
     }
 
@@ -279,11 +291,7 @@ struct HomeView: View {
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
 
-                        Image(systemName: category.icon)
-                            .font(.system(size: 30))
-                            .foregroundStyle(color)
-                            .frame(width: 56, height: 56)
-                            .background(Circle().fill(color.opacity(0.13)))
+                        IconChip(icon: category.icon, tint: color, size: .lg)
                     }
                 }
             }
@@ -339,15 +347,17 @@ struct HomeView: View {
         }
         if !off.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
-                NavigationLink { SectionsView() } label: {
+                NavigationLink { SectionsView(onOpenTab: onOpenTab) } label: {
                     SectionHeader(title: loc("أقسام أخرى"), tint: Theme.accent(for: "dusk"))
                 }
                 .buttonStyle(.plain)
                 LazyVGrid(columns: [GridItem(.flexible(), spacing: 12),
                                     GridItem(.flexible(), spacing: 12)], spacing: 12) {
                     ForEach(off) { tab in
-                        NavigationLink { SectionDestination(tab: tab) } label: { SectionTile(tab: tab) }
-                            .pressable()
+                        NavigationLink { SectionDestination(tab: tab) } label: {
+                            SectionTile(tab: tab, tint: Theme.accent(for: tab.accentKey))
+                        }
+                        .pressable()
                     }
                 }
             }
@@ -356,14 +366,23 @@ struct HomeView: View {
 
     private var quickGrid: some View {
         VStack(alignment: .leading, spacing: 10) {
-            SectionHeader(title: loc("startNow")) { onOpenTab(.adhkar) }
+            // «الكل» يبدّل إلى تبويب الأذكار إن كان في الشريط، وإلا دُفع القسم هنا كرأس «أقسام أخرى».
+            if store.visibleTabs.contains(.adhkar) {
+                SectionHeader(title: loc("startNow")) { onOpenTab(.adhkar) }
+            } else {
+                NavigationLink { SectionDestination(tab: .adhkar) } label: {
+                    SectionHeader(title: loc("startNow"))
+                }
+                .buttonStyle(.plain)
+            }
             LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
                 ForEach(AdhkarLibrary.categories.prefix(6)) { category in
                     NavigationLink {
                         DhikrSessionView(category: category)
                     } label: {
                         CategoryTile(category: category,
-                                     completed: store.completedToday.contains(category.id))
+                                     completed: store.completedToday.contains(category.id),
+                                     tint: Theme.accent(for: category.accent))
                     }
                     .pressable()
                 }
@@ -374,29 +393,11 @@ struct HomeView: View {
     /// «الصدقة تطفئ الخطيئة كما يطفئ الماء النار» — مدخل سريع لإحسان.
     private var sadaqahCard: some View {
         Link(destination: URL(string: "https://ehsan.sa")!) {
-            AtharCard(padding: 16) {
-                HStack(spacing: 14) {
-                    Image(systemName: "heart.fill")
-                        .font(.system(size: 19))
-                        .foregroundStyle(Theme.accent(for: "gold"))
-                        .frame(width: 44, height: 44)
-                        .background(Circle().fill(Theme.accent(for: "gold").opacity(0.13)))
-
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(loc("صدقة اليوم"))
-                            .font(Theme.display(16, weight: .semibold))
-                            .foregroundStyle(Theme.ink)
-                        Text("«الصدقة تطفئ الخطيئة كما يطفئ الماء النار»")
-                            .font(Theme.display(11))
-                            .foregroundStyle(Theme.inkFaint)
-                            .lineLimit(1).minimumScaleFactor(0.8)
-                    }
-                    Spacer()
-                    Image(systemName: "arrow.up.forward")
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(Theme.inkFaint)
-                }
-            }
+            // التخريج كما في بطاقة القيام بشاشة الصلاة، فلا يبقى حديث بلا مصدر.
+            AtharLinkRow(icon: "heart.fill",
+                         tint: Theme.accent(for: "gold"),
+                         title: loc("صدقة اليوم"),
+                         subtitle: "«الصدقة تطفئ الخطيئة كما يطفئ الماء النار» — رواه الترمذي")
         }
         .pressable()
     }
@@ -415,17 +416,16 @@ struct HomeView: View {
 struct CategoryTile: View {
     let category: DhikrCategory
     var completed: Bool = false
+    /// اللون يُمرَّر قيمةً من الأب لا يُقرأ ساكنًا، ليُعاد رسم البلاطة فور تبديل الطابع
+    /// (وإلا حسبتها SwiftUI متساوية القيمة وأبقتها بلونها القديم).
+    var tint: Color
 
     var body: some View {
-        let color = Theme.accent(for: category.accent)
+        let color = tint
         return AtharCard(padding: 14, tint: color) {
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: Theme.Space.sm) {
                 HStack {
-                    Image(systemName: category.icon)
-                        .font(.system(size: 18))
-                        .foregroundStyle(color)
-                        .frame(width: 36, height: 36)
-                        .background(Circle().fill(color.opacity(0.14)))
+                    IconChip(icon: category.icon, tint: color, size: .md)
                     Spacer()
                     if completed {
                         Image(systemName: "checkmark.circle.fill")

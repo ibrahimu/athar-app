@@ -86,7 +86,8 @@ enum Reminders {
         guard store.wirdEnabled else { return }
         await add(id: wirdId,
                   title: "وردك من القرآن",
-                  body: "\(store.wirdTarget) آية تكفيك اليوم — «أحبُّ الأعمال إلى الله أدومها».",
+                  // «١٠ آيات تكفيك» لا «١٠ آية»: تمييز العدد في Int.ayahCountText.
+                  body: "\(store.wirdTarget.ayahCountText) تكفيك اليوم — «أحبُّ الأعمال إلى الله أدومها».",
                   minutes: store.wirdReminderMinutes)
     }
 

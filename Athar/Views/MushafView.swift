@@ -64,7 +64,7 @@ struct MushafView: View {
                                 .padding(.top, 50)
                         }
                     }
-                    .padding(.horizontal, 18)
+                    .padding(.horizontal, Theme.gutter)
                     // المشغّل المصغّر يطفو فوق آخر صف ورابط تنزيل؛ فيُحجز له
                     // أسفل القائمة بالقدر نفسه الذي تحجزه شاشة التلاوة.
                     .padding(.bottom, audio.surah == nil ? 30 : 112)
@@ -104,11 +104,7 @@ struct MushafView: View {
         return NavigationLink { RecitationView() } label: {
             AtharCard(padding: 14, elevation: .e2, tint: Theme.accent) {
                 HStack(spacing: 13) {
-                    Image(systemName: "waveform")
-                        .font(.system(size: 18))
-                        .foregroundStyle(Theme.accent)
-                        .frame(width: 38, height: 38)
-                        .background(Circle().fill(Theme.accent.opacity(0.13)))
+                    IconChip(icon: "waveform", size: .md)
                     VStack(alignment: .leading, spacing: 3) {
                         Text(loc("الاستماع للقرآن"))
                             .font(Theme.display(15, weight: .semibold))
@@ -118,8 +114,7 @@ struct MushafView: View {
                              : loc("%1$@ · شغّلها أو نزّلها للاستماع بلا إنترنت", audio.reciter.name))
                             .font(Theme.display(11))
                             .foregroundStyle(Theme.inkFaint)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.8)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                     Spacer(minLength: 4)
                     Image(systemName: "chevron.forward")
@@ -158,7 +153,7 @@ struct MushafView: View {
                 .foregroundStyle(Theme.accent)
             }
             Text(loc("مُدقَّق على مصحف المدينة · يُنقل كما هو دون تغيير"))
-                .font(Theme.display(10))
+                .font(Theme.display(11))
                 .foregroundStyle(Theme.inkFaint)
         }
         .frame(maxWidth: .infinity)
@@ -173,11 +168,7 @@ struct MushafView: View {
             NavigationLink { SurahReaderView(surahId: mark.surah, scrollTo: mark) } label: {
                 AtharCard(padding: 16, elevation: .e2, tint: Theme.accent(for: "gold")) {
                     HStack(spacing: 14) {
-                        Image(systemName: "pin.fill")
-                            .font(.system(size: 18))
-                            .foregroundStyle(Theme.gold)
-                            .frame(width: 46, height: 46)
-                            .background(Circle().fill(Theme.gold.opacity(0.13)))
+                        IconChip(icon: "pin.fill", tint: Theme.gold, size: .lg)
                         VStack(alignment: .leading, spacing: 3) {
                             Text(loc("myStop"))
                                 .font(Theme.display(12, weight: .semibold))
@@ -205,11 +196,7 @@ struct MushafView: View {
             NavigationLink { SurahReaderView(surahId: last.surah, scrollTo: last) } label: {
                 AtharCard(padding: 16, elevation: .e2, tint: Theme.accent) {
                     HStack(spacing: 14) {
-                        Image(systemName: "book.pages.fill")
-                            .font(.system(size: 20))
-                            .foregroundStyle(Theme.accent)
-                            .frame(width: 46, height: 46)
-                            .background(Circle().fill(Theme.accentSoft))
+                        IconChip(icon: "book.pages.fill", size: .lg)
                         VStack(alignment: .leading, spacing: 3) {
                             Text(loc("continueReading"))
                                 .font(Theme.display(12, weight: .semibold))
@@ -229,16 +216,14 @@ struct MushafView: View {
         }
     }
 
-    // MARK: الحفظ والورد
+    // MARK: الحفظ والختمة والورد
 
     private var toolsRow: some View {
+        // ثلاث بلاطات لا اثنتان: «الورد اليومي» لم يكن له أيّ مدخل في التطبيق.
         HStack(spacing: 12) {
             NavigationLink { HifzView() } label: {
                 toolTile("brain.head.profile", Theme.accent(for: "sea"), loc("memorize"),
-                         store.dueForReview.isEmpty
-                            ? "\(store.memorizedCount.ayahCountText) محفوظة"
-                            : "\(store.dueForReview.count.counterText) للمراجعة اليوم",
-                         badge: !store.dueForReview.isEmpty)
+                         hifzSubtitle, badge: !store.dueForReview.isEmpty)
             }
             .pressable()
 
@@ -250,6 +235,44 @@ struct MushafView: View {
                          badge: store.khatmahActive && store.khatmahDelta < 0)
             }
             .pressable()
+
+            NavigationLink { WirdView() } label: {
+                toolTile("sun.horizon.fill", Theme.accent(for: "dawn"), loc("الورد"),
+                         wirdSubtitle,
+                         badge: store.wirdEnabled && store.wirdDoneToday < store.wirdTarget)
+            }
+            .pressable()
+        }
+        // تتساوى البلاطات ارتفاعًا وإن التفّ عنوانٌ فرعي على سطرين.
+        .fixedSize(horizontal: false, vertical: true)
+    }
+
+    /// عنوان بلاطة الحفظ: المستحقّ اليوم أولًا، وإلا المحفوظ. يُفرَد ويُثنّى هنا لأن
+    /// `ayahCountText` مبنيّ على عدد آيات السورة (٣ فأكثر) ولا يعرف الصفر ولا الواحد.
+    private var hifzSubtitle: String {
+        let due = store.dueForReview.count
+        if due > 0 {
+            return due == 1 ? loc("آية للمراجعة اليوم")
+                 : due == 2 ? loc("آيتان للمراجعة اليوم")
+                 : "\(due.ayahCountText) للمراجعة اليوم"
+        }
+        switch store.memorizedCount {
+        case 0:  return loc("ابدأ بآية")
+        case 1:  return loc("آية واحدة محفوظة")
+        case 2:  return loc("آيتان محفوظتان")
+        default: return "\(store.memorizedCount.ayahCountText) محفوظة"
+        }
+    }
+
+    /// عنوان بلاطة الورد: ما أُنجز من مقدار اليوم، بتمييز العدد نفسه.
+    private var wirdSubtitle: String {
+        let done = store.wirdDoneToday, target = store.wirdTarget
+        if done >= target { return loc("تمّ ورد اليوم") }
+        switch target {
+        case 1:  return loc("آية كل يوم")
+        case 2:  return done == 0 ? loc("آيتان كل يوم") : loc("واحدة من آيتين")
+        default: return done == 0 ? "\(target.ayahCountText) كل يوم"
+                                  : "\(done.counterText) من \(target.ayahCountText)"
         }
     }
 
@@ -257,11 +280,7 @@ struct MushafView: View {
         AtharCard(padding: 14, elevation: .e2, tint: tint) {
             VStack(alignment: .leading, spacing: 8) {
                 HStack {
-                    Image(systemName: icon)
-                        .font(.system(size: 18))
-                        .foregroundStyle(tint)
-                        .frame(width: 36, height: 36)
-                        .background(Circle().fill(tint.opacity(0.14)))
+                    IconChip(icon: icon, tint: tint, size: .md)
                     Spacer()
                     if badge {
                         Circle().fill(tint).frame(width: 8, height: 8)
@@ -273,10 +292,9 @@ struct MushafView: View {
                 Text(sub)
                     .font(Theme.display(11))
                     .foregroundStyle(Theme.inkFaint)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
     }
 
@@ -311,7 +329,8 @@ struct MushafView: View {
                         .padding(.vertical, 11)
                         .contentShape(Rectangle())
                     }
-                    .pressable()
+                    // صفٌّ داخل بطاقة مقسومة: لا ينكمش وحده بين جيرانه.
+                    .buttonStyle(.plain)
                     if i < min(4, store.bookmarks.count - 1) { SettingsDivider() }
                 }
             }
@@ -352,13 +371,15 @@ struct SurahRow: View {
 struct SearchHitRow: View {
     let ref: AyahRef
     let query: String
+    // كـSurahRow: يُمرَّر لون الطابع قيمةً ليُعاد رسم الصف فور تبديل الثيم.
+    var accent: Color = Theme.accent
 
     var body: some View {
         AtharCard(padding: 14) {
             VStack(alignment: .leading, spacing: 6) {
                 Text("\(Quran.surah(ref.surah)?.name ?? "") · \(ref.ayah.counterText)")
                     .font(Theme.display(12, weight: .semibold))
-                    .foregroundStyle(Theme.accent)
+                    .foregroundStyle(accent)
                 Text(Quran.text(ref) ?? "")
                     .font(Theme.dhikrFont(size: 17))
                     .foregroundStyle(Theme.ink)

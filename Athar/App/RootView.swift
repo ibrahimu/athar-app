@@ -3,8 +3,6 @@ import SwiftUI
 struct RootView: View {
     @EnvironmentObject private var store: AtharStore
     @State private var selection: AppTab = .home
-    /// تبويب مخفيّ من الشريط طُلب فتحه من شاشة اليوم — يُعرض كورقة كاملة.
-    @State private var pushedTab: AppTab?
 
     @ViewBuilder
     private func icon(for tab: AppTab) -> some View {
@@ -27,11 +25,6 @@ struct RootView: View {
             // لو حُذف التبويب المختار، ارجع لليوم (موجود دائمًا) بدل شاشة فارغة.
             if !tabs.contains(selection) { selection = .home }
         }
-        // كل شاشة تبويب تحمل NavigationStack خاصًّا بها، فنعرضها كما هي بلا تغليف.
-        .sheet(item: $pushedTab) { tab in
-            view(for: tab)
-                .environment(\.layoutDirection, AppConfig.arabicOnly ? .rightToLeft : store.appLanguage.layoutDirection)
-        }
     }
 
     @ViewBuilder
@@ -50,13 +43,9 @@ struct RootView: View {
         }
     }
 
-    /// تنقّل من شاشة اليوم — وإن كان التبويب مخفيًا من الشريط عُرض كورقة،
-    /// حتى لا تبتلع البطاقةُ النقرةَ بلا أي أثر.
+    /// تنقّل من شاشة اليوم إلى تبويب حاضر في الشريط. أما المخفيّ منه فتدفعه «اليوم»
+    /// في مكدّسها كبقيّة الأقسام — لا ورقة كاملة بلا زرّ إغلاق.
     private func open(_ tab: AppTab) {
-        if store.visibleTabs.contains(tab) {
-            selection = tab
-        } else {
-            pushedTab = tab
-        }
+        if store.visibleTabs.contains(tab) { selection = tab }
     }
 }

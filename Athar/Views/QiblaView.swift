@@ -84,7 +84,7 @@ struct QiblaView: View {
                     }
                     accuracyNote
                 }
-                .padding(.horizontal, 20)
+                .padding(.horizontal, Theme.gutter)
                 .padding(.top, 8)
                 .padding(.bottom, 30)
                 .readableWidth(520)
@@ -240,9 +240,28 @@ struct QiblaView: View {
         // البوصلة شكل هندسي لا نص: بيئة RTL تعكس دوراتها أفقيًا فيشير السهم
         // إلى (٣٦٠ − الزاوية). نثبّتها على اتجاه تخطيط ثابت.
         .environment(\.layoutDirection, .leftToRight)
+        // للقارئ الصوتي القرص عنصر واحد ناطق بحاله؛ وإلا قرأ حروف الجهات والماسة
+        // والمكعّب واحدًا واحدًا بلا أيّ توجيه.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(loc("بوصلة القبلة"))
+        .accessibilityValue(dialAccessibilityValue)
+        .accessibilityAddTraits(.updatesFrequently)
         .frame(width: 300, height: 300)
         .frame(maxWidth: .infinity)
         .padding(.top, 6)
+    }
+
+    /// ما يُنطق عن القرص: الانطباق، أو تعليمة الدوران، أو الزاوية المجرّدة حين لا بوصلة.
+    private var dialAccessibilityValue: String {
+        if isAligned { return loc("أنت تواجه القبلة") }
+        if let off = offBy { return turnInstruction(off) }
+        return String(format: "%.0f°", qiblaBearing ?? 0)
+    }
+
+    /// «أدِر الجهاز 37° يمينًا» — نصّ واحد للقراءة المرئية ولقيمة القرص الصوتية.
+    private func turnInstruction(_ off: Double) -> String {
+        String(format: loc("أدِر الجهاز %.0f° %@"), off,
+               turnDirection == .right ? loc("يمينًا") : loc("يسارًا"))
     }
 
     // MARK: القراءة
@@ -255,7 +274,9 @@ struct QiblaView: View {
                     .foregroundStyle(isAligned ? Theme.accent : Theme.ink)
                     .contentTransition(.numericText())
 
-                Text("\(Qibla.compassName(for: q)) من الشمال\(compass.usesTrueNorth ? " الحقيقي" : "")")
+                // الزاوية محسوبة من الشمال الحقيقي دائمًا، فلا تُقرن بحالة البوصلة؛
+                // تحفّظ الشمال المغناطيسي له بطاقته أدناه. و«نحو» تجعلها اتجاهًا لا موضعًا.
+                Text(loc("من الشمال الحقيقي نحو %1$@", Qibla.compassName(for: q)))
                     .font(Theme.display(13))
                     .foregroundStyle(Theme.inkSoft)
             }
@@ -268,11 +289,12 @@ struct QiblaView: View {
                     .background(Capsule().fill(Theme.accentSoft))
                     .transition(.scale.combined(with: .opacity))
             } else if let off = offBy {
-                Text(String(format: loc("أدِر الجهاز %.0f° %@"), off,
-                            turnDirection == .right ? loc("يمينًا") : loc("يسارًا")))
+                Text(turnInstruction(off))
                     .font(Theme.display(13, weight: .medium))
                     .foregroundStyle(Theme.inkFaint)
                     .monospacedDigit()
+                    // القيمة تتبدّل مع كل قراءة حسّاس؛ السمة تحدّثها بلا عاصفة إعلانات.
+                    .accessibilityAddTraits(.updatesFrequently)
             }
 
             // رقاقة الموقع/المسافة — بنفس نبرة رقاقات الصلاة، تربط الشاشتين معًا.
@@ -293,13 +315,15 @@ struct QiblaView: View {
                 .foregroundStyle(Theme.inkSoft)
                 .padding(.horizontal, 12).padding(.vertical, 7)
                 .background(Capsule().fill(Theme.accentSoft))
+                // الكبسولة ٢٨ نقطة فقط؛ نوسّع منطقة اللمس لا الشكل حتى ٤٤ نقطة.
+                .padding(.vertical, 8)
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             // وسم الزرّ يحجب نصوص أبنائه، فنعيد المسافة داخله — وهي نصف فائدة الرقاقة
             // ولا تُذكر في مكان آخر من الشاشة.
             .accessibilityLabel(loc("الموقع: %1$@، %2$@", store.placeName, distanceText))
             .accessibilityHint(loc("لتغيير الموقع"))
-            .padding(.top, 4)
         }
         .animation(.smooth(duration: 0.2), value: isAligned)
     }
@@ -350,24 +374,34 @@ struct QiblaView: View {
         }
     }
 
-    private func note(_ icon: String, _ text: String, color: Color) -> some View {
-        HStack(alignment: .top, spacing: 8) {
-            Image(systemName: icon)
-                .font(.system(size: 13))
-                .foregroundStyle(color)
-                .padding(.top, 2)
+    /// بطاقة ملاحظة بنسيج بطاقة الملاحظة في شاشة الصلاة نفسه: رقاقة صغيرة، سطح
+    /// ثانوي، حدّ شعري ونصف قطر md — لا نسخة ثالثة بزاوية ١٤ وأيقونة عارية.
+    private func note(_ icon: String, _ text: String, color: Color, trailing: Bool = false) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            IconChip(icon: icon, tint: color, size: .sm)
             Text(text)
                 .font(Theme.display(12))
                 .foregroundStyle(Theme.inkSoft)
+                .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
+            if trailing {
+                Image(systemName: "chevron.forward")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(Theme.inkFaint)
+                    .padding(.top, 10)
+            }
         }
         .padding(14)
-        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Theme.surfaceAlt))
+        .background(RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous)
+            .fill(Theme.surfaceAlt))
+        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous)
+            .strokeBorder(Theme.hairline.opacity(0.5), lineWidth: 0.5))
     }
 
     private var calibrationNote: some View {
+        // الرقم بالأرقام الغربية عمدًا: رسم ٨ العربي حرف عُلويّ (^)، لا ثمانية الحركة المطلوبة.
         note("dot.circle.and.hand.point.up.left.fill",
-             loc("البوصلة تحتاج معايرة — حرّك الجهاز على هيئة الرقم ٨ في الهواء، وابتعد عن المعادن والمغانط."),
+             loc("البوصلة تحتاج معايرة — حرّك الجهاز على هيئة الرقم 8 في الهواء، وابتعد عن المعادن والمغانط."),
              color: Theme.gold)
     }
 
@@ -377,10 +411,16 @@ struct QiblaView: View {
              color: Theme.gold)
     }
 
+    /// الملاحظة تطلب «فعّل الموقع»، فلا بدّ أن تقود إليه: تفتح منتقي الموقع حيث
+    /// زرّ «استخدام موقعي الحالي» (ومنه «فتح الإعدادات» عند الرفض).
     private var magneticNote: some View {
-        note("info.circle.fill",
-             loc("القراءة بالشمال المغناطيسي لأن خدمات الموقع مغلقة. فعّل الموقع لقراءة أدق بالشمال الحقيقي."),
-             color: Theme.inkFaint)
+        Button { openCityPicker() } label: {
+            note("info.circle.fill",
+                 loc("القراءة بالشمال المغناطيسي لأن خدمات الموقع مغلقة. فعّل الموقع لقراءة أدق بالشمال الحقيقي."),
+                 color: Theme.inkFaint, trailing: true)
+        }
+        .buttonStyle(.plain)
+        .accessibilityHint(loc("لتغيير الموقع"))
     }
 
     private var accuracyNote: some View {

@@ -51,7 +51,7 @@ struct SettingsView: View {
                         about.appearStagger(7)
                         blessing.appearStagger(8)
                     }
-                    .padding(.horizontal, 18)
+                    .padding(.horizontal, Theme.gutter)
                     .padding(.top, 6)
                     .padding(.bottom, 34)
                     .readableWidth(560)
@@ -123,6 +123,8 @@ struct SettingsView: View {
                         }
                     ))
                     .labelsHidden()
+                    // المفتاح بلا عنوان مرئي، فيقرأ VoiceOver اسم الصف بدل «مفتاح» فقط.
+                    .accessibilityLabel(loc("rowAdhkarRem"))
                 }
 
                 if store.remindersEnabled {
@@ -130,11 +132,13 @@ struct SettingsView: View {
                     SettingsRow(icon: "sunrise.fill", tint: Theme.accent(for: "dawn"), title: loc("rowMorning")) {
                         DatePicker("", selection: morningBinding, displayedComponents: .hourAndMinute)
                             .labelsHidden()
+                            .accessibilityLabel(loc("rowMorning"))
                     }
                     SettingsDivider()
                     SettingsRow(icon: "moon.stars.fill", tint: Theme.accent(for: "dusk"), title: loc("rowEvening")) {
                         DatePicker("", selection: eveningBinding, displayedComponents: .hourAndMinute)
                             .labelsHidden()
+                            .accessibilityLabel(loc("rowEvening"))
                     }
                 }
             }
@@ -178,26 +182,31 @@ struct SettingsView: View {
                 SettingsRow(icon: "sparkles", tint: Theme.accent(for: "gold"), title: loc("rowJumuah"),
                             subtitle: loc("subJumuah")) {
                     Toggle("", isOn: alertToggle({ store.jumuahAlert }, { store.jumuahAlert = $0 })).labelsHidden()
+                        .accessibilityLabel(loc("rowJumuah"))
                 }
                 SettingsDivider()
                 SettingsRow(icon: "fork.knife", tint: Theme.accent(for: "sea"), title: loc("rowFasting"),
                             subtitle: loc("subFasting")) {
                     Toggle("", isOn: alertToggle({ store.fastingAlert }, { store.fastingAlert = $0 })).labelsHidden()
+                        .accessibilityLabel(loc("rowFasting"))
                 }
                 SettingsDivider()
                 SettingsRow(icon: "moon.circle.fill", tint: Theme.accent(for: "dusk"), title: loc("rowWhite"),
                             subtitle: loc("subWhite")) {
                     Toggle("", isOn: alertToggle({ store.whiteDaysAlert }, { store.whiteDaysAlert = $0 })).labelsHidden()
+                        .accessibilityLabel(loc("rowWhite"))
                 }
                 SettingsDivider()
                 SettingsRow(icon: "moon.stars.fill", tint: Theme.accent(for: "night"), title: loc("rowQiyam"),
                             subtitle: loc("subQiyam")) {
                     Toggle("", isOn: alertToggle({ store.qiyamAlert }, { store.qiyamAlert = $0 })).labelsHidden()
+                        .accessibilityLabel(loc("rowQiyam"))
                 }
                 SettingsDivider()
                 SettingsRow(icon: "drop.fill", tint: Theme.accent(for: "sea"), title: loc("rowIstighfar"),
                             subtitle: loc("subIstighfar")) {
                     Toggle("", isOn: alertToggle({ store.istighfarAlerts }, { store.istighfarAlerts = $0 })).labelsHidden()
+                        .accessibilityLabel(loc("rowIstighfar"))
                 }
             }
         }
@@ -227,6 +236,7 @@ struct SettingsView: View {
                         }
                     ))
                     .labelsHidden()
+                    .accessibilityLabel(loc("rowAthan"))
                 }
 
                 if store.athanAlerts {
@@ -362,7 +372,7 @@ struct SettingsView: View {
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 14)
                         .background(
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                            RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous)
                                 .fill(Theme.surfaceAlt)
                         )
                         .animation(Motion.snappy, value: store.fontScale)
@@ -384,6 +394,7 @@ struct SettingsView: View {
                         set: { store.hapticsEnabled = $0 }
                     ))
                     .labelsHidden()
+                    .accessibilityLabel(loc("rowHaptics"))
                 }
             }
         }
@@ -406,7 +417,7 @@ struct SettingsView: View {
 
                 SettingsDivider()
                 Button { showResetConfirm = true } label: {
-                    SettingsRow(icon: "arrow.counterclockwise", tint: Color.red.opacity(0.85),
+                    SettingsRow(icon: "arrow.counterclockwise", tint: Theme.danger,
                                 title: loc("rowReset")) {
                         Image(systemName: "chevron.forward")
                             .font(.system(size: 12, weight: .semibold))
@@ -484,18 +495,18 @@ struct SettingsView: View {
                 .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(Theme.accent)
             Text(title)
-                .font(Theme.display(11.5, weight: .semibold))
+                .font(Theme.display(12, weight: .semibold))
                 .foregroundStyle(Theme.ink)
             Text(sub)
-                .font(Theme.display(9.5))
+                .font(Theme.display(11))
                 .foregroundStyle(Theme.inkFaint)
                 .lineLimit(1)
                 .minimumScaleFactor(0.75)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 11)
-        .background(RoundedRectangle(cornerRadius: 13, style: .continuous).fill(Theme.accent.opacity(0.06)))
-        .overlay(RoundedRectangle(cornerRadius: 13, style: .continuous)
+        .background(RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous).fill(Theme.accent.opacity(0.06)))
+        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous)
             .strokeBorder(Theme.accent.opacity(0.14), lineWidth: 0.5))
     }
 
@@ -528,7 +539,7 @@ struct SettingsView: View {
 
                 SettingsDivider()
                 ShareLink(item: Self.appStoreURL,
-                          message: Text(loc("تطبيق أثر — أذكار وأوقات الصلاة ومسبحة. مجاني بلا إعلانات، ويعمل بدون إنترنت."))) {
+                          message: Text(loc("تطبيق أثر — أذكار وأوقات الصلاة ومسبحة. مجاني بلا إعلانات، ويعمل بلا إنترنت."))) {
                     SettingsRow(icon: "square.and.arrow.up.fill", tint: Theme.accent,
                                 title: loc("rowShare"), subtitle: loc("مَن دلَّ على خيرٍ فله مثل أجر فاعله")) {
                         Image(systemName: "chevron.forward")

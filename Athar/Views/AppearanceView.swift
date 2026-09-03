@@ -17,7 +17,7 @@ struct AppearanceView: View {
                     appearanceMode
                     tabBar
                 }
-                .padding(.horizontal, 18)
+                .padding(.horizontal, Theme.gutter)
                 .padding(.top, 8)
                 .padding(.bottom, 32)
                 .readableWidth(560)
@@ -52,8 +52,9 @@ struct AppearanceView: View {
     // MARK: الطابع
 
     private var themes: some View {
-        VStack(spacing: 10) {
-            SectionHeader(title: loc("colorTheme"), tint: Theme.accent(for: "gold"))
+        VStack(spacing: 8) {
+            // هذه الشاشة ابنة «الإعدادات»، فعناوينها عناوين مجموعات كأمّها لا رؤوس أقسام كالرئيسية.
+            SettingsGroupTitle(text: loc("colorTheme"), tint: Theme.accent(for: "gold"))
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 84), spacing: 12)], spacing: 12) {
                 ForEach(AppTheme.allCases) { theme in
                     Button {
@@ -63,8 +64,13 @@ struct AppearanceView: View {
                         swatch(theme)
                     }
                     .buttonStyle(.plain)
+                    // الاختيار كان لونًا وإطارًا فقط؛ VoiceOver يحتاج سمة «محدَّد» ليعرف الطابع الفعّال.
+                    .accessibilityLabel(theme.title)
+                    .accessibilityAddTraits(store.appTheme == theme ? .isSelected : [])
                 }
             }
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel(loc("colorTheme"))
         }
     }
 
@@ -78,7 +84,7 @@ struct AppearanceView: View {
         return VStack(spacing: 7) {
             ZStack {
                 // معاينة مصغّرة: ورق الطابع + بطاقة صغيرة + كرة اللون المتدرّج ولمسة ذهب
-                RoundedRectangle(cornerRadius: 16, style: .continuous).fill(canvas)
+                RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous).fill(canvas)
                 VStack(spacing: 6) {
                     ZStack {
                         Circle()
@@ -108,7 +114,7 @@ struct AppearanceView: View {
             }
             .frame(height: 74)
             .overlay(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous)
                     .strokeBorder(on ? accent : Theme.hairline.opacity(0.6), lineWidth: on ? 2.5 : 1)
             )
             .shadow(color: on ? accent.opacity(0.22) : .clear, radius: 8, y: 3)
@@ -122,8 +128,8 @@ struct AppearanceView: View {
     // MARK: لون الأيقونات
 
     private var iconStylePicker: some View {
-        VStack(spacing: 10) {
-            SectionHeader(title: loc("لون الأيقونات"), tint: Theme.accent(for: "calm"))
+        VStack(spacing: 8) {
+            SettingsGroupTitle(text: loc("لون الأيقونات"), tint: Theme.accent(for: "calm"))
             HStack(spacing: 10) {
                 // ألوان صريحة (لا تمرّ بـaccent(for:) حتى لا تتأثر بالوضع الحالي)
                 let multi: [Color] = [
@@ -135,6 +141,8 @@ struct AppearanceView: View {
                 iconStyleOption(unified: true, title: loc("موحّد"),
                                 colors: Array(repeating: Theme.accent, count: 4))
             }
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel(loc("لون الأيقونات"))
         }
     }
 
@@ -146,14 +154,10 @@ struct AppearanceView: View {
             Haptics.tap(enabled: store.hapticsEnabled)
         } label: {
             VStack(spacing: 9) {
-                // معاينة: أربع أيقونات صغيرة (ملوّنة أو موحّدة)
+                // معاينة: رقاقات الأيقونات الحقيقية نفسها (ملوّنة أو موحّدة) لا رسمًا يقارِبها
                 HStack(spacing: 6) {
                     ForEach(0..<4, id: \.self) { i in
-                        Image(systemName: icons[i])
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(colors[i])
-                            .frame(width: 26, height: 26)
-                            .background(Circle().fill(colors[i].opacity(0.14)))
+                        IconChip(icon: icons[i], tint: colors[i], size: .sm)
                     }
                 }
                 Text(title)
@@ -163,21 +167,22 @@ struct AppearanceView: View {
             .frame(maxWidth: .infinity)
             .padding(.vertical, 14)
             .background(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous)
                     .fill(Theme.surfaceGradient)
-                    .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .overlay(RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous)
                         .strokeBorder(on ? Theme.accent : Theme.hairline.opacity(0.6), lineWidth: on ? 2.5 : 1))
             )
             .atharElevation(on ? .e2 : .e1)
         }
         .buttonStyle(.plain)
+        .accessibilityAddTraits(on ? .isSelected : [])
     }
 
     // MARK: الخلفية
 
     private var backgroundPicker: some View {
-        VStack(spacing: 10) {
-            SectionHeader(title: loc("خلفية التطبيق"), tint: Theme.accent(for: "sea"))
+        VStack(spacing: 8) {
+            SettingsGroupTitle(text: loc("خلفية التطبيق"), tint: Theme.accent(for: "sea"))
             LazyVGrid(columns: [GridItem(.adaptive(minimum: 84), spacing: 12)], spacing: 12) {
                 ForEach(BackgroundPattern.allCases) { pattern in
                     Button {
@@ -187,8 +192,12 @@ struct AppearanceView: View {
                         patternSwatch(pattern)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel(pattern.title)
+                    .accessibilityAddTraits(store.backgroundPattern == pattern ? .isSelected : [])
                 }
             }
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel(loc("خلفية التطبيق"))
         }
     }
 
@@ -196,10 +205,10 @@ struct AppearanceView: View {
         let on = store.backgroundPattern == pattern
         return VStack(spacing: 7) {
             ZStack {
-                RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Theme.canvas)
+                RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous).fill(Theme.canvas)
                 // معاينة النقش نفسه، بشدّة أعلى ليُرى في المربّع الصغير
                 PaperMotif(tint: Theme.accent, pattern: pattern, intensity: 9)
-                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous))
                 if on {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.system(size: 20, weight: .bold))
@@ -209,7 +218,7 @@ struct AppearanceView: View {
             }
             .frame(height: 74)
             .overlay(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous)
                     .strokeBorder(on ? Theme.accent : Theme.hairline.opacity(0.6), lineWidth: on ? 2.5 : 1)
             )
             .shadow(color: on ? Theme.accent.opacity(0.22) : .clear, radius: 8, y: 3)
@@ -242,17 +251,20 @@ struct AppearanceView: View {
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 13)
                         .background(
-                            RoundedRectangle(cornerRadius: 13, style: .continuous)
+                            RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous)
                                 .fill(on ? AnyShapeStyle(Theme.accentGradient) : AnyShapeStyle(Theme.surface))
                         )
                         .overlay(
-                            RoundedRectangle(cornerRadius: 13, style: .continuous)
+                            RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous)
                                 .stroke(on ? .clear : Theme.hairline)
                         )
                     }
                     .buttonStyle(.plain)
+                    .accessibilityAddTraits(store.appearance == mode ? .isSelected : [])
                 }
             }
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel(loc("lighting"))
         }
     }
 
@@ -305,16 +317,17 @@ struct AppearanceView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             .padding(.horizontal, 12).padding(.vertical, 10)
-            .background(RoundedRectangle(cornerRadius: 12, style: .continuous)
+            .background(RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous)
                 .fill(editing ? Theme.accentSoft : Theme.surfaceAlt))
             .animation(Motion.snappy, value: editing)
 
             SettingsCard {
                 ForEach(Array(store.visibleTabs.enumerated()), id: \.element) { i, tab in
                     HStack(spacing: 12) {
+                        // TabGlyph يرسم أشكالًا خاصة (سجّادة، كعبة) فلا يصلح IconChip؛ نطابق مقاسه الصغير (٣٢) فحسب.
                         TabGlyph(tab: tab, size: 14)
                             .foregroundStyle(Theme.accent)
-                            .frame(width: 30, height: 30)
+                            .frame(width: 32, height: 32)
                             .background(Circle().fill(Theme.accentSoft))
 
                         if editing {
@@ -325,7 +338,7 @@ struct AppearanceView: View {
                         }
                         Text(tab.title).font(Theme.display(15)).foregroundStyle(Theme.ink)
                         if tab.isPinned {
-                            Text(loc("ثابت")).font(Theme.display(10))
+                            Text(loc("ثابت")).font(Theme.display(11))
                                 .foregroundStyle(Theme.inkFaint)
                                 .padding(.horizontal, 7).padding(.vertical, 3)
                                 .background(Capsule().fill(Theme.surfaceAlt))
@@ -334,14 +347,17 @@ struct AppearanceView: View {
 
                         if editing && !tab.isPinned {
                             HStack(spacing: 4) {
-                                arrowButton("chevron.up", enabled: i > 1) { move(i, -1) }
-                                arrowButton("chevron.down", enabled: i < store.visibleTabs.count - 1) { move(i, 1) }
+                                arrowButton("chevron.up", label: loc("تقديم"), enabled: i > 1) { move(i, -1) }
+                                arrowButton("chevron.down", label: loc("تأخير"), enabled: i < store.visibleTabs.count - 1) { move(i, 1) }
                                 Button { remove(tab) } label: {
                                     Image(systemName: "minus.circle.fill")
                                         .font(.system(size: 18))
-                                        .foregroundStyle(Color.red.opacity(0.75))
+                                        .foregroundStyle(Theme.danger)
+                                        // الرمز ١٨ نقطة؛ نوسّع منطقة اللمس إلى ٤٤ دون تغيير التخطيط.
+                                        .contentShape(Rectangle().inset(by: -13))
                                 }
                                 .buttonStyle(.plain)
+                                .accessibilityLabel(loc("إخفاء %1$@", tab.title))
                             }
                         }
                     }
@@ -360,7 +376,7 @@ struct AppearanceView: View {
                             HStack(spacing: 12) {
                                 TabGlyph(tab: tab, size: 14)
                                     .foregroundStyle(Theme.inkFaint)
-                                    .frame(width: 30, height: 30)
+                                    .frame(width: 32, height: 32)
                                     .background(Circle().fill(Theme.surfaceAlt))
                                 Text(tab.title).font(Theme.display(15)).foregroundStyle(Theme.ink)
                                 Spacer()
@@ -386,16 +402,19 @@ struct AppearanceView: View {
         }
     }
 
-    private func arrowButton(_ icon: String, enabled: Bool, _ action: @escaping () -> Void) -> some View {
+    private func arrowButton(_ icon: String, label: String, enabled: Bool, _ action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: icon)
                 .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(enabled ? Theme.accent : Theme.hairline)
                 .frame(width: 26, height: 26)
-                .background(RoundedRectangle(cornerRadius: 7).fill(Theme.surfaceAlt))
+                .background(Circle().fill(Theme.surfaceAlt))
+                .contentShape(Rectangle().inset(by: -9))
         }
         .buttonStyle(.plain)
         .disabled(!enabled)
+        // زر أيقونة فقط: بلا عنوان يقرأ VoiceOver اسم الرمز بلغة الجهاز.
+        .accessibilityLabel(label)
     }
 
     private var isDefaultOrder: Bool { store.visibleTabs == AppTab.defaultOrder }

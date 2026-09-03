@@ -10,6 +10,8 @@ struct DhikrSessionView: View {
     @State private var index = 0
     @State private var remaining: [String: Int] = [:]
     @State private var showCompletion = false
+    /// ورقة الإتمام لم تكن «حاجزة» لقارئ الشاشة: التركيز يبقى على زرّ العدّ خلفها.
+    @AccessibilityFocusState private var focusDone: Bool
 
     private var color: Color { Theme.accent(for: category.accent) }
     // حارس ضدّ فهرس سالب لو كانت الفئة فارغة (غير ممكن ببيانات مُدرجة، لكن احتياطًا).
@@ -45,6 +47,8 @@ struct DhikrSessionView: View {
 
                 bottomBar
             }
+            // خلف ورقة الإتمام تبقى الصفحة في شجرة الإتاحة، فتُحجب عن VoiceOver ما دامت الورقة ظاهرة.
+            .accessibilityHidden(showCompletion)
         }
         // ملاحظة مستخدم: الدائرة وحدها تُلزم بمدّ الإبهام إلى أسفل الشاشة.
         .contentShape(Rectangle())
@@ -53,13 +57,15 @@ struct DhikrSessionView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.hidden, for: .tabBar)
         .toolbar {
-            ToolbarItem(placement: .topBarLeading) {
+            // أزرار الشاشات المدفوعة تأتي في الطرف الأخير، بعيدًا عن سهم الرجوع.
+            ToolbarItem(placement: .topBarTrailing) {
                 Menu {
                     Button(loc("إعادة العدّ"), systemImage: "arrow.counterclockwise") { resetCounts() }
                     ShareLink(item: shareText) { Label(loc("مشاركة الذكر"), systemImage: "square.and.arrow.up") }
                 } label: {
                     Image(systemName: "ellipsis.circle")
                 }
+                .accessibilityLabel(loc("المزيد"))
             }
         }
         .onAppear(perform: seed)
@@ -94,7 +100,7 @@ struct DhikrSessionView: View {
                     .foregroundStyle(Theme.inkFaint)
             }
         }
-        .padding(.horizontal, 20)
+        .padding(.horizontal, Theme.gutter)
         .padding(.top, 8)
         .readableWidth(720)
     }
@@ -146,7 +152,7 @@ struct DhikrSessionView: View {
                         .padding(.horizontal, 4)
                     }
                 }
-                .padding(.horizontal, 18)
+                .padding(.horizontal, Theme.gutter)
                 .padding(.vertical, 16)
                 .readableWidth(720)
                 .frame(minHeight: geo.size.height, alignment: .center)
@@ -212,6 +218,7 @@ struct DhikrSessionView: View {
                 Text(loc("تقبّل الله منك"))
                     .font(Theme.display(26, weight: .bold))
                     .foregroundStyle(Theme.ink)
+                    .accessibilityFocused($focusDone)
                 Text(loc("أتممت %1$@", category.title))
                     .font(Theme.display(15))
                     .foregroundStyle(Theme.inkSoft)
@@ -243,6 +250,9 @@ struct DhikrSessionView: View {
             .padding(36)
             .transition(.scale(scale: 0.92).combined(with: .opacity))
         }
+        // ورقة حاجزة: قارئ الشاشة يبقى داخلها ولا يصل إلى زرّ العدّ خلفها.
+        .accessibilityElement(children: .contain)
+        .accessibilityAddTraits(.isModal)
     }
 
     // MARK: Logic
@@ -270,6 +280,8 @@ struct DhikrSessionView: View {
                 store.markCompleted(categoryId: category.id)
                 WidgetCenter.shared.reloadAllTimelines()
                 showCompletion = true
+                // يُنقل تركيز VoiceOver بعد أن تُبنى الورقة، لا في اللحظة نفسها.
+                DispatchQueue.main.async { focusDone = true }
             } else {
                 // نلتقط الصفحة التي أُجّل الانتقال منها: لو سحب المستخدم خلال
                 // ثلث الثانية لقفز التأجيل فوق ذكر كامل ولم يُعدّ أبدًا.

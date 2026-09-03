@@ -72,7 +72,8 @@ struct KhatmahView: View {
                             VStack(spacing: 2) {
                                 Text(d.counterText)
                                     .font(.system(size: 19, weight: .bold, design: .rounded))
-                                Text(loc("يوم")).font(Theme.display(10))
+                                // تمييز العدد: ٧ و١٠ «أيام»، و١٥ و٣٠ و٦٠ «يومًا» — كما في planSummary تحتها.
+                                Text(loc((3...10).contains(d) ? "أيام" : "يومًا")).font(Theme.display(11))
                             }
                             .foregroundStyle(on ? Theme.onAccent : Theme.inkSoft)
                             .frame(maxWidth: .infinity)
@@ -81,6 +82,7 @@ struct KhatmahView: View {
                             .scaleEffect(on ? 1.03 : 1)
                         }
                         .pressable()
+                        .accessibilityAddTraits(on ? .isSelected : [])
                         .animation(Motion.press, value: days)
                     }
                 }
@@ -113,6 +115,7 @@ struct KhatmahView: View {
                             .contentShape(Rectangle())
                         }
                         .buttonStyle(.plain)
+                        .accessibilityAddTraits(mode == m ? .isSelected : [])
                         if i < KhatmahMode.allCases.count - 1 { SettingsDivider() }
                     }
                 }
@@ -196,7 +199,8 @@ struct KhatmahView: View {
                     .frame(width: 240, height: 240)
             }
             ZStack {
-                KhatmahRing(progress: progress, lineWidth: 13, glow: true)
+                KhatmahRing(progress: progress, lineWidth: 13, glow: true,
+                            accent: Theme.accent, gold: Theme.gold)
                 VStack(spacing: 3) {
                     Text("\(Int((progress * 100).rounded()).counterText)٪")
                         .font(.system(size: 40, weight: .bold, design: .rounded))
@@ -468,22 +472,26 @@ private struct KhatmahRing: View {
     var progress: Double
     var lineWidth: CGFloat = 13
     var glow: Bool = true
+    // يُقرأ لونا الطابع في الأب ويُمرَّران قيمتين: بنية الحلقة قيم بسيطة، فلو قرأت
+    // Theme.* ساكنةً في جسمها لتخطّاها SwiftUI عند تبدّل الطابع وبقيت بلونها القديم.
+    var accent: Color = Theme.accent
+    var gold: Color = Theme.gold
 
     private var p: Double { max(0.001, min(1, progress)) }
 
     private var sweep: AngularGradient {
-        AngularGradient(colors: [Theme.accent, Theme.gold, Theme.accent],
+        AngularGradient(colors: [accent, gold, accent],
                         center: .center, angle: .degrees(-90))
     }
 
     var body: some View {
         ZStack {
-            Circle().stroke(Theme.accent.opacity(0.16), lineWidth: lineWidth)
+            Circle().stroke(accent.opacity(0.16), lineWidth: lineWidth)
 
             // ثلاثون علامة خافتة حول المسار — أجزاء المصحف
             ForEach(0..<30, id: \.self) { i in
                 Capsule()
-                    .fill(Theme.accent.opacity(0.22))
+                    .fill(accent.opacity(0.22))
                     .frame(width: lineWidth * 0.14, height: lineWidth * 0.5)
                     .offset(y: -0.5)
                     .rotationEffect(.degrees(Double(i) / 30 * 360))
