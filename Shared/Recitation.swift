@@ -595,6 +595,20 @@ final class Recitation: NSObject, ObservableObject {
         #endif
     }
 
+    /// يلغي تنزيل سورة واحدة — من الطابور إن كانت تنتظر، أو المهمّة إن كانت جارية.
+    func cancel(surah s: Int, reciter r: Reciter? = nil) {
+        let rec = r ?? reciter
+        let k = Self.key(rec.id, s)
+        queue.removeAll { $0.reciter.id == rec.id && $0.surah == s }
+        if let tid = tasks.first(where: { $0.value == k })?.key {
+            tasks.removeValue(forKey: tid)          // المندوب يجد المفتاح غائبًا فيتجاهل الإلغاء
+            running.removeValue(forKey: tid)?.cancel()
+        }
+        downloads.removeValue(forKey: k)
+        updateBackgroundAssertion()
+        pump()
+    }
+
     /// يلغي المهامّ الجارية والطابور لقارئٍ معيّن (أو للكل) دون أن تُعلَّم فاشلة.
     private func cancelDownloads(reciter id: String?) {
         queue.removeAll { id == nil || $0.reciter.id == id }
