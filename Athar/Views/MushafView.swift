@@ -4,6 +4,9 @@ struct MushafView: View {
     /// حين تُفتح من شاشة «الأقسام» تكون داخل مكدّس قائم، فلا تصنع مكدّسًا آخر.
     var embedded = false
     @EnvironmentObject private var store: AtharStore
+    /// يُرصَد المحرّك هنا لا يُقرأ قراءةً عابرة: بطاقة التلاوة تعرض اسم القارئ
+    /// وعدد السور المحمَّلة، ولا شيء في المتجر يُعيد رسم الشاشة عند تغيّرهما.
+    @StateObject private var audio = Recitation.shared
     @State private var query = ""
     /// نتائج البحث في نصّ المصحف — تُحسب مرّةً واحدة لكل استعلام لا مع كل رسم.
     @State private var hits: [AyahRef] = []
@@ -62,7 +65,9 @@ struct MushafView: View {
                         }
                     }
                     .padding(.horizontal, 18)
-                    .padding(.bottom, 30)
+                    // المشغّل المصغّر يطفو فوق آخر صف ورابط تنزيل؛ فيُحجز له
+                    // أسفل القائمة بالقدر نفسه الذي تحجزه شاشة التلاوة.
+                    .padding(.bottom, audio.surah == nil ? 30 : 112)
                     .readableWidth(620)
                 }
                 .scrollIndicators(.hidden)
@@ -95,7 +100,6 @@ struct MushafView: View {
 
     /// مدخل التلاوة الصوتية: يفتح شاشةً تُشغّل السور بثًّا أو تنزّلها للاستماع بلا إنترنت.
     private var recitationCard: some View {
-        let audio = Recitation.shared
         let sum = audio.downloadedSummary(reciter: audio.reciterId)
         return NavigationLink { RecitationView() } label: {
             AtharCard(padding: 14, elevation: .e2, tint: Theme.accent) {
@@ -110,7 +114,7 @@ struct MushafView: View {
                             .font(Theme.display(15, weight: .semibold))
                             .foregroundStyle(Theme.ink)
                         Text(sum.count > 0
-                             ? loc("%1$@ · %2$@ سورة محمَّلة", audio.reciter.name, sum.count.counterText)
+                             ? loc("%1$@ · %2$@", audio.reciter.name, downloadedLabel(sum.count))
                              : loc("%1$@ · شغّلها أو نزّلها للاستماع بلا إنترنت", audio.reciter.name))
                             .font(Theme.display(11))
                             .foregroundStyle(Theme.inkFaint)
@@ -125,6 +129,16 @@ struct MushafView: View {
             }
         }
         .pressable()
+    }
+
+    /// تمييز العدد في العربية: مثنّى لاثنتين، جمع مجرور من ٣ إلى ١٠، ومفرد فيما فوقها.
+    private func downloadedLabel(_ n: Int) -> String {
+        switch n {
+        case 1:      return loc("سورة واحدة محمَّلة")
+        case 2:      return loc("سورتان محمَّلتان")
+        case 3...10: return loc("%1$@ سور محمَّلة", n.counterText)
+        default:     return loc("%1$@ سورة محمَّلة", n.counterText)
+        }
     }
 
     /// إسناد نص المصحف — شرط رخصة Tanzil: إظهار المصدر بوضوح مع رابط.

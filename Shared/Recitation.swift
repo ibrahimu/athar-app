@@ -2,6 +2,9 @@ import Foundation
 import AVFoundation
 import MediaPlayer
 import Combine
+#if canImport(UIKit)
+import UIKit
+#endif
 
 // MARK: - القارئ
 
@@ -128,7 +131,10 @@ enum SleepTimer: Equatable, Identifiable, Hashable {
         switch self {
         case .off:        return loc("بلا مؤقّت")
         case .endOfSurah: return loc("عند نهاية السورة")
-        case .minutes(let m): return loc("بعد %1$@ دقيقة", m.counterText)
+        case .minutes(let m):
+            // تمييز العدد: من ٣ إلى ١٠ «دقائق»، وما عداه «دقيقة».
+            return (3...10).contains(m) ? loc("بعد %1$@ دقائق", m.counterText)
+                                        : loc("بعد %1$@ دقيقة", m.counterText)
         }
     }
 
@@ -182,7 +188,15 @@ final class Recitation: NSObject, ObservableObject {
         URLSession(configuration: .default, delegate: self, delegateQueue: nil)
     }()
     private var tasks: [Int: String] = [:]   // taskIdentifier -> key
+    private var running: [Int: URLSessionDownloadTask] = [:]   // لإلغائها عند الحذف
     private var sleepTask: Task<Void, Never>?
+    /// يعكس حالة المشغّل الحقيقية (توقّف النظام له في مكالمة مثلًا) على isPlaying.
+    private var rateTask: Task<Void, Never>?
+    private var failObserver: NSObjectProtocol?
+    private var sessionObservers: [NSObjectProtocol] = []
+    #if canImport(UIKit)
+    private var bgTask: UIBackgroundTaskIdentifier = .invalid
+    #endif
 
     var reciter: Reciter { RecitationLibrary.reciter(id: reciterId) ?? RecitationLibrary.default }
 
@@ -197,6 +211,41 @@ final class Recitation: NSObject, ObservableObject {
         }
         let last = UserDefaults(suiteName: AtharStore.appGroup)?.integer(forKey: Self.lastKey) ?? 0
         if (1...114).contains(last) { lastPlayed = last }
+        observeAudioSession()
+    }
+
+    /// مكالمة أو «سيري» توقف الصوت من خارجنا، ونزع السمّاعة كذلك — نتابع ذلك
+    /// حتى لا تبقى الواجهة تقول «يُتلى الآن» والصوت صامت.
+    private func observeAudioSession() {
+        let nc = NotificationCenter.default
+        let session = AVAudioSession.sharedInstance()
+        sessionObservers.append(nc.addObserver(
+            forName: AVAudioSession.interruptionNotification, object: session, queue: .main
+        ) { [weak self] n in
+            guard let self,
+                  let raw = n.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
+                  let type = AVAudioSession.InterruptionType(rawValue: raw) else { return }
+            MainActor.assumeIsolated {
+                switch type {
+                case .began:
+                    self.pause()
+                case .ended:
+                    let opts = AVAudioSession.InterruptionOptions(
+                        rawValue: n.userInfo?[AVAudioSessionInterruptionOptionKey] as? UInt ?? 0)
+                    if opts.contains(.shouldResume), self.surah != nil { self.resume() }
+                @unknown default:
+                    break
+                }
+            }
+        })
+        sessionObservers.append(nc.addObserver(
+            forName: AVAudioSession.routeChangeNotification, object: session, queue: .main
+        ) { [weak self] n in
+            guard let self,
+                  let raw = n.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt,
+                  AVAudioSession.RouteChangeReason(rawValue: raw) == .oldDeviceUnavailable else { return }
+            MainActor.assumeIsolated { self.pause() }   // نُزعت السمّاعة: لا نفاجئه بالمكبّر
+        })
     }
 
     // MARK: القارئ
@@ -205,10 +254,13 @@ final class Recitation: NSObject, ObservableObject {
         guard r.id != reciterId else { return }
         let wasPlaying = isPlaying
         let s = surah
-        stop()
         reciterId = r.id
         UserDefaults(suiteName: AtharStore.appGroup)?.set(r.id, forKey: Self.reciterKey)
-        if wasPlaying, let s { play(surah: s) }
+        // نعيد تحميل السورة نفسها بصوت القارئ الجديد، ونبقيها متوقّفة إن كانت كذلك.
+        // لا نمرّ بـ stop() حتى لا يضيع مؤقّت النوم ولا تُفرغ الصفحة.
+        guard let s else { return }
+        play(surah: s)
+        if !wasPlaying { pause() }
     }
 
     // MARK: التشغيل
@@ -222,10 +274,10 @@ final class Recitation: NSObject, ObservableObject {
 
     /// يشغّل السورة، أو يوقف/يستأنف إن كانت هي الجارية.
     func toggle(surah s: Int) {
-        if surah == s, player != nil {
+        if surah == s, player != nil, !failed {
             isPlaying ? pause() : resume()
         } else {
-            play(surah: s)
+            play(surah: s)   // جديدة، أو فشل تحميلها فنعيد المحاولة (ربما نُزّلت الآن)
         }
     }
 
@@ -253,6 +305,26 @@ final class Recitation: NSObject, ObservableObject {
         player = p
         isBuffering = !url.isFileURL
 
+        // الحقيقة من المشغّل نفسه: لو أوقفه النظام (مكالمة) أو تعثّر البثّ، تتبعه الواجهة.
+        rateTask = Task { [weak self] in
+            for await st in p.publisher(for: \.timeControlStatus).values {
+                guard let self else { return }
+                self.isPlaying = st != .paused
+                self.isBuffering = st == .waitingToPlayAtSpecifiedRate
+                self.updateNowPlayingTime()
+            }
+        }
+        failObserver = NotificationCenter.default.addObserver(
+            forName: .AVPlayerItemFailedToPlayToEndTime, object: item, queue: .main
+        ) { [weak self] _ in
+            guard let self else { return }
+            MainActor.assumeIsolated {
+                self.failed = true
+                self.isPlaying = false
+                self.isBuffering = false
+            }
+        }
+
         timeObserver = p.addPeriodicTimeObserver(
             forInterval: CMTime(seconds: 0.4, preferredTimescale: 600), queue: .main
         ) { [weak self] t in
@@ -277,6 +349,7 @@ final class Recitation: NSObject, ObservableObject {
                 switch self.repeatMode {
                 case .one:
                     p.seek(to: .zero); p.play()
+                    p.rate = self.rate      // play() يعيد السرعة إلى ١، فنثبّت المختارة
                 case .next:
                     if let cur = self.surah, cur < 114 { self.play(surah: cur + 1) } else { self.stop() }
                 case .once:
@@ -316,7 +389,8 @@ final class Recitation: NSObject, ObservableObject {
     }
 
     func resume() {
-        guard player != nil else { if let s = surah { play(surah: s) }; return }
+        // بلا مشغّل، أو مشغّل مات بفشل التحميل: أعد التحميل بدل «استئناف» صامت.
+        guard player != nil, !failed else { if let s = surah { play(surah: s) }; return }
         activateSession()
         player?.play()
         player?.rate = rate
@@ -385,6 +459,8 @@ final class Recitation: NSObject, ObservableObject {
 
     private func teardown() {
         statusTask?.cancel(); statusTask = nil
+        rateTask?.cancel(); rateTask = nil
+        if let o = failObserver { NotificationCenter.default.removeObserver(o); failObserver = nil }
         if let o = timeObserver { player?.removeTimeObserver(o); timeObserver = nil }
         if let o = endObserver { NotificationCenter.default.removeObserver(o); endObserver = nil }
         player?.pause()
@@ -449,19 +525,11 @@ final class Recitation: NSObject, ObservableObject {
     private var queue: [(reciter: Reciter, surah: Int)] = []
 
     /// عدد ما ينتظر أو يُنزَّل الآن — لعرض تقدّم التنزيل الجماعي.
-    var pendingCount: Int {
-        queue.count + downloads.values.filter {
-            if case .downloading = $0 { return true }
-            return $0 == .waiting
-        }.count
-    }
+    /// نعدّ الطابور والمهامّ الجارية فقط؛ فعلامات «ينتظر» في `downloads` تُكتب
+    /// لما في الطابور أيضًا، وعدّها هنا كان يوقف الضخّ قبل أن يبدأ.
+    var pendingCount: Int { queue.count + tasks.count }
 
-    private var activeCount: Int {
-        downloads.values.filter {
-            if case .downloading = $0 { return true }
-            return $0 == .waiting
-        }.count
-    }
+    private var activeCount: Int { tasks.count }
 
     /// يضيف سورًا إلى طابور التنزيل ثم يبدأ ما يتّسع له.
     func downloadMany(_ surahs: [Int], reciter r: Reciter? = nil) {
@@ -504,15 +572,52 @@ final class Recitation: NSObject, ObservableObject {
         downloads[k] = .waiting
         let task = session.downloadTask(with: url)
         tasks[task.taskIdentifier] = k
+        running[task.taskIdentifier] = task
         task.resume()
+        updateBackgroundAssertion()
+    }
+
+    /// يطلب من النظام مهلةً لإتمام التنزيلات الجارية بعد الخروج من التطبيق.
+    /// (مهلة محدودة لا خلفية دائمة — تكفي لبضع سور، وما بقي يُستأنف عند العودة.)
+    private func updateBackgroundAssertion() {
+        #if canImport(UIKit)
+        if tasks.isEmpty {
+            if bgTask != .invalid { UIApplication.shared.endBackgroundTask(bgTask); bgTask = .invalid }
+        } else if bgTask == .invalid {
+            bgTask = UIApplication.shared.beginBackgroundTask(withName: "athar.recitation.download") { [weak self] in
+                guard let self else { return }
+                MainActor.assumeIsolated {
+                    UIApplication.shared.endBackgroundTask(self.bgTask)
+                    self.bgTask = .invalid
+                }
+            }
+        }
+        #endif
+    }
+
+    /// يلغي المهامّ الجارية والطابور لقارئٍ معيّن (أو للكل) دون أن تُعلَّم فاشلة.
+    private func cancelDownloads(reciter id: String?) {
+        queue.removeAll { id == nil || $0.reciter.id == id }
+        for (tid, key) in tasks where id == nil || key.hasPrefix(id! + "/") {
+            tasks.removeValue(forKey: tid)          // المندوب يجد المفتاح غائبًا فيتجاهل الإلغاء
+            running.removeValue(forKey: tid)?.cancel()
+            downloads.removeValue(forKey: key)
+        }
+        updateBackgroundAssertion()
     }
 
     func delete(surah s: Int, reciter r: Reciter? = nil) {
         let rec = r ?? reciter
+        let wasLocalAndCurrent = surah == s && reciterId == rec.id
+            && RecitationLibrary.isDownloaded(reciter: rec.id, surah: s)
         try? FileManager.default.removeItem(at: RecitationLibrary.localURL(reciter: rec.id, surah: s))
         downloads.removeValue(forKey: Self.key(rec.id, s))
-        // لو كانت هي الجارية بثًّا من الملف، أوقفها حتى لا يبقى مؤشّر على ملف محذوف.
-        if surah == s, reciterId == rec.id { stop() }
+        // كانت تُتلى من الملف المحذوف؟ نتابعها بثًّا من الشبكة بدل قطع التلاوة.
+        if wasLocalAndCurrent {
+            let wasPlaying = isPlaying
+            play(surah: s)
+            if !wasPlaying { pause() }
+        }
         objectWillChange.send()
     }
 
@@ -539,14 +644,24 @@ final class Recitation: NSObject, ObservableObject {
     }
 
     func deleteAll(reciter id: String? = nil) {
-        stop()
+        // أوقف ما يخصّ هذا القارئ من طابور ومهامّ، وإلا أعادت ملء المجلّد الذي حُذف للتوّ.
+        cancelDownloads(reciter: id)
+        let affectsCurrent = (id == nil || id == reciterId) && surah != nil
+        let wasLocal = surah.map { RecitationLibrary.isDownloaded(reciter: reciterId, surah: $0) } ?? false
         let fm = FileManager.default
         if let id {
             try? fm.removeItem(at: RecitationLibrary.root.appendingPathComponent(id, isDirectory: true))
+            downloads = downloads.filter { !$0.key.hasPrefix(id + "/") }
         } else {
             try? fm.removeItem(at: RecitationLibrary.root)
+            downloads.removeAll()
         }
-        downloads.removeAll()
+        // الجارية كانت من ملف حُذف الآن؟ نتابعها بثًّا؛ وما عدا ذلك لا نمسّ التلاوة.
+        if affectsCurrent, wasLocal, let s = surah {
+            let wasPlaying = isPlaying
+            play(surah: s)
+            if !wasPlaying { pause() }
+        }
         objectWillChange.send()
     }
 }
@@ -564,9 +679,11 @@ extension Recitation: URLSessionDownloadDelegate {
         let ok = (downloadTask.response as? HTTPURLResponse).map { (200...299).contains($0.statusCode) } ?? false
 
         Task { @MainActor [weak self] in
+            self?.running.removeValue(forKey: id)
             guard let self, let key = self.tasks.removeValue(forKey: id) else {
                 try? fm.removeItem(at: staged); return
             }
+            defer { self.updateBackgroundAssertion() }
             let parts = key.split(separator: "/")
             guard moved, ok, parts.count == 2, let s = Int(parts[1]) else {
                 try? fm.removeItem(at: staged)
@@ -606,9 +723,11 @@ extension Recitation: URLSessionDownloadDelegate {
         guard error != nil else { return }
         let id = task.taskIdentifier
         Task { @MainActor [weak self] in
+            self?.running.removeValue(forKey: id)
             guard let self, let key = self.tasks.removeValue(forKey: id) else { return }
             self.downloads[key] = .failed
             self.pump()
+            self.updateBackgroundAssertion()
         }
     }
 }
