@@ -360,6 +360,58 @@ struct SettingsDivider: View {
     }
 }
 
+// MARK: - رقاقة الأيقونة الموحّدة
+
+/// أيقونة في دائرة ناعمة بلون قسمها — بثلاثة أحجام لا أكثر، فلا تتفرّق الرقاقات
+/// إلى ثماني مقاسات وثلاث شفافيات كما كانت: صغيرة للصفوف، متوسّطة للبلاطات،
+/// كبيرة لصفوف الروابط البارزة.
+struct IconChip: View {
+    enum Size: CGFloat { case sm = 32, md = 40, lg = 46 }
+    let icon: String
+    var tint: Color = Theme.accent
+    var size: Size = .md
+
+    var body: some View {
+        Image(systemName: icon)
+            .font(.system(size: size.rawValue * 0.45, weight: .medium))
+            .foregroundStyle(tint)
+            .frame(width: size.rawValue, height: size.rawValue)
+            .background(Circle().fill(tint.opacity(0.13)))
+    }
+}
+
+/// صف رابط بارز داخل بطاقة: رقاقة كبيرة، عنوان ووصف، وسهم — بدل أربع نسخ يدوية.
+struct AtharLinkRow: View {
+    let icon: String
+    var tint: Color = Theme.accent
+    let title: String
+    var subtitle: String? = nil
+    var padding: CGFloat = 16
+
+    var body: some View {
+        AtharCard(padding: padding) {
+            HStack(spacing: 14) {
+                IconChip(icon: icon, tint: tint, size: .lg)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title)
+                        .font(Theme.display(17, weight: .semibold))
+                        .foregroundStyle(Theme.ink)
+                    if let subtitle {
+                        Text(subtitle)
+                            .font(Theme.display(12))
+                            .foregroundStyle(Theme.inkSoft)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                Spacer(minLength: 6)
+                Image(systemName: "chevron.forward")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(Theme.inkFaint)
+            }
+        }
+    }
+}
+
 /// صف إعداد: أيقونة في دائرة ملوّنة ناعمة، عنوان، ووصف اختياري، ثم عنصر التحكم.
 struct SettingsRow<Trailing: View>: View {
     let icon: String
@@ -370,11 +422,7 @@ struct SettingsRow<Trailing: View>: View {
 
     var body: some View {
         HStack(spacing: 13) {
-            Image(systemName: icon)
-                .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(tint)
-                .frame(width: 32, height: 32)
-                .background(Circle().fill(tint.opacity(0.12)))
+            IconChip(icon: icon, tint: tint, size: .sm)
 
             VStack(alignment: .leading, spacing: 2) {
                 Text(title)

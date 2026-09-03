@@ -1,4 +1,7 @@
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#endif
 
 /// Visual language for أثر — a calm, paper-and-ink palette with a single
 /// green accent, tuned so Arabic text stays the loudest thing on screen.
@@ -13,8 +16,10 @@ enum Theme {
     static var inkSoft: Color {
         .adaptive(light: Color(hex: current.ink.light).opacity(0.68), dark: Color(hex: current.ink.dark).opacity(0.72))
     }
+    /// الحبر الخافت للتوجيهات والوصف الصغير — كان ٤٥٪ فلا يبلغ تباين ٤٫٥:١
+    /// على الورق الفاتح؛ رُفع إلى ما يقرأه ضعيف البصر دون أن ينافس الحبر الأساس.
     static var inkFaint: Color {
-        .adaptive(light: Color(hex: current.ink.light).opacity(0.45), dark: Color(hex: current.ink.dark).opacity(0.45))
+        .adaptive(light: Color(hex: current.ink.light).opacity(0.62), dark: Color(hex: current.ink.dark).opacity(0.64))
     }
 
     static var canvas: Color    { .adaptive(light: Color(hex: current.canvas.light),  dark: Color(hex: current.canvas.dark)) }
@@ -43,6 +48,8 @@ enum Theme {
     /// لون «إنجاز/إتمام» — مميّز عن الأخضر البراندي حتى لا تُقرأ الحالة المكتملة كأنها «العلامة التجارية».
     /// يُستعمل فقط بشفافية ٠٫٠٨–٠٫١٦.
     static var success: Color { .adaptive(light: Color(hex: 0x3FA37A), dark: Color(hex: 0x5FBF97)) }
+    /// لون الخطر الوحيد في التطبيق — للحذف والتصفير وتعذّر التشغيل، بدل أحمر النظام بدرجات متفرّقة.
+    static var danger: Color { .adaptive(light: Color(hex: 0xB9483C), dark: Color(hex: 0xE57A6C)) }
 
     /// الذهبي الزخرفي — يصبح لون الطابع في وضع الأيقونات الموحّد (كله لون واحد).
     static var gold: Color {
@@ -130,7 +137,17 @@ enum Theme {
     }
 
     static func display(_ size: CGFloat, weight: Font.Weight = .semibold) -> Font {
-        .system(size: size, weight: weight)
+        .system(size: scaled(size), weight: weight)
+    }
+
+    /// يتبع حجم خطّ النظام (Dynamic Type) كما تفعل خطوط النسخ، بسقف ١٫٣٥
+    /// حتى لا تنفجر البطاقات الضيّقة عند أحجام الإتاحة الكبيرة جدًا.
+    static func scaled(_ size: CGFloat) -> CGFloat {
+        #if canImport(UIKit)
+        return min(UIFontMetrics(forTextStyle: .body).scaledValue(for: size), size * 1.35)
+        #else
+        return size
+        #endif
     }
 
     // MARK: Radius — نصف أقطار متراكزة (سمة iOS الفاخرة)
