@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct MushafView: View {
+    /// حين تُفتح من شاشة «الأقسام» تكون داخل مكدّس قائم، فلا تصنع مكدّسًا آخر.
+    var embedded = false
     @EnvironmentObject private var store: AtharStore
     @State private var query = ""
     /// نتائج البحث في نصّ المصحف — تُحسب مرّةً واحدة لكل استعلام لا مع كل رسم.
@@ -18,7 +20,7 @@ struct MushafView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        MaybeStack(embedded: embedded) {
             ZStack {
                 AtharBackground()
                 ScrollView {
@@ -354,11 +356,3 @@ struct SearchHitRow: View {
     }
 }
 
-// MARK: - تمييز العدد
-
-private extension Int {
-    /// «٣ آيات» لا «٣ آية»: تمييز العدد من ٣ إلى ١٠ جمعٌ مجرور، وما فوقها مفرد.
-    var ayahCountText: String {
-        (3...10).contains(self) ? "\(counterText) آيات" : "\(counterText) آية"
-    }
-}

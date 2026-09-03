@@ -215,3 +215,12 @@ extension String {
         split(separator: " ").map(String.init)
     }
 }
+
+// MARK: - تمييز العدد
+
+extension Int {
+    /// «٣ آيات» لا «٣ آية»: تمييز العدد من ٣ إلى ١٠ جمعٌ مجرور، وما عداه مفرد.
+    var ayahCountText: String {
+        (3...10).contains(self) ? "\(counterText) آيات" : "\(counterText) آية"
+    }
+}

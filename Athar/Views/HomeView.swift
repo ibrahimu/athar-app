@@ -4,6 +4,8 @@ import WidgetKit
 struct HomeView: View {
     @EnvironmentObject private var store: AtharStore
     var onOpenTab: (AppTab) -> Void
+    /// حين تُفتح من شاشة «الأقسام» تكون داخل مكدّس قائم، فلا تصنع مكدّسًا آخر.
+    var embedded = false
 
     @State private var now = Date()
     private let ticker = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
@@ -20,7 +22,7 @@ struct HomeView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        MaybeStack(embedded: embedded) {
             ZStack {
                 AtharBackground(tint: dayTint, secondary: Theme.gold)
                 ScrollView {
@@ -31,8 +33,9 @@ struct HomeView: View {
                         if let suggested { suggestionCard(suggested).appearStagger(3) }
                         if let dailyDhikr { dailyCard(dailyDhikr).appearStagger(4) }
                         quickGrid.appearStagger(5)
-                        sadaqahCard.appearStagger(6)
-                        footerNote.appearStagger(7)
+                        moreSections.appearStagger(6)
+                        sadaqahCard.appearStagger(7)
+                        footerNote.appearStagger(8)
                     }
                     .padding(.horizontal, 18)
                     .padding(.bottom, 32)
@@ -47,6 +50,11 @@ struct HomeView: View {
                 ToolbarItem(placement: .topBarLeading) {
                     NavigationLink { SettingsSheet() } label: {
                         Image(systemName: "gearshape.fill")
+                    }
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    NavigationLink { SectionsView() } label: {
+                        Image(systemName: "square.grid.2x2.fill")
                     }
                 }
             }
@@ -322,6 +330,29 @@ struct HomeView: View {
     }
 
     // MARK: Quick grid
+
+    /// الأقسام التي لا يسعها الشريط السفلي (خمسة فقط) — تبقى في متناول اليد هنا.
+    @ViewBuilder
+    private var moreSections: some View {
+        let off = AppTab.allCases.filter {
+            $0 != .home && $0 != .settings && !store.visibleTabs.contains($0)
+        }
+        if !off.isEmpty {
+            VStack(alignment: .leading, spacing: 10) {
+                NavigationLink { SectionsView() } label: {
+                    SectionHeader(title: loc("أقسام أخرى"), tint: Theme.accent(for: "dusk"))
+                }
+                .buttonStyle(.plain)
+                LazyVGrid(columns: [GridItem(.flexible(), spacing: 12),
+                                    GridItem(.flexible(), spacing: 12)], spacing: 12) {
+                    ForEach(off) { tab in
+                        NavigationLink { SectionDestination(tab: tab) } label: { SectionTile(tab: tab) }
+                            .pressable()
+                    }
+                }
+            }
+        }
+    }
 
     private var quickGrid: some View {
         VStack(alignment: .leading, spacing: 10) {

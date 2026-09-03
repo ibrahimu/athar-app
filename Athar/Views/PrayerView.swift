@@ -2,6 +2,8 @@ import SwiftUI
 import WidgetKit
 
 struct PrayerView: View {
+    /// حين تُفتح من شاشة «الأقسام» تكون داخل مكدّس قائم، فلا تصنع مكدّسًا آخر.
+    var embedded = false
     @EnvironmentObject private var store: AtharStore
     @StateObject private var location: LocationProvider
     @State private var now = Date()
@@ -10,7 +12,8 @@ struct PrayerView: View {
 
     private let ticker = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
-    init(store: AtharStore) {
+    init(embedded: Bool = false, store: AtharStore) {
+        self.embedded = embedded
         _location = StateObject(wrappedValue: LocationProvider(store: store))
     }
 
@@ -27,7 +30,7 @@ struct PrayerView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        MaybeStack(embedded: embedded) {
             ZStack {
                 AtharBackground()
                 ScrollView {

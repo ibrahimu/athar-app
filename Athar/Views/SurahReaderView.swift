@@ -916,12 +916,3 @@ struct MushafFrame: View {
     }
 }
 
-// MARK: - تمييز العدد
-
-private extension Int {
-    /// «٣ آيات» لا «٣ آية»: تمييز العدد من ٣ إلى ١٠ جمعٌ مجرور، وما فوقها مفرد.
-    /// لا سورة أقلّ من ثلاث آيات، فلا حاجة لحالتَي المفرد والمثنّى.
-    var ayahCountText: String {
-        (3...10).contains(self) ? "\(counterText) آيات" : "\(counterText) آية"
-    }
-}

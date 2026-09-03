@@ -714,3 +714,16 @@ struct CelebrationHalo: View {
         }
     }
 }
+
+// MARK: - مكدّس تنقّل اختياري
+
+/// يلفّ المحتوى بمكدّس تنقّل، إلا حين يُعرض القسم داخل مكدّس قائم
+/// (كفتحه من شاشة «الأقسام») فيُترك بلا مكدّس ثانٍ يضاعف شريط العنوان.
+struct MaybeStack<Content: View>: View {
+    let embedded: Bool
+    @ViewBuilder var content: Content
+
+    var body: some View {
+        if embedded { content } else { NavigationStack { content } }
+    }
+}

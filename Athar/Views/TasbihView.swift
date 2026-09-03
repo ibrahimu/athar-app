@@ -2,6 +2,8 @@ import SwiftUI
 import WidgetKit
 
 struct TasbihView: View {
+    /// حين تُفتح من شاشة «الأقسام» تكون داخل مكدّس قائم، فلا تصنع مكدّسًا آخر.
+    var embedded = false
     @EnvironmentObject private var store: AtharStore
     @State private var pulse = false
     @State private var bloom = false        // وميض إتمام لمرّة عند بلوغ الهدف
@@ -25,7 +27,7 @@ struct TasbihView: View {
     private var rounds: Int { store.tasbihCount / store.tasbihTarget }
 
     var body: some View {
-        NavigationStack {
+        MaybeStack(embedded: embedded) {
             ZStack {
                 AtharBackground(tint: Theme.accent, secondary: Theme.gold)
 

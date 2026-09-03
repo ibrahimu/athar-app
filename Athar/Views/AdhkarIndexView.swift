@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct AdhkarIndexView: View {
+    /// حين تُفتح من شاشة «الأقسام» تكون داخل مكدّس قائم، فلا تصنع مكدّسًا آخر.
+    var embedded = false
     @EnvironmentObject private var store: AtharStore
     @State private var query = ""
 
@@ -17,7 +19,7 @@ struct AdhkarIndexView: View {
     }
 
     var body: some View {
-        NavigationStack {
+        MaybeStack(embedded: embedded) {
             ZStack {
                 AtharBackground()
                 ScrollView {

@@ -2,8 +2,10 @@ import SwiftUI
 
 /// الحج والعمرة — مربّعان كبيران، كلٌّ يفتح دليلًا مفصّلًا منظّمًا بالأيقونات.
 struct HajjView: View {
+    /// حين تُفتح من شاشة «الأقسام» تكون داخل مكدّس قائم، فلا تصنع مكدّسًا آخر.
+    var embedded = false
     var body: some View {
-        NavigationStack {
+        MaybeStack(embedded: embedded) {
             ZStack {
                 AtharBackground(tint: Theme.accent(for: "gold"), secondary: Theme.accent(for: "sea"))
                 ScrollView {

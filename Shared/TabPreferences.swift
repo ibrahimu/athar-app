@@ -36,6 +36,38 @@ enum AppTab: String, CaseIterable, Identifiable, Codable {
         }
     }
 
+    /// لون القسم — تُصبغ به بطاقته في شاشة «الأقسام».
+    var accentKey: String {
+        switch self {
+        case .home:       return "dawn"
+        case .mushaf:     return "green"
+        case .adhkar:     return "sea"
+        case .prayer:     return "night"
+        case .tasbih:     return "calm"
+        case .hajj:       return "gold"
+        case .qibla:      return "maghrib"
+        case .hifz:       return "hifz"
+        case .recitation: return "dusk"
+        case .settings:   return "green"
+        }
+    }
+
+    /// سطر تعريفيّ قصير في شاشة «الأقسام».
+    var blurb: String {
+        switch self {
+        case .home:       return loc("صلاتك القادمة وذِكرك اليوم")
+        case .mushaf:     return loc("المصحف كاملًا بالرسم العثماني")
+        case .adhkar:     return loc("أذكار اليوم بتخريجها")
+        case .prayer:     return loc("مواقيت الصلاة وتنبيهاتها")
+        case .tasbih:     return loc("مسبحة تعدّ لك أورادك")
+        case .hajj:       return loc("مناسك العمرة والحج خطوةً خطوة")
+        case .qibla:      return loc("اتجاه القبلة من مكانك")
+        case .hifz:       return loc("حفظ الآيات ومراجعتها بمواعيدها")
+        case .recitation: return loc("استمع للقرآن أو نزّله")
+        case .settings:   return loc("تفضيلاتك وتنبيهاتك")
+        }
+    }
+
     /// التبويبات ذات الأيقونة المرسومة (لا SF): سجّادة الصلاة وكعبة الحج.
     var usesCustomIcon: Bool { self == .prayer || self == .hajj }
 
