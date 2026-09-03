@@ -46,7 +46,7 @@ struct HifzPicker: View {
                                             .font(Theme.display(15, weight: surahId == s.id ? .semibold : .regular))
                                             .foregroundStyle(Theme.ink)
                                         Spacer()
-                                        Text(ayahCountText(s.ayahCount))
+                                        Text(s.ayahCount.ayahCountText)
                                             .font(Theme.display(11)).foregroundStyle(Theme.inkFaint)
                                     }
                                     .padding(.horizontal, 14).padding(.vertical, 11)
@@ -65,7 +65,7 @@ struct HifzPicker: View {
                                 stepperRow(loc("إلى الآية"), value: $to, range: 1...s.ayahCount)
                             }
 
-                            Text(count > 0 ? "\(ayahCountText(count)) ستُضاف إلى الحفظ" : loc("المدى غير صحيح"))
+                            Text(count > 0 ? addLine(count) : loc("المدى غير صحيح"))
                                 .font(Theme.display(12))
                                 .foregroundStyle(count > 0 ? Theme.inkFaint : Color.red.opacity(0.8))
                         }
@@ -97,9 +97,14 @@ struct HifzPicker: View {
         }
     }
 
-    /// تمييز العدد: من ٣ إلى ١٠ جمعٌ «آيات»، وما عداه مفرد «آية».
-    private func ayahCountText(_ n: Int) -> String {
-        (3...10).contains(n) ? "\(n.counterText) آيات" : "\(n.counterText) آية"
+    /// المدى المختار قد يكون آية أو آيتين، و`Int.ayahCountText` مبنيّ على عدد آيات
+    /// السورة (٣ فأكثر)، فنُفرد ونُثنّي هنا مع مطابقة الفعل ونترك الجمع له.
+    private func addLine(_ n: Int) -> String {
+        switch n {
+        case 1:  return "آية ستُضاف إلى الحفظ"
+        case 2:  return "آيتان ستُضافان إلى الحفظ"
+        default: return "\(n.ayahCountText) ستُضاف إلى الحفظ"
+        }
     }
 
     private func stepperRow(_ title: String, value: Binding<Int>, range: ClosedRange<Int>) -> some View {

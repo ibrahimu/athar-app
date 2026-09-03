@@ -45,6 +45,13 @@ struct PrayerProvider: TimelineProvider {
 
         // Refresh exactly when the next prayer enters, so the widget flips over on time.
         var entries = [first]
+        // الشروق ليس صلاة، لكنه يبدّل لحظة اليوم (فجر ← صباح) — فيبقى نقطةَ تحديثٍ
+        // للتدرّج ولنقطة «الآن» على القوس، وإلا بقيا مجمّدَين حتى الظهر.
+        if let up = first.upcoming,
+           let sunrise = store.prayerTimes(for: now)?[.sunrise],
+           sunrise > now, sunrise < up.date {
+            entries.append(entry(at: sunrise.addingTimeInterval(1), store: store))
+        }
         if let upcoming = first.upcoming {
             entries.append(entry(at: upcoming.date.addingTimeInterval(1), store: store))
         }

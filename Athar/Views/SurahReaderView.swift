@@ -62,6 +62,11 @@ struct SurahReaderView: View {
     private var surah: Surah? { Quran.surah(activeSurahId) }
     private var palette: ReadingPalette { .of(store.readingTheme) }
 
+    /// حجزُ ارتفاع المشغّل المصغّر أسفل كل أوضاع القراءة: الشريط السفلي صار
+    /// «مشغّل + شريط موضع»، وبطاقة المشغّل معتمة تغطّي آخر سطرٍ من الصفحة
+    /// ورقمَها وزرَّ «سورة التالية». صفرٌ حين لا تلاوة، فلا تتغيّر الصفحة.
+    private var bottomReserve: CGFloat { audio.surah == nil ? 0 : 86 }
+
     /// رقم السورة الظاهرة الآن — يتغيّر أثناء تقليب الصفحات عبر حدود السور.
     private var visibleSurahId: Int {
         (currentRef ?? AyahRef(surah: surahId, ayah: 1)).surah
@@ -86,6 +91,7 @@ struct SurahReaderView: View {
                     highlights: store.highlights,
                     isDark: store.readingTheme == .night,
                     framed: store.readingMode == .framed,
+                    bottomInset: bottomReserve,
                     onTapAyah: { selected = $0 },
                     onPageVisible: { page in
                         let ref = Quran.firstAyah(ofPage: page)
@@ -161,7 +167,7 @@ struct SurahReaderView: View {
                     endOfSurah
                 }
                 .padding(.horizontal, 20)
-                .padding(.bottom, 60)
+                .padding(.bottom, 60 + bottomReserve)
                 .readableWidth(700)
             }
             .scrollIndicators(.hidden)
@@ -303,6 +309,8 @@ struct MushafPager: View {
     let highlights: [String: String]
     let isDark: Bool
     var framed: Bool = false
+    /// مساحةٌ إضافية أسفل الصفحة يحجزها المشغّل المصغّر حين تجري التلاوة.
+    var bottomInset: CGFloat = 0
     let onTapAyah: (AyahRef) -> Void
     let onPageVisible: (Int) -> Void
 
@@ -315,7 +323,8 @@ struct MushafPager: View {
                     ForEach(1...Quran.pageCount, id: \.self) { page in
                         MushafPageContent(page: page, palette: palette, scale: scale,
                                           bookmarks: bookmarks, highlights: highlights,
-                                          isDark: isDark, framed: framed, onTapAyah: onTapAyah)
+                                          isDark: isDark, framed: framed,
+                                          bottomInset: bottomInset, onTapAyah: onTapAyah)
                             .containerRelativeFrame(.horizontal)
                             .id(page)
                     }
@@ -346,6 +355,7 @@ private struct MushafPageContent: View {
     let highlights: [String: String]
     let isDark: Bool
     var framed: Bool = false
+    var bottomInset: CGFloat = 0
     let onTapAyah: (AyahRef) -> Void
 
     /// آيات الصفحة مقسومة أشواطًا: كل شوط سورة واحدة، لتظهر فاتحة
@@ -372,13 +382,13 @@ private struct MushafPageContent: View {
                     .background(MushafFrame(palette: palette))
                     .padding(.horizontal, 12)
                     .padding(.top, 10)
-                    .padding(.bottom, 74)
+                    .padding(.bottom, 74 + bottomInset)
                     .readableWidth(700)
             } else {
                 pageStack
                     .padding(.horizontal, 20)
                     .padding(.top, 12)
-                    .padding(.bottom, 70)
+                    .padding(.bottom, 70 + bottomInset)
                     .readableWidth(700)
             }
         }
@@ -793,12 +803,10 @@ struct AyahActions: View {
 
                     SettingsDivider()
                     Button {
-                        // إضافةٌ فقط، ومراجعةٌ راسبة كما في شاشة الحفظ: تدخل
-                        // الطابور اليوم. «نجحت» هنا تقفز بها صندوقًا بلا استرجاع
-                        // وتؤجّلها إلى الغد، وتكرار الضغط يزعم حفظها زورًا.
-                        if store.card(for: ref) == nil {
-                            store.recordReview(ref, passed: false)
-                        }
+                        // بطاقةٌ جديدة موعدها اليوم — كما تُضيف شاشة الحفظ تمامًا.
+                        // لا مراجعةً راسبة: تلك تُولَد بـ «تعثّرت فيها ١ مرة» في
+                        // آيةٍ لم تُعرض بعد، ولا ناجحة: تلك تزعم حفظًا لم يقع.
+                        store.enroll([ref])
                         Haptics.done(enabled: store.hapticsEnabled)
                         dismiss()
                     } label: {
@@ -807,6 +815,8 @@ struct AyahActions: View {
                                     subtitle: store.card(for: ref) == nil ? nil : loc("مضافة — للمراجعة"))
                     }
                     .buttonStyle(.plain)
+                    // المضافة سلفًا: الضغط لا يفعل شيئًا، فلا يُوعَد بتأكيدٍ كاذب.
+                    .disabled(store.card(for: ref) != nil)
 
                     SettingsDivider()
                     ShareLink(item: "\(text)\n\n[\(surahName): \(ref.ayah)]\n\nمن تطبيق أثر") {

@@ -213,7 +213,10 @@ struct QiblaView: View {
 
             // القلب: الكعبة — توهّج محيطي عند الانطباق، وهالة تتمدّد مرّة واحدة احتفاءً
             ZStack {
-                if isAligned, !reduceMotion {
+                // الهالة تُركَّب فتُشغَّل حركتها عند الظهور، فلو رُبطت بـ isAligned الخام
+                // لأعادت التمدّد مع كل ذبذبة حسّاس حول الحدّ. نربطها بالعلَم ذي التخلّف
+                // (ينطبق عند ≤٤° ولا يعود إلا فوق ١٢°) فتحتفي مرّة واحدة لكل اقتراب.
+                if didAlignHaptic, !reduceMotion {
                     QiblaAlignHalo(tint: Theme.accent)
                 }
                 Circle()
@@ -292,7 +295,10 @@ struct QiblaView: View {
                 .background(Capsule().fill(Theme.accentSoft))
             }
             .buttonStyle(.plain)
-            .accessibilityLabel(loc("الموقع: %1$@ — اضغط لتغييره", store.placeName))
+            // وسم الزرّ يحجب نصوص أبنائه، فنعيد المسافة داخله — وهي نصف فائدة الرقاقة
+            // ولا تُذكر في مكان آخر من الشاشة.
+            .accessibilityLabel(loc("الموقع: %1$@، %2$@", store.placeName, distanceText))
+            .accessibilityHint(loc("لتغيير الموقع"))
             .padding(.top, 4)
         }
         .animation(.smooth(duration: 0.2), value: isAligned)
@@ -394,7 +400,8 @@ private struct QiblaCardinal: Identifiable {
 }
 
 /// هالة تتمدّد مرّة واحدة خلف الكعبة لحظة الانطباق ثم تتلاشى (٠٫٦ ← ١٫٤، ٠٫٢٨ ← ٠).
-/// تُركَّب فقط حين ينطبق الاتجاه ومع تعطيل «تقليل الحركة»، فتُشغَّل حركتها عند الظهور.
+/// تُركَّب مرّة لكل اقتراب (بعلَم ذي تخلّف لا بمقارنة خام) ومع تعطيل «تقليل الحركة»،
+/// فتُشغَّل حركتها عند الظهور مرّة واحدة بدل أن تتكرّر مع ذبذبة الحسّاس.
 private struct QiblaAlignHalo: View {
     var tint: Color
     @State private var expand = false

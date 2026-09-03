@@ -25,6 +25,9 @@ struct KhatmahView: View {
         .navigationTitle(loc("الختمة"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.hidden, for: .tabBar)
+        // تثبيت أساس «ورد اليوم» هنا لا في جسم الواجهة: الكتابة في التخزين
+        // أثناء الرسم أثر جانبي يعيد الرسم بلا نهاية.
+        .task { store.refreshKhatmahDayBase() }
     }
 
     // MARK: الإعداد
@@ -226,7 +229,7 @@ struct KhatmahView: View {
                       systemImage: "checkmark.seal.fill")
                     .foregroundStyle(Theme.accent)
             } else {
-                Label(loc("متأخّر %1$@ — عوّضها على مهل", byPages),
+                Label(loc("متأخّر %1$@ — عوّض ما فاتك على مهل", byPages),
                       systemImage: "arrow.counterclockwise")
                     .foregroundStyle(Theme.accent(for: "gold"))
             }
@@ -238,18 +241,23 @@ struct KhatmahView: View {
 
     // MARK: ورد اليوم — البطاقة البطلة
 
+    /// نافذة ورد اليوم: من أساس اليوم المحفوظ — ما كان مقروءًا لحظة دخول
+    /// اليوم — إلى نهاية النطاق المعروض في العنوان. الأساس ثابت لا يتحرّك
+    /// مع كل صفحة تُقرأ، فلا يبقى شريط المتأخّر صفرًا، ولا تتبدّل حدود
+    /// المواقيت تحت يد القارئ. مصدر واحد لبطاقة اليوم ولتوزيعه حتى لا يفترقا.
+    private var wardWindow: (base: Int, upper: Int) {
+        let base = store.khatmahDayBasePages
+        return (base, max(base + 1, store.khatmahTodayRange.upperBound))
+    }
+
     private var todayCard: some View {
         let range = store.khatmahTodayRange
         let startRef = Quran.firstAyah(ofPage: range.lowerBound)
         let surahName = Quran.surah(startRef.surah)?.name ?? ""
         let juz = Quran.juz(of: startRef)
-        // نافذة اليوم تُحسب من الخطة لا من التقدّم: نطاق العرض يبدأ من
-        // «الصفحة التالية» فيتقلّص كلما قرأ، ولو قِسنا عليه لبقي المقروء صفرًا أبدًا.
-        let per = store.khatmahPagesPerDay
-        let dayStart = min(Quran.pageCount, (store.khatmahDayIndex - 1) * per + 1)
-        let dayEnd = min(Quran.pageCount, store.khatmahDayIndex * per)
-        let wardTotal = max(1, dayEnd - dayStart + 1)
-        let wardDone = min(wardTotal, max(0, store.khatmahPagesDone - (dayStart - 1)))
+        let window = wardWindow
+        let wardTotal = max(1, window.upper - window.base)
+        let wardDone = min(wardTotal, max(0, store.khatmahPagesDone - window.base))
         let wardFrac = Double(wardDone) / Double(wardTotal)
         let shape = RoundedRectangle(cornerRadius: Theme.Radius.xl, style: .continuous)
 
@@ -340,17 +348,20 @@ struct KhatmahView: View {
     }
 
     private var slots: some View {
-        let range = store.khatmahTodayRange
+        // يُقسَم ورد اليوم كاملًا لا ما تبقّى منه: لو قُسم الباقي لتبدّلت
+        // حدود الفجر والظهر مع كل صفحة يسجّلها القارئ.
+        let window = wardWindow
         let names = store.khatmahMode.slotNames
-        let total = range.count
-        let per = Int((Double(total) / Double(names.count)).rounded(.up))
+        let lower = window.base + 1
+        let total = max(1, window.upper - lower + 1)
+        let per = max(1, Int((Double(total) / Double(max(1, names.count))).rounded(.up)))
         return VStack(spacing: 8) {
             SettingsGroupTitle(text: loc("توزيع اليوم"))
             SettingsCard {
                 ForEach(Array(names.enumerated()), id: \.offset) { i, name in
-                    let from = range.lowerBound + i * per
-                    let to = min(range.upperBound, from + per - 1)
-                    if from <= range.upperBound {
+                    let from = lower + i * per
+                    let to = min(window.upper, from + per - 1)
+                    if from <= window.upper {
                         HStack {
                             Text(name).font(Theme.display(14, weight: .medium)).foregroundStyle(Theme.ink)
                             Spacer()

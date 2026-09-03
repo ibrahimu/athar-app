@@ -76,6 +76,8 @@ extension AtharStore {
         static let khatmahStart  = "athar.khatmah.startDay"
         static let khatmahDone   = "athar.khatmah.pagesDone"
         static let khatmahMode   = "athar.khatmah.mode"
+        static let khatmahDayBase   = "athar.khatmah.dayBaseIndex"
+        static let khatmahDayBasePg = "athar.khatmah.dayBasePages"
         static let stopMark      = "athar.mushaf.stopMark"
     }
 
@@ -138,7 +140,7 @@ extension AtharStore {
         bookmarks = b
     }
 
-    /// نمط عرض المصحف: صفحة متصلة أو آية آية.
+    /// نمط عرض المصحف: صفحة متصلة، أو صفحة داخل إطار، أو آية آية.
     var readingMode: ReadingMode {
         get { ReadingMode(rawValue: defaults.string(forKey: MKey.readingMode) ?? "") ?? .page }
         set { defaults.set(newValue.rawValue, forKey: MKey.readingMode); objectWillChange.send() }
@@ -220,6 +222,17 @@ extension AtharStore {
         memoryCards = all
     }
 
+    /// إضافةٌ إلى الحفظ ببطاقةٍ جديدة موعدها اليوم — لا «مراجعةً راسبة».
+    /// المراجعة الراسبة تستدعي `stumbled` فتُولَد البطاقة بـ `lapses = 1`،
+    /// فتزعم شاشة الحفظ «تعثّرت فيها ١ مرة» في آيةٍ لم تُعرَض عليه قط.
+    /// الموجودة لا تُمَسّ حتى لا تُمحى مراجعاتها بإضافةٍ مكرّرة.
+    func enroll(_ refs: [AyahRef]) {
+        let today = Self.dayNumber()
+        var all = memoryCards
+        for r in refs where all[r.id] == nil { all[r.id] = .new(today: today) }
+        memoryCards = all
+    }
+
     func forget(_ ref: AyahRef) {
         var all = memoryCards
         all.removeValue(forKey: ref.id)
@@ -278,11 +291,16 @@ extension AtharStore {
         khatmahStartDay = Self.dayNumber()
         khatmahPagesDone = 0
         khatmahMode = mode
+        // اليوم الأول يبدأ من الصفر: نثبّت أساسه هنا — في فعل زرّ لا في رسم واجهة.
+        defaults.set(1, forKey: MKey.khatmahDayBase)
+        defaults.set(0, forKey: MKey.khatmahDayBasePg)
     }
 
     func cancelKhatmah() {
         khatmahTotalDays = 0
         khatmahPagesDone = 0
+        defaults.removeObject(forKey: MKey.khatmahDayBase)
+        defaults.removeObject(forKey: MKey.khatmahDayBasePg)
     }
 
     /// صفحات كل يوم — تقسيم ٦٠٤ على الأيام مع رفع الكسر.
@@ -291,9 +309,8 @@ extension AtharStore {
         return Int((Double(Quran.pageCount) / Double(khatmahTotalDays)).rounded(.up))
     }
 
-    /// اليوم الحالي في الخطة (١ فأعلى) — مقيَّد بمدة الخطة.
-    /// بلا هذا القيد يُطبع «اليوم ٤٥ من ٣٠» بعد انقضاء المدة، وينطوي باقي
-    /// المصحف كلّه في ورد يوم واحد، ويخرج فرق التقدّم عن حدود الخطة.
+    /// اليوم الحالي في الخطة (١ فأعلى) — مقيَّد بمدة الخطة حتى لا يُطبع
+    /// «اليوم ٤٥ من ٣٠» بعد انقضاء المدة.
     var khatmahDayIndex: Int {
         let d = max(1, Self.dayNumber() - khatmahStartDay + 1)
         return khatmahTotalDays > 0 ? min(d, khatmahTotalDays) : d
@@ -306,12 +323,40 @@ extension AtharStore {
         return from...max(from, target)
     }
 
+    /// صفحات كانت مقروءة عند دخول يوم الخطة الحالي — أساس شريط «ورد اليوم».
+    /// لا بدّ من أساس ثابت لا يتحرّك مع كل صفحة تُقرأ: لو قِسنا المقروء من
+    /// أرضية الخطة لبقي شريط المتأخّر صفرًا مهما قرأ. والقراءة هنا بلا كتابة
+    /// لأنها تُستدعى من جسم الواجهة؛ التثبيت في refreshKhatmahDayBase().
+    var khatmahDayBasePages: Int {
+        guard defaults.integer(forKey: MKey.khatmahDayBase) == khatmahDayIndex else {
+            // لم يُثبَّت أساس هذا اليوم بعد — أساسه ما قُرئ حتى الآن، وهو عين
+            // ما ستحفظه refreshKhatmahDayBase() عند أول ظهور للشاشة.
+            return khatmahPagesDone
+        }
+        return min(khatmahPagesDone, defaults.integer(forKey: MKey.khatmahDayBasePg))
+    }
+
+    /// تثبيت أساس اليوم عند تبدّل يوم الخطة. يُستدعى من ‎.task‎ لا من جسم
+    /// الواجهة، فالكتابة في التخزين أثناء الرسم أثر جانبي لا يصحّ.
+    func refreshKhatmahDayBase() {
+        guard khatmahActive else { return }
+        let idx = khatmahDayIndex
+        guard defaults.integer(forKey: MKey.khatmahDayBase) != idx else { return }
+        defaults.set(idx, forKey: MKey.khatmahDayBase)
+        defaults.set(khatmahPagesDone, forKey: MKey.khatmahDayBasePg)
+        objectWillChange.send()
+    }
+
     /// موجب = متقدّم على الخطة، سالب = متأخّر، صفر = ضمن نطاق اليوم.
     /// النطاق: متأخّر إن قرأ أقل من ورد الأمس، متقدّم إن تجاوز ورد اليوم.
+    /// الحدّان يُقسَمان بالنسبة لا بورد مرفوع الكسر: مع الرفع تتجاوز أرضيةُ
+    /// أواخر الأيام الـ٦٠٤ فتنطبق على خط النهاية، فيُقال للملتزم «متأخّر»
+    /// في آخر أيام خطته كلها.
     var khatmahDelta: Int {
-        let per = khatmahPagesPerDay
-        let floor = min(Quran.pageCount, (khatmahDayIndex - 1) * per)  // ورد نهاية الأمس
-        let ceil = min(Quran.pageCount, khatmahDayIndex * per)          // ورد نهاية اليوم
+        guard khatmahTotalDays > 0 else { return 0 }
+        let n = khatmahTotalDays
+        let floor = Quran.pageCount * (khatmahDayIndex - 1) / n                          // ورد نهاية الأمس
+        let ceil = min(Quran.pageCount, (Quran.pageCount * khatmahDayIndex + n - 1) / n) // ورد نهاية اليوم
         if khatmahPagesDone < floor { return khatmahPagesDone - floor }  // متأخّر
         if khatmahPagesDone > ceil { return khatmahPagesDone - ceil }    // متقدّم
         return 0                                                          // على الخطة

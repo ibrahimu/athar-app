@@ -186,7 +186,9 @@ struct DhikrSessionView: View {
             // إليه — فندلّه على ما بقي بدل تلميح لا يقود إلى شيء.
             Text(left == 0
                  ? (isLastPageWithUnfinished
-                    ? loc("بقيت أذكار لم تكتمل — اضغط للرجوع إليها")
+                    ? (store.countTapArea == .screen
+                       ? loc("بقيت أذكار لم تكتمل — اضغط أي مكان للرجوع إليها")
+                       : loc("بقيت أذكار لم تكتمل — اضغط الدائرة للرجوع إليها"))
                     : loc("اسحب للذكر التالي"))
                  : (store.countTapArea == .screen ? loc("اضغط أي مكان للعدّ") : loc("اضغط الدائرة للعدّ")))
                 .font(Theme.display(12, weight: .medium))
@@ -336,6 +338,9 @@ struct DhikrSessionView: View {
         // الجلسة المكتملة لا تُستعاد: «أذكار بعد الصلاة» تُعاد بعد كل صلاة،
         // فلو أعدنا أصفارها لفُتحت الشاشة على عدّ لا يستجيب لضغطة.
         guard restored.values.contains(where: { $0 > 0 }) else { return false }
+        // موضع محفوظ بلا عدّ لا يُستعاد: مَن تصفّح الأذكار فقط — أو أعاد فتحها بعد
+        // إتمامها — يبدأ من الأول لا من الصفحة التي وقف عندها والشريط على ٠٪.
+        guard category.items.contains(where: { (restored[$0.id] ?? $0.count) < $0.count }) else { return false }
 
         remaining = restored
         index = max(0, min(defaults.integer(forKey: sessionIndexKey), category.items.count - 1))

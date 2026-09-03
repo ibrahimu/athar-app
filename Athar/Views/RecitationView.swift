@@ -458,6 +458,7 @@ struct PlayerView: View {
                             optionsCard
                             if audio.sleep.isOn { sleepBanner }
                             if audio.failed { failureNote }
+                            upNextCard(su)
                         }
                         .padding(.horizontal, 22)
                         .padding(.top, 2)
@@ -501,7 +502,7 @@ struct PlayerView: View {
             Circle()
                 .stroke(Theme.accent.opacity(0.10), lineWidth: 3)
             Circle()
-                .trim(from: 0, to: max(0.004, audio.progress))
+                .trim(from: 0, to: audio.progress)   // بلا حدٍّ أدنى، فلا تظهر شرطة عند البداية
                 .stroke(Theme.accentGradient, style: StrokeStyle(lineWidth: 3, lineCap: .round))
                 .rotationEffect(.degrees(-90))
                 .animation(.linear(duration: 0.4), value: audio.progress)
@@ -551,7 +552,8 @@ struct PlayerView: View {
     }
 
     /// السابق · ترجيع ١٠ · تشغيل · تقديم ١٠ · التالي.
-    /// الترتيب طبيعيّ في العربية: «السابق» يمينًا لأنه أوّل العناصر.
+    /// الصفّ مثبّت من اليسار كشريط الموضع تمامًا: بداية التلاوة يسارًا ونهايتها
+    /// يمينًا، فالرجوع يسار والتقديم يمين — ولو عكسناه لخالف اتجاه الشريط فوقه.
     private var transport: some View {
         HStack(spacing: 12) {
             roundButton("backward.end.fill", diameter: 44, icon: 15,
@@ -568,6 +570,7 @@ struct PlayerView: View {
                         enabled: (audio.surah ?? 114) < 114) { audio.next() }
         }
         .frame(maxWidth: .infinity)
+        .environment(\.layoutDirection, .leftToRight)
     }
 
     private func roundButton(_ icon: String, diameter: CGFloat, icon size: CGFloat,
@@ -577,9 +580,6 @@ struct PlayerView: View {
             Image(systemName: icon)
                 .font(.system(size: size, weight: .semibold))
                 .foregroundStyle(enabled ? (tinted ? Theme.accent : Theme.inkSoft) : Theme.hairline)
-                // رمزا الترجيع والتقديم دائريّان، فلا يُقلبان مع اتجاه الواجهة
-                // وإلا بدا كلٌّ منهما رمزَ الآخر.
-                .environment(\.layoutDirection, .leftToRight)
                 .frame(width: diameter, height: diameter)
                 .background(Circle().fill(tinted ? Theme.accent.opacity(0.10) : Theme.surfaceAlt))
                 .overlay(Circle().strokeBorder(Theme.hairline.opacity(tinted ? 0 : 0.5), lineWidth: 0.6))
@@ -655,6 +655,58 @@ struct PlayerView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+    }
+
+    /// يملأ ذيل الصفحة بما ينفع: التالية في الترتيب، وفتح السورة للقراءة.
+    @ViewBuilder
+    private func upNextCard(_ su: Surah) -> some View {
+        AtharCard(padding: 6) {
+            VStack(spacing: 0) {
+                if su.id < 114, let nx = Quran.surah(su.id + 1) {
+                    Button { audio.play(surah: nx.id) } label: {
+                        HStack(spacing: 12) {
+                            Image(systemName: "text.line.first.and.arrowtriangle.forward")
+                                .font(.system(size: 14))
+                                .foregroundStyle(Theme.accent)
+                                .frame(width: 32, height: 32)
+                                .background(Circle().fill(Theme.accent.opacity(0.10)))
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(loc("التالية"))
+                                    .font(Theme.display(10.5)).foregroundStyle(Theme.inkFaint)
+                                Text(loc("سورة %1$@", nx.name))
+                                    .font(Theme.display(14, weight: .medium)).foregroundStyle(Theme.ink)
+                            }
+                            Spacer()
+                            Image(systemName: "chevron.forward")
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundStyle(Theme.inkFaint)
+                        }
+                        .padding(.horizontal, 10).padding(.vertical, 9)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    SettingsDivider()
+                }
+                NavigationLink { SurahReaderView(surahId: su.id) } label: {
+                    HStack(spacing: 12) {
+                        Image(systemName: "book.pages")
+                            .font(.system(size: 14))
+                            .foregroundStyle(Theme.accent)
+                            .frame(width: 32, height: 32)
+                            .background(Circle().fill(Theme.accent.opacity(0.10)))
+                        Text(loc("اقرأ السورة وأنت تسمعها"))
+                            .font(Theme.display(14, weight: .medium)).foregroundStyle(Theme.ink)
+                        Spacer()
+                        Image(systemName: "chevron.forward")
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(Theme.inkFaint)
+                    }
+                    .padding(.horizontal, 10).padding(.vertical, 9)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+            }
+        }
     }
 
     private var sleepShort: String {
@@ -958,26 +1010,34 @@ struct ProgressStrip: View {
     var tall: Bool = false
     var onSeek: (Double) -> Void
 
+    private var clamped: Double { min(1, max(0, progress)) }
+
     var body: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: tall ? 11 : 5) {
             GeometryReader { g in
+                let h: CGFloat = tall ? 7 : 4
+                let knob: CGFloat = 14
                 ZStack(alignment: .leading) {
                     Capsule().fill(Theme.accent.opacity(0.14))
+                        .frame(height: h)
                     Capsule().fill(Theme.accentGradient)
-                        .frame(width: max(2, g.size.width * min(1, max(0, progress))))
-                    if tall {
+                        .frame(width: max(h, g.size.width * clamped), height: h)
+                    if tall && duration > 0 {
+                        // المقبض يسير داخل الشريط لا خارجه، فلا يبرز عند الطرفين.
                         Circle()
-                            .fill(Theme.accent)
-                            .frame(width: 13, height: 13)
-                            .offset(x: g.size.width * min(1, max(0, progress)) - 6.5)
-                            .shadow(color: Theme.accent.opacity(0.35), radius: 4, y: 1)
+                            .fill(Theme.surface)
+                            .overlay(Circle().strokeBorder(Theme.accent, lineWidth: 3.2))
+                            .frame(width: knob, height: knob)
+                            .offset(x: (g.size.width - knob) * clamped)
+                            .shadow(color: Theme.accent.opacity(0.25), radius: 3, y: 1)
                     }
                 }
-                .contentShape(Rectangle().inset(by: -12))
+                .frame(height: max(h, tall ? 14 : h), alignment: .center)
+                .contentShape(Rectangle().inset(by: -14))
                 .gesture(DragGesture(minimumDistance: 0)
                     .onEnded { v in onSeek(v.location.x / max(1, g.size.width)) })
             }
-            .frame(height: tall ? 6 : 4)
+            .frame(height: tall ? 14 : 4)
 
             if tall || duration > 0 {
                 HStack {
@@ -985,7 +1045,7 @@ struct ProgressStrip: View {
                     Spacer()
                     Text(duration > 0 ? "−" + max(0, duration - elapsed).clockText : "—")
                 }
-                .font(.system(size: 11, weight: .medium, design: .rounded))
+                .font(.system(size: 11.5, weight: .medium, design: .rounded))
                 .foregroundStyle(Theme.inkFaint)
                 .monospacedDigit()
             }

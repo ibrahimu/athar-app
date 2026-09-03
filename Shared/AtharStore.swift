@@ -55,6 +55,9 @@ final class AtharStore: ObservableObject {
         static let whiteDaysAlert    = "athar.whiteDaysAlert"
         static let countTapArea      = "athar.countTapArea"
         static let placeTimeZone     = "athar.placeTimeZone"
+        /// بادئة جلسات الأذكار المحفوظة لكل فئة (مفاتيح ديناميكية يكتبها
+        /// DhikrSessionView)، نحتاجها هنا لأن التصفير يمسحها بالبادئة.
+        static let sessionPrefix     = "athar.session."
     }
 
     init(defaults: UserDefaults? = nil) {
@@ -333,6 +336,11 @@ final class AtharStore: ObservableObject {
         [Key.totalDhikrCount, Key.tasbihCount, Key.streak, Key.bestStreak,
          Key.lastActiveDay, Key.completedToday, Key.completedDayStamp].forEach {
             defaults.removeObject(forKey: $0)
+        }
+        // جلسات الأذكار المحفوظة لكل فئة تُكتب بمفاتيح ديناميكية، فلا تُمسح
+        // بالتعداد أعلاه — نكنسها بالبادئة وإلا عاد المستخدم إلى عدّاده القديم.
+        for key in defaults.dictionaryRepresentation().keys where key.hasPrefix(Key.sessionPrefix) {
+            defaults.removeObject(forKey: key)
         }
         objectWillChange.send()
     }

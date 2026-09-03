@@ -10,6 +10,9 @@ struct SettingsView: View {
     @State private var permissionDenied = false
     @State private var scheduledAlerts = 0
     @State private var testSent = false
+    /// ختم آخر ضغطة على «جرّب التنبيه الآن»: لا يُطفئ التأكيدَ إلا مؤقّتُ
+    /// أحدث ضغطة، وإلا محا مؤقّتُ الضغطة الأولى تأكيدَ الضغطة التي تلتها.
+    @State private var testToken = 0
     @State private var showCityPicker = false
 
     private var morningBinding: Binding<Date> {
@@ -235,9 +238,13 @@ struct SettingsView: View {
                                 permissionDenied = true
                                 return
                             }
+                            testToken &+= 1
+                            let token = testToken
                             withAnimation(Motion.snappy) { testSent = true }
                             try? await Task.sleep(for: .seconds(8))
-                            withAnimation(Motion.snappy) { testSent = false }
+                            if testToken == token {
+                                withAnimation(Motion.snappy) { testSent = false }
+                            }
                         }
                     } label: {
                         SettingsScreenRow(icon: testSent ? "checkmark.circle.fill" : "bell.badge.waveform.fill",
@@ -283,8 +290,11 @@ struct SettingsView: View {
                 }
                 .buttonStyle(.plain)
             }
-            // الأوراق لا ترث اتجاه الكتابة من جذر التطبيق، فنثبّته صراحةً.
-            .sheet(isPresented: $showCityPicker) {
+            // تغيّر الموقع يعني مواقيت وأسماء مدنٍ جديدة، فنعيد جدولة الأذان
+            // بعد إغلاق الورقة تمامًا كما تفعل صفوف طريقة الحساب والعصر،
+            // وإلا بقيت تنبيهات المدينة السابقة تعمل سبعة أيام.
+            .sheet(isPresented: $showCityPicker, onDismiss: { refreshPrayers() }) {
+                // الأوراق لا ترث اتجاه الكتابة من جذر التطبيق، فنثبّته صراحةً.
                 LocationPickerHost(store: store)
                     .environment(\.layoutDirection,
                                  AppConfig.arabicOnly ? .rightToLeft : store.appLanguage.layoutDirection)

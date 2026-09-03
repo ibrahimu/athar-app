@@ -20,6 +20,7 @@ struct HifzView: View {
     @State private var sessionPassed = 0
     @State private var sessionStumbled = 0
     @State private var loaded = false
+    @State private var loadedDay = -1
 
     private var current: AyahRef? { index < queue.count ? queue[index] : nil }
 
@@ -85,11 +86,14 @@ struct HifzView: View {
             // الأوراق لا ترث اتجاه الواجهة من الجذر، فنفرضه صراحةً.
             .environment(\.layoutDirection, AppConfig.arabicOnly ? .rightToLeft : store.appLanguage.layoutDirection)
         }
-        // التحميل مرة واحدة: العودة إلى التبويب لا تُلغي جلسة جارية.
-        // التحديث المقصود يبقى عبر «تحديث» أو بعد الإضافة من المنتقي.
+        // الحفظ تبويب مقيم، فلا يكفي التحميل مرة واحدة: نصون الجلسة الجارية وحدها،
+        // ونعيد التحميل عند أول ظهور، أو بعد انقلاب اليوم، أو حين يكون الطابور فارغًا
+        // (آيات أُضيفت من شاشة القراءة لن تصل إلى `queue` وهو @State).
         .onAppear {
-            guard !loaded else { return }
+            let today = AtharStore.dayNumber()
+            guard !loaded || loadedDay != today || queue.isEmpty else { return }
             loaded = true
+            loadedDay = today
             loadQueue()
         }
     }
@@ -393,7 +397,11 @@ struct HifzView: View {
             .appearStagger(3)
 
             if store.memorizedCount > 0 {
-                Text("\(ayahCountText(store.memorizedCount)) ثبتت معك")
+                // العدد هنا يبدأ من واحد، فلا يصلح تمييز عدد آيات السورة (٣ فأكثر):
+                // نُفرد ونُثنّي مع مطابقة الفعل — «آية ثبتت» و«آيتان ثبتتا».
+                Text(store.memorizedCount == 1 ? "آية ثبتت معك"
+                     : store.memorizedCount == 2 ? "آيتان ثبتتا معك"
+                     : "\(store.memorizedCount.ayahCountText) ثبتت معك")
                     .font(Theme.display(12))
                     .foregroundStyle(Theme.inkFaint)
                     .padding(.top, 6)
@@ -436,11 +444,6 @@ struct HifzView: View {
         var all = store.memoryCards
         for r in refs where all[r.id] == nil { all[r.id] = MemoryCard.new(today: today) }
         store.memoryCards = all
-    }
-
-    /// تمييز العدد: من ٣ إلى ١٠ جمعٌ «آيات»، وما عداه مفرد «آية».
-    private func ayahCountText(_ n: Int) -> String {
-        (3...10).contains(n) ? "\(n.counterText) آيات" : "\(n.counterText) آية"
     }
 
     private func loadQueue() {
