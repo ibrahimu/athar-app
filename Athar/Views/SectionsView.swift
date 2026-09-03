@@ -78,6 +78,7 @@ struct SectionsView: View {
                     }
                 }
             }
+            .id("\(store.appTheme.rawValue)-\(store.unifyIcons)")   // إعادة بناء البلاطات مع الثيم
         }
     }
 }

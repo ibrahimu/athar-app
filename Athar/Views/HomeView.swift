@@ -366,9 +366,14 @@ struct HomeView: View {
                         .pressable()
                     }
                 }
+                .id(themeKey)    // الشبكة الكسولة تخبّئ بلاطاتها؛ المفتاح يعيد بناءها مع الثيم
             }
         }
     }
+
+    /// يتبدّل مع الطابع وتوحيد الأيقونات — لإعادة بناء الشبكات الكسولة التي لا
+    /// تُعاد صبغتها وإن مُرِّر لها اللون قيمةً (ظهر ذلك في لقطة إبراهيم).
+    private var themeKey: String { "\(store.appTheme.rawValue)-\(store.unifyIcons)" }
 
     private var quickGrid: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -393,6 +398,7 @@ struct HomeView: View {
                     .pressable()
                 }
             }
+            .id(themeKey)
         }
     }
 
