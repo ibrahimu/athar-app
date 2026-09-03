@@ -190,13 +190,19 @@ struct CardSurface: View {
     var radius: CGFloat = Theme.Radius.lg
     var tint: Color? = nil
     var elevation: Theme.Elevation = .e1
+    /// ألوان السطح تُمرَّر قيمًا لا تُقرأ ساكنةً في الجسم: SwiftUI يتخطّى جسم
+    /// البطاقة إن تساوت مدخلاتها، فتبقى بلون الثيم السابق بعد تبديله.
+    var surface: Color = Theme.surface
+    var surfaceAlt: Color = Theme.surfaceAlt
+    var hairline: Color = Theme.hairline
     @Environment(\.colorScheme) private var scheme
 
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: radius, style: .continuous)
         shape
-            .fill(tint.map { Theme.surfaceTint($0) } ?? Theme.surfaceGradient)
-            .overlay(shape.strokeBorder(Theme.hairline.opacity(0.5), lineWidth: 0.5))
+            .fill(tint.map { Theme.surfaceTint($0) }
+                  ?? LinearGradient(colors: [surface, surfaceAlt], startPoint: .top, endPoint: .bottom))
+            .overlay(shape.strokeBorder(hairline.opacity(0.5), lineWidth: 0.5))
             .overlay(alignment: .top) {
                 // بريق على الحافة العلوية يلتقط الضوء
                 LinearGradient(colors: [.white.opacity(scheme == .dark ? 0.06 : 0.5), .clear],
@@ -219,7 +225,7 @@ struct ProgressRing: View {
     var ticks: Int = 0                // علامات خافتة حول المسار (مثل أجزاء المصحف)
     var glow: Bool = false            // توهّج يشتدّ قرب الإتمام
 
-    private var p: Double { max(0.001, min(1, progress)) }
+    private var p: Double { min(1, max(0, progress)) }   // صفرٌ حقيقي: لا شرطة عند البداية
 
     private var arcStyle: AnyShapeStyle {
         gradient
@@ -253,6 +259,9 @@ struct ProgressRing: View {
             }
             arc.animation(Motion.smooth, value: progress)
         }
+        // الحلقة تدور مع الزمن من الثانية عشرة يمينًا — لا تُعكس مع اتجاه الواجهة،
+        // وإلا بدأت من السادسة وصعدت يسارًا كما ظهر في لقطات المراجعة.
+        .environment(\.layoutDirection, .leftToRight)
     }
 }
 
@@ -337,14 +346,18 @@ struct SettingsGroupTitle: View {
 
 /// بطاقة تضمّ صفوفًا، بفواصل شعرية بينها تلقائيًا.
 struct SettingsCard<Content: View>: View {
+    /// ألوان السطح قيمًا (لا قراءةً ساكنة) حتى تُعاد صبغة البطاقة مع الثيم — كما في CardSurface.
+    var surface: Color = Theme.surface
+    var surfaceAlt: Color = Theme.surfaceAlt
+    var hairline: Color = Theme.hairline
     @ViewBuilder var content: Content
     var body: some View {
         VStack(spacing: 0) { content }
-            .background(Theme.surfaceGradient)
+            .background(LinearGradient(colors: [surface, surfaceAlt], startPoint: .top, endPoint: .bottom))
             .clipShape(RoundedRectangle(cornerRadius: Theme.corner, style: .continuous))
             .overlay(
                 RoundedRectangle(cornerRadius: Theme.corner, style: .continuous)
-                    .strokeBorder(Theme.hairline.opacity(0.5), lineWidth: 0.5)
+                    .strokeBorder(hairline.opacity(0.5), lineWidth: 0.5)
             )
             .atharElevation(.e1)
     }
@@ -352,11 +365,14 @@ struct SettingsCard<Content: View>: View {
 
 /// فاصل شعري مُزاح ليحاذي بداية النص لا حافة البطاقة.
 struct SettingsDivider: View {
+    /// بداية الخط من الحافة البادئة — ٦٠ لصفوف IconChip؛ والقوائم ذات المؤشّر
+    /// الدائري الصغير (٤٦) تمرّر مقاسها حتى يبدأ الخط حيث يبدأ نصّها.
+    var inset: CGFloat = 60
     var body: some View {
         Rectangle()
             .fill(Theme.hairline.opacity(0.55))
             .frame(height: 0.7)
-            .padding(.leading, 60)
+            .padding(.leading, inset)
     }
 }
 

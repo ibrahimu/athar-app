@@ -93,7 +93,7 @@ enum L10nTable {
       "grpReminders":"التذكير","rowAdhkarRem":"تذكير الأذكار","rowMorning":"أذكار الصباح","rowEvening":"أذكار المساء",
       "grpSunan":"تنويع التذكيرات","rowJumuah":"الجمعة","subJumuah":"الكهف والصلاة على النبي ﷺ",
       "rowFasting":"صيام الاثنين والخميس","subFasting":"تذكير ليلة الصيام",
-      "rowWhite":"الأيام البيض","subWhite":"١٣ و١٤ و١٥ من كل شهر هجري",
+      "rowWhite":"الأيام البيض","subWhite":"13 و14 و15 من كل شهر هجري",
       "rowQiyam":"قيام الليل","subQiyam":"عند دخول الثلث الأخير",
       "rowIstighfar":"الاستغفار والتسبيح","subIstighfar":"على مدار اليوم",
       "grpPrayer":"الصلاة","rowAthan":"تنبيه دخول الوقت","subAthan":"إشعار عند أذان كل صلاة",
