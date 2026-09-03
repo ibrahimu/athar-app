@@ -2,41 +2,41 @@ import SwiftUI
 
 // MARK: - كل الأقسام
 
-/// شاشة تجمع أقسام التطبيق كلها، فما لا يسعه الشريط السفلي (خمسة فقط)
-/// يبقى في متناول اليد هنا: الحج والعمرة، والقبلة، والحفظ، والتلاوة.
+/// شاشة تجمع أقسام التطبيق كلها في أربع عائلات — القرآن، الصلاة والعبادة، الذكر والعلم، الأدوات —
+/// فما لا يسعه الشريط السفلي (خمسة فقط) يبقى في متناول اليد هنا، والحاضر في الشريط يُميَّز بعلامة.
 struct SectionsView: View {
     @EnvironmentObject private var store: AtharStore
     @Environment(\.dismiss) private var dismiss
     /// تبديل التبويب الحيّ — تمرّره «اليوم» كي لا تُدفع نسخة ثانية من قسم قائم في الشريط.
     var onOpenTab: ((AppTab) -> Void)? = nil
 
-    private var inBar: [AppTab] { store.visibleTabs.filter { $0 != .home } }
-    private var offBar: [AppTab] {
-        AppTab.allCases.filter { $0 != .home && $0 != .settings && !store.visibleTabs.contains($0) }
-    }
-
     var body: some View {
         ZStack {
             AtharBackground(tint: Theme.accent)
             ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    if !offBar.isEmpty {
-                        group(title: loc("ليست في الشريط"),
-                              subtitle: loc("افتحها من هنا، أو أضِفها إلى الشريط من «ترتيب الشريط السفلي» أدناه."),
-                              tabs: offBar, pushes: true)
-                            .appearStagger(0)
+                VStack(alignment: .leading, spacing: 22) {
+                    ForEach(Array(AppTab.Group.allCases.enumerated()), id: \.element) { i, g in
+                        let tabs = AppTab.sections.filter { $0.group == g }
+                        if !tabs.isEmpty {
+                            group(title: g.title, tabs: tabs).appearStagger(i)
+                        }
                     }
-                    if !inBar.isEmpty {
-                        group(title: loc("في الشريط السفلي"), subtitle: nil, tabs: inBar, pushes: false)
-                            .appearStagger(1)
+
+                    VStack(spacing: 10) {
+                        NavigationLink { AppearanceView() } label: {
+                            AtharLinkRow(icon: "square.grid.2x2",
+                                         title: loc("ترتيب الشريط السفلي"),
+                                         subtitle: loc("اختر الأقسام الخمسة التي تظهر أسفل الشاشة — أيّ قسم هنا يصلح تبويبًا"))
+                        }
+                        .pressable()
+                        NavigationLink { AppearanceView(focus: .homeCards) } label: {
+                            AtharLinkRow(icon: "rectangle.stack.fill",
+                                         title: loc("بطاقات شاشة اليوم"),
+                                         subtitle: loc("رتّب ما يظهر في «اليوم» أو أخفِ ما لا تحتاجه"))
+                        }
+                        .pressable()
                     }
-                    NavigationLink { AppearanceView() } label: {
-                        AtharLinkRow(icon: "square.grid.2x2",
-                                     title: loc("ترتيب الشريط السفلي"),
-                                     subtitle: loc("اختر الأقسام الخمسة التي تظهر أسفل الشاشة"))
-                    }
-                    .pressable()
-                    .appearStagger(2)
+                    .appearStagger(AppTab.Group.allCases.count)
                 }
                 .padding(.horizontal, Theme.gutter)
                 .padding(.top, 6)
@@ -52,24 +52,17 @@ struct SectionsView: View {
 
     /// الأقسام الغائبة عن الشريط تُدفع هنا؛ أما الحاضرة فيه فيُبدَّل إليها ويُغلق هذا المكدّس،
     /// وإلا صار للمصحف والصلاة نسختان بحالتين منفصلتين.
-    private func group(title: String, subtitle: String?, tabs: [AppTab], pushes: Bool) -> some View {
+    private func group(title: String, tabs: [AppTab]) -> some View {
         VStack(alignment: .leading, spacing: 9) {
             SettingsGroupTitle(text: title)
-            if let subtitle {
-                Text(subtitle)
-                    .font(Theme.display(12))
-                    .foregroundStyle(Theme.inkFaint)
-                    .padding(.horizontal, 6)
-                    .padding(.bottom, 2)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
             // محاذاة علوية: تحجز البلاطة سطرَي الوصف فتتساوى، وإن اختلفت بقيت رؤوسها
-            // على خطّ واحد بدل أن يتوسّط الأقصر (القبلة) جارَه الأطول (الحج والعمرة).
+            // على خطّ واحد بدل أن يتوسّط الأقصر جارَه الأطول.
             LazyVGrid(columns: [GridItem(.flexible(), spacing: 12, alignment: .top),
                                 GridItem(.flexible(), spacing: 12, alignment: .top)], spacing: 12) {
                 ForEach(tabs) { tab in
-                    let tile = SectionTile(tab: tab, tint: Theme.accent(for: tab.accentKey))
-                    if !pushes, let open = onOpenTab {
+                    let inBar = store.visibleTabs.contains(tab)
+                    let tile = SectionTile(tab: tab, tint: Theme.accent(for: tab.accentKey), inBar: inBar)
+                    if inBar, let open = onOpenTab {
                         Button { open(tab); dismiss() } label: { tile }
                             .pressable()
                     } else {
@@ -78,7 +71,7 @@ struct SectionsView: View {
                     }
                 }
             }
-            .id("\(store.appTheme.rawValue)-\(store.unifyIcons)")   // إعادة بناء البلاطات مع الثيم
+            .id("\(store.appTheme.rawValue)-\(store.unifyIcons)-\(store.visibleTabs.map(\.rawValue).joined())")
         }
     }
 }
@@ -89,16 +82,31 @@ struct SectionTile: View {
     let tab: AppTab
     /// اللون يُمرَّر قيمةً من الأب لا يُقرأ ساكنًا، ليُعاد رسم البلاطة فور تبديل الطابع.
     var tint: Color
+    /// حاضر في الشريط السفلي — يُميَّز بنقطة صغيرة وكلمة، فيعرف المستخدم أين يجده.
+    var inBar: Bool = false
 
     var body: some View {
         AtharCard(padding: 14, tint: tint) {
             VStack(alignment: .leading, spacing: Theme.Space.sm) {
-                // الصلاة والحج رمزاهما مرسومان (سجّادة وكعبة) فلا يسعهما IconChip؛
-                // تُرسم الرقاقة بمقاسه المتوسّط نفسه: ٤٠ نقطة، ورمز ٤٥٪ منها، وصبغة ٠٫١٣.
-                TabGlyph(tab: tab, size: 18)
-                    .foregroundStyle(tint)
-                    .frame(width: 40, height: 40)
-                    .background(Circle().fill(tint.opacity(0.13)))
+                HStack(alignment: .top) {
+                    // الصلاة والحج رمزاهما مرسومان (سجّادة وكعبة) فلا يسعهما IconChip؛
+                    // تُرسم الرقاقة بمقاسه المتوسّط نفسه: ٤٠ نقطة، ورمز ٤٥٪ منها، وصبغة ٠٫١٣.
+                    TabGlyph(tab: tab, size: 18)
+                        .foregroundStyle(tint)
+                        .frame(width: 40, height: 40)
+                        .background(Circle().fill(tint.opacity(0.13)))
+                    Spacer(minLength: 4)
+                    if inBar {
+                        HStack(spacing: 4) {
+                            Circle().fill(tint).frame(width: 5, height: 5)
+                            Text(loc("في الشريط"))
+                        }
+                        .font(Theme.display(10, weight: .semibold))
+                        .foregroundStyle(tint)
+                        .padding(.horizontal, 7).padding(.vertical, 4)
+                        .background(Capsule().fill(tint.opacity(0.10)))
+                    }
+                }
                 Text(tab.title)
                     .font(Theme.display(15, weight: .semibold))
                     .foregroundStyle(Theme.ink)
@@ -106,7 +114,7 @@ struct SectionTile: View {
                     .font(Theme.display(11))
                     .foregroundStyle(Theme.inkFaint)
                     // يُحجز سطران دائمًا، فتشترك بلاطات الصفّ في ارتفاع واحد وإن كان وصف
-                    // إحداها سطرًا واحدًا (القبلة) وجارتها سطرين (الحج والعمرة).
+                    // إحداها سطرًا واحدًا وجارتها سطرين.
                     .lineLimit(2, reservesSpace: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .fixedSize(horizontal: false, vertical: true)
@@ -134,6 +142,14 @@ struct SectionDestination: View {
         case .qibla:      QiblaView()
         case .hifz:       HifzView()
         case .recitation: RecitationView()
+        case .khatmah:    KhatmahView()
+        case .wird:       WirdView()
+        case .hadith:     HadithView()
+        case .names:      NamesView()
+        case .ahkam:      AhkamView()
+        case .prayerLog:  PrayerLogView()
+        case .calendar:   HijriCalendarView()
+        case .zakat:      ZakatView()
         case .settings:   SettingsView(embedded: true)
         }
     }

@@ -28,14 +28,11 @@ struct HomeView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 26) {
                         header.appearStagger(0)
-                        prayerStrip.appearStagger(1)
-                        statsRow.appearStagger(2)
-                        if let suggested { suggestionCard(suggested).appearStagger(3) }
-                        if let dailyDhikr { dailyCard(dailyDhikr).appearStagger(4) }
-                        quickGrid.appearStagger(5)
-                        moreSections.appearStagger(6)
-                        sadaqahCard.appearStagger(7)
-                        footerNote.appearStagger(8)
+                        // «اليوم على كيفي»: البطاقات وترتيبها من اختيار المستخدم (المظهر ← بطاقات اليوم).
+                        ForEach(Array(store.homeCards.enumerated()), id: \.element) { i, card in
+                            homeCard(card).appearStagger(i + 1)
+                        }
+                        footerNote.appearStagger(store.homeCards.count + 1)
                     }
                     .padding(.horizontal, Theme.gutter)
                     .padding(.bottom, 32)
@@ -64,6 +61,85 @@ struct HomeView: View {
         }
         .onReceive(ticker) { now = $0 }
         .onAppear { WidgetCenter.shared.reloadAllTimelines() }
+    }
+
+    // MARK: بطاقات اليوم
+
+    @ViewBuilder
+    private func homeCard(_ card: HomeCard) -> some View {
+        switch card {
+        case .prayer:      prayerStrip
+        case .stats:       statsRow
+        case .suggestion:  if let suggested { suggestionCard(suggested) }
+        case .dailyDhikr:  if let dailyDhikr { dailyCard(dailyDhikr) }
+        case .dailyHadith: if let h = HadithLibrary.daily(for: now) { hadithCard(h) }
+        case .occasion:    if let next = Occasions.upcoming(from: now, limit: 1).first { occasionCard(next) }
+        case .quickGrid:   quickGrid
+        case .sections:    moreSections
+        case .sadaqah:     sadaqahCard
+        }
+    }
+
+    /// حديث اليوم — من الصحيحين فقط، بعزو النووي، ويفتح تمامه في قسم الحديث.
+    private func hadithCard(_ h: Hadith) -> some View {
+        let color = Theme.accent(for: "sea")
+        return VStack(alignment: .leading, spacing: 10) {
+            SectionHeader(title: loc("حديث اليوم"), tint: color)
+            NavigationLink { HadithDetailView(hadith: h) } label: {
+                AtharCard(padding: 18, elevation: .e2, tint: color) {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Capsule().fill(color.opacity(0.7)).frame(width: 40, height: 3)
+                        Text(h.text)
+                            .font(Theme.dhikrFont(size: 17))
+                            .foregroundStyle(Theme.ink)
+                            .lineSpacing(7)
+                            .lineLimit(6)
+                            .multilineTextAlignment(.leading)
+                            .fixedSize(horizontal: false, vertical: true)
+                        HStack {
+                            Text(h.citation)
+                                .font(Theme.display(11))
+                                .foregroundStyle(Theme.inkFaint)
+                                .lineLimit(1)
+                            Spacer(minLength: 6)
+                            Image(systemName: "chevron.forward")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(color)
+                        }
+                    }
+                }
+            }
+            .pressable()
+        }
+    }
+
+    /// المناسبة القادمة أو الجارية من مناسبات السنّة، وعدّها التنازلي.
+    private func occasionCard(_ next: (occasion: HijriOccasion, start: Date, end: Date)) -> some View {
+        let o = next.occasion
+        let color = Theme.accent(for: o.accent)
+        let days = Occasions.daysUntil(next.start, from: now)
+        let when: String = days <= 0 ? loc("جارية الآن")
+            : days == 1 ? loc("غدًا")
+            : days == 2 ? loc("بعد يومين")
+            : days <= 10 ? loc("بعد %1$@ أيام", days.counterText)
+            : loc("بعد %1$@ يومًا", days.counterText)
+        return NavigationLink { HijriCalendarView() } label: {
+            AtharCard(padding: 14, tint: color) {
+                HStack(spacing: 12) {
+                    IconChip(icon: o.icon, tint: color, size: .lg)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(o.title).font(Theme.display(16, weight: .semibold)).foregroundStyle(Theme.ink)
+                        Text("\(when) · \(o.day.counterText) \(o.isMonthly ? loc("من كل شهر") : Occasions.monthName(o.month))")
+                            .font(Theme.display(12)).foregroundStyle(Theme.inkSoft)
+                    }
+                    Spacer(minLength: 6)
+                    Image(systemName: "chevron.forward")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(Theme.inkFaint)
+                }
+            }
+        }
+        .pressable()
     }
 
     // MARK: Header
@@ -346,9 +422,8 @@ struct HomeView: View {
     /// الأقسام التي لا يسعها الشريط السفلي (خمسة فقط) — تبقى في متناول اليد هنا.
     @ViewBuilder
     private var moreSections: some View {
-        let off = AppTab.allCases.filter {
-            $0 != .home && $0 != .settings && !store.visibleTabs.contains($0)
-        }
+        // أربع بلاطات فقط — الأقسام صارت سبعة عشر، وتمامها في شاشة «الأقسام» من الرأس.
+        let off = Array(AppTab.sections.filter { !store.visibleTabs.contains($0) }.prefix(4))
         if !off.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
                 NavigationLink { SectionsView(onOpenTab: onOpenTab) } label: {

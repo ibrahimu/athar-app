@@ -6,6 +6,8 @@ import SwiftUI
 /// الهوية اللونية: أخضر ← ذهبي. الأخضر للتقدّم والخطة، والذهبي لِذُرى الإنجاز
 /// (حلقة الإتمام والهالة). الزخرفة تحت النص لا تنافسه أبدًا.
 struct KhatmahView: View {
+    /// حين يكون تبويبًا في الشريط السفلي يبقى الشريط ظاهرًا.
+    var isRootTab = false
     @EnvironmentObject private var store: AtharStore
 
     var body: some View {
@@ -23,8 +25,8 @@ struct KhatmahView: View {
             .scrollIndicators(.hidden)
         }
         .navigationTitle(loc("الختمة"))
+        .toolbar(isRootTab ? .visible : .hidden, for: .tabBar)
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar(.hidden, for: .tabBar)
         // تثبيت أساس «ورد اليوم» هنا لا في جسم الواجهة: الكتابة في التخزين
         // أثناء الرسم أثر جانبي يعيد الرسم بلا نهاية.
         .task { store.refreshKhatmahDayBase() }

@@ -2,6 +2,8 @@ import SwiftUI
 
 /// الورد اليومي: مقدار ثابت من الآيات كل يوم، مع تتبّع وتذكير.
 struct WirdView: View {
+    /// حين يكون تبويبًا في الشريط السفلي يبقى الشريط ظاهرًا.
+    var isRootTab = false
     @EnvironmentObject private var store: AtharStore
     @State private var showTargetPicker = false
     @State private var confirmReset = false
@@ -46,8 +48,8 @@ struct WirdView: View {
             .scrollIndicators(.hidden)
         }
         .navigationTitle(loc("الورد اليومي"))
+        .toolbar(isRootTab ? .visible : .hidden, for: .tabBar)
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar(.hidden, for: .tabBar)
         // رفض الإذن لا يُترك صامتًا: التذكير يرتدّ موقوفًا ونقول له لماذا، كما في الإعدادات.
         .alert(loc("الإشعارات موقوفة"), isPresented: $permissionDenied) {
             Button(loc("فتح الإعدادات")) {

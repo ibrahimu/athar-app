@@ -356,6 +356,7 @@ final class AtharStore: ObservableObject {
         for key in defaults.dictionaryRepresentation().keys where key.hasPrefix(Key.sessionPrefix) {
             defaults.removeObject(forKey: key)
         }
+        resetFeatureProgress()   // سجل الصلاة والفوائت — في ملحق المزايا
         objectWillChange.send()
     }
 }

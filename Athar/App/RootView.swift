@@ -39,6 +39,14 @@ struct RootView: View {
         case .qibla:    NavigationStack { QiblaView(isRootTab: true) }
         case .hifz:     NavigationStack { HifzView(isRootTab: true) }
         case .recitation: NavigationStack { RecitationView(isRootTab: true) }
+        case .khatmah:  NavigationStack { KhatmahView(isRootTab: true) }
+        case .wird:     NavigationStack { WirdView(isRootTab: true) }
+        case .hadith:   NavigationStack { HadithView(isRootTab: true) }
+        case .names:    NavigationStack { NamesView(isRootTab: true) }
+        case .ahkam:    NavigationStack { AhkamView(isRootTab: true) }
+        case .prayerLog: NavigationStack { PrayerLogView(isRootTab: true) }
+        case .calendar: NavigationStack { HijriCalendarView(isRootTab: true) }
+        case .zakat:    NavigationStack { ZakatView(isRootTab: true) }
         case .settings: SettingsView()
         }
     }

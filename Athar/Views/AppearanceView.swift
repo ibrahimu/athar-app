@@ -4,16 +4,28 @@ import SwiftUI
 struct AppearanceView: View {
     @EnvironmentObject private var store: AtharStore
     @State private var editing = false
+    @State private var editingCards = false
+
+    /// ما تُفتح عليه الشاشة: «الأقسام» تفتحها على بطاقات اليوم مباشرة.
+    enum Focus { case none, homeCards }
+    var focus: Focus = .none
 
     var body: some View {
+        ScrollViewReader { proxy in
         ScrollView {
             VStack(spacing: 24) {
                 if !AppConfig.arabicOnly { languagePicker }
-                themes
-                iconStylePicker
-                backgroundPicker
-                appearanceMode
-                tabBar
+                if focus == .homeCards {
+                    homeCards.id("homeCards")
+                    tabBar
+                } else {
+                    themes
+                    iconStylePicker
+                    backgroundPicker
+                    appearanceMode
+                    tabBar
+                    homeCards.id("homeCards")
+                }
             }
             .padding(.horizontal, Theme.gutter)
             .padding(.top, 8)
@@ -25,7 +37,9 @@ struct AppearanceView: View {
         // الخلفية خلف ScrollView لا حوله في ZStack، فيبقى هو جذر الشاشة الذي
         // يكتشفه شريط العنوان ويعامل حافته العلوية عند التمرير تحته.
         .background { AtharBackground() }
-        .navigationTitle(loc("appearance"))
+        .onAppear { if focus == .homeCards { proxy.scrollTo("homeCards", anchor: .top) } }
+        }
+        .navigationTitle(focus == .homeCards ? loc("شاشة اليوم") : loc("appearance"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.hidden, for: .tabBar)
     }
@@ -402,6 +416,132 @@ struct AppearanceView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.top, 2)
         }
+    }
+
+    // MARK: بطاقات شاشة اليوم
+
+    /// «اليوم على كيفي»: ترتيب البطاقات وإخفاؤها — بالأسهم نفسها التي يعرفها المستخدم من الشريط.
+    private var homeCards: some View {
+        VStack(spacing: 8) {
+            HStack(spacing: 10) {
+                SettingsGroupTitle(text: loc("بطاقات شاشة اليوم"), tint: Theme.accent(for: "dawn"))
+                Spacer()
+                if editingCards && store.homeCards != HomeCard.defaultOrder {
+                    Button {
+                        withAnimation(Motion.smooth) { store.homeCards = HomeCard.defaultOrder }
+                        Haptics.done(enabled: store.hapticsEnabled)
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "arrow.counterclockwise").font(.system(size: 10, weight: .semibold))
+                            Text(loc("basicBtn"))
+                        }
+                        .font(Theme.display(12, weight: .semibold))
+                        .foregroundStyle(Theme.inkSoft)
+                        .padding(.horizontal, 11).padding(.vertical, 6)
+                        .background(Capsule().fill(Theme.surfaceAlt))
+                    }
+                    .buttonStyle(.plain)
+                    .transition(.scale.combined(with: .opacity))
+                }
+                Button {
+                    withAnimation(.smooth) { editingCards.toggle() }
+                    Haptics.tap(enabled: store.hapticsEnabled)
+                } label: {
+                    Text(editingCards ? loc("done") : loc("reorderBtn"))
+                        .font(Theme.display(12, weight: .semibold))
+                        .foregroundStyle(editingCards ? Theme.onAccent : Theme.accent)
+                        .padding(.horizontal, 13).padding(.vertical, 6)
+                        .background(Capsule().fill(editingCards ? Theme.accent : Theme.accentSoft))
+                }
+                .buttonStyle(.plain)
+            }
+
+            HStack(alignment: .top, spacing: 8) {
+                Image(systemName: editingCards ? "hand.tap.fill" : "info.circle.fill")
+                    .font(.system(size: 12))
+                    .foregroundStyle(editingCards ? Theme.accent : Theme.inkFaint)
+                    .padding(.top, 1)
+                Text(editingCards
+                     ? loc("الأسهم تغيّر الترتيب، و⊖ تخفي البطاقة. التحية والتاريخ ثابتان في الرأس.")
+                     : loc("هذه البطاقات تظهر في شاشة «اليوم» بهذا الترتيب. اضغط «ترتيب» لتغيّرها."))
+                    .font(Theme.display(12))
+                    .foregroundStyle(Theme.inkSoft)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding(.horizontal, 12).padding(.vertical, 10)
+            .background(RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous)
+                .fill(editingCards ? Theme.accentSoft : Theme.surfaceAlt))
+            .animation(Motion.snappy, value: editingCards)
+
+            SettingsCard {
+                ForEach(Array(store.homeCards.enumerated()), id: \.element) { i, card in
+                    HStack(spacing: 12) {
+                        IconChip(icon: card.icon, tint: Theme.accent, size: .sm)
+                        if editingCards {
+                            Text("\((i + 1).counterText)")
+                                .font(.system(size: 12, weight: .bold, design: .rounded))
+                                .foregroundStyle(Theme.inkFaint)
+                                .frame(width: 18)
+                        }
+                        Text(card.title).font(Theme.display(15)).foregroundStyle(Theme.ink)
+                        Spacer()
+                        if editingCards {
+                            HStack(spacing: 4) {
+                                arrowButton("chevron.up", label: loc("تقديم"), enabled: i > 0) { moveCard(i, -1) }
+                                arrowButton("chevron.down", label: loc("تأخير"), enabled: i < store.homeCards.count - 1) { moveCard(i, 1) }
+                                Button {
+                                    withAnimation(Motion.snappy) { store.homeCards = store.homeCards.filter { $0 != card } }
+                                    Haptics.tap(enabled: store.hapticsEnabled)
+                                } label: {
+                                    Image(systemName: "minus.circle.fill")
+                                        .font(.system(size: 18))
+                                        .foregroundStyle(Theme.danger)
+                                        .contentShape(Rectangle().inset(by: -13))
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityLabel(loc("إخفاء %1$@", card.title))
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 14).padding(.vertical, 10)
+                    if i < store.homeCards.count - 1 { SettingsDivider() }
+                }
+            }
+
+            if !store.hiddenHomeCards.isEmpty {
+                SettingsGroupTitle(text: loc("بطاقات مخفيّة — اضغط لإظهارها"))
+                SettingsCard {
+                    ForEach(Array(store.hiddenHomeCards.enumerated()), id: \.element) { i, card in
+                        Button {
+                            withAnimation(Motion.snappy) { store.homeCards = store.homeCards + [card] }
+                            Haptics.tap(enabled: store.hapticsEnabled)
+                        } label: {
+                            HStack(spacing: 12) {
+                                IconChip(icon: card.icon, tint: Theme.inkFaint, size: .sm)
+                                Text(card.title).font(Theme.display(15)).foregroundStyle(Theme.ink)
+                                Spacer()
+                                Image(systemName: "plus.circle.fill")
+                                    .font(.system(size: 18))
+                                    .foregroundStyle(Theme.accent)
+                            }
+                            .padding(.horizontal, 14).padding(.vertical, 10)
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        if i < store.hiddenHomeCards.count - 1 { SettingsDivider() }
+                    }
+                }
+            }
+        }
+    }
+
+    private func moveCard(_ i: Int, _ delta: Int) {
+        var v = store.homeCards
+        let j = i + delta
+        guard v.indices.contains(i), v.indices.contains(j) else { return }
+        v.swapAt(i, j)
+        withAnimation(Motion.snappy) { store.homeCards = v }
+        Haptics.tap(enabled: store.hapticsEnabled)
     }
 
     private func arrowButton(_ icon: String, label: String, enabled: Bool, _ action: @escaping () -> Void) -> some View {
