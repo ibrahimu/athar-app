@@ -15,7 +15,7 @@
     <img class="mark" src="icon.png" alt="أيقونة تطبيق أثر">
     <h1>سياسة الخصوصية</h1>
     <p class="lead">تطبيق أثر</p>
-    <p class="muted">آخر تحديث: ٢٩ أغسطس ٢٠٢٦</p>
+    <p class="muted">آخر تحديث: ٣ سبتمبر ٢٠٢٦</p>
     <nav class="top">
       <a href="index.html">الرئيسية</a>
       <a href="support.html">الدعم</a>
@@ -26,8 +26,9 @@
   <div class="card">
     <p style="margin:0">
       <strong>الخلاصة: تطبيق «أثر» لا يجمع أي بيانات شخصية، ولا ينشئ حسابات، ولا نملك أي خادم.</strong>
-      كل ما تفعله داخل التطبيق يبقى على جهازك وحده. الاتصال الشبكي الوحيد الممكن هو طلب اختياري
-      إلى Apple لتحويل إحداثياتك إلى اسم مدينة، ولا يحدث إلا إن فعّلت الموقع بنفسك.
+      كل ما تفعله داخل التطبيق يبقى على جهازك وحده. لا يتّصل التطبيق بالشبكة من تلقاء نفسه؛
+      اتصالان اختياريان فقط يقعان بفعلك: طلب إلى Apple لتحويل إحداثياتك إلى اسم مدينة إن فعّلت الموقع،
+      وجلب ملفات التلاوة الصوتية من موقع MP3Quran.net حين تضغط «تشغيل» أو «تنزيل» في قسم التلاوة.
     </p>
   </div>
 
@@ -90,9 +91,17 @@
 
   <h2>٥. الاتصال بالإنترنت</h2>
   <p>
-    لا يحتاج التطبيق إلى اتصال بالإنترنت ليعمل. جميع الأذكار مضمّنة داخل التطبيق،
-    وأوقات الصلاة تُحسب رياضيًا على الجهاز. الطلب الشبكي الوحيد في التطبيق هو تحويل
-    الإحداثيات إلى اسم مدينة عبر خدمة Apple، ولا يقع إلا إن فعّلت الموقع بنفسك.
+    لا يحتاج التطبيق إلى اتصال بالإنترنت ليعمل. الأذكار ونصّ المصحف وأصوات الأذان مضمّنة داخل التطبيق،
+    وأوقات الصلاة تُحسب رياضيًا على الجهاز. طلبان شبكيان فقط يمكن أن يقعا، وكلاهما بفعلك:
+  </p>
+  <ul>
+    <li>تحويل الإحداثيات إلى اسم مدينة عبر خدمة Apple، ولا يقع إلا إن فعّلت الموقع بنفسك.</li>
+    <li>جلب ملف تلاوة صوتية من موقع <a href="https://mp3quran.net">MP3Quran.net</a> حين تضغط «تشغيل» (بثّ)
+        أو «تنزيل» (حفظ على جهازك للاستماع بلا إنترنت) في قسم التلاوة. يُرسل الطلب عنوان الملف فقط —
+        رقم السورة واسم القارئ — ولا شيء عنك؛ ونحن لا نرى هذه الطلبات ولا نملك خادمًا يستقبلها.
+        ما لم تضغط تشغيلًا أو تنزيلًا، لا يقع هذا الاتصال أصلًا.</li>
+  </ul>
+  <p>
   </p>
   <p>
     الروابط الوحيدة الخارجية هي روابط تفتحها أنت بنفسك (سياسة الخصوصية وصفحة الدعم)،
@@ -136,10 +145,10 @@
 
   <section id="english" dir="ltr" lang="en" style="text-align:start">
     <h1 style="font-size:1.7rem">Privacy Policy — Athar</h1>
-    <p class="muted">Last updated: 29 August 2026</p>
+    <p class="muted">Last updated: 3 September 2026</p>
 
     <div class="card">
-      <p style="margin:0"><strong>In short: Athar collects no personal data, has no accounts, and we run no servers of our own.</strong> Everything you do stays on your device. The single possible network request is an optional lookup to Apple to turn your coordinates into a city name, and it only happens if you enable location yourself.</p>
+      <p style="margin:0"><strong>In short: Athar collects no personal data, has no accounts, and we run no servers of our own.</strong> Everything you do stays on your device. The app never contacts the network on its own; only two optional requests can happen, both triggered by you: an Apple lookup to turn your coordinates into a city name if you enable location, and fetching a Quran recitation file from MP3Quran.net when you tap Play or Download in the Recitation section.</p>
     </div>
 
     <h2>1. Data we collect</h2>
@@ -156,7 +165,11 @@
     <p>Adhkar reminders and prayer-time alerts are <strong>local notifications</strong> scheduled by your own device. We use no push notifications, no notification servers, and hold no device token.</p>
 
     <h2>5. Network access</h2>
-    <p>The app does not require an internet connection. All adhkar are bundled in the app and all prayer times are computed on device. The only network request the app can make is the optional Apple geocoding lookup described above.</p>
+    <p>The app does not require an internet connection. Adhkar, the Quran text and the adhan sounds are bundled in the app, and all prayer times are computed on device. Only two network requests can occur, both initiated by you:</p>
+    <ul>
+      <li>The optional Apple geocoding lookup described above, only if you enable location.</li>
+      <li>Fetching a recitation audio file from <a href="https://mp3quran.net">MP3Quran.net</a> when you tap Play (streaming) or Download (saved on your device for offline listening) in the Recitation section. The request carries only the file address — surah number and reciter — and nothing about you; we never see these requests and run no server that could receive them. If you never tap Play or Download, this connection never happens.</li>
+    </ul>
 
     <h2>6. Children</h2>
     <p>Athar is suitable for all ages, contains no ads, and collects no data from anyone, including children under 13.</p>
