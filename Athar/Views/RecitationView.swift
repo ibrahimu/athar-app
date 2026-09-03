@@ -1008,6 +1008,9 @@ struct ProgressStrip: View {
     let elapsed: Double
     let duration: Double
     var tall: Bool = false
+    /// الشريط المصغّر لا يُسحب: مساحة لمسه الموسّعة كانت تبتلع ضغطة زرّ التشغيل
+    /// فوقه، والسحب متاحٌ في صفحة المشغّل.
+    var seekable: Bool = true
     var onSeek: (Double) -> Void
 
     private var clamped: Double { min(1, max(0, progress)) }
@@ -1033,9 +1036,11 @@ struct ProgressStrip: View {
                     }
                 }
                 .frame(height: max(h, tall ? 14 : h), alignment: .center)
-                .contentShape(Rectangle().inset(by: -14))
-                .gesture(DragGesture(minimumDistance: 0)
-                    .onEnded { v in onSeek(v.location.x / max(1, g.size.width)) })
+                .contentShape(seekable ? Rectangle().inset(by: -14) : Rectangle().inset(by: 0))
+                .gesture(seekable
+                         ? DragGesture(minimumDistance: 0)
+                            .onEnded { v in onSeek(v.location.x / max(1, g.size.width)) }
+                         : nil)
             }
             .frame(height: tall ? 14 : 4)
 
@@ -1106,7 +1111,7 @@ struct MiniPlayer: View {
                 }
 
                 ProgressStrip(progress: audio.progress, elapsed: audio.elapsed,
-                              duration: 0) { audio.seek(to: $0) }
+                              duration: 0, seekable: false) { _ in }
             }
             .padding(.horizontal, 13).padding(.vertical, 9)
             .background(
