@@ -54,7 +54,7 @@ struct ProgressWidgetView: View {
     var body: some View {
         switch family {
         case .accessoryInline:
-            Text("أثر · \(entry.streak.counterText) يوم")
+            Text("أثر · \(streakDays(entry.streak))")
 
         case .accessoryCircular:
             Gauge(value: fraction) {
@@ -72,7 +72,7 @@ struct ProgressWidgetView: View {
                     .widgetAccentable()
                 Text("\(entry.completedToday.counterText) من \(entry.dailyGoal.counterText) أذكار")
                     .font(.system(size: 13))
-                Text("\(entry.streak.counterText) يوم متتابع")
+                Text(streakCaption(entry.streak))
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
             }
@@ -134,5 +134,28 @@ struct AtharProgressWidget: Widget {
             .systemSmall, .systemMedium,
             .accessoryInline, .accessoryCircular, .accessoryRectangular
         ])
+    }
+}
+
+// MARK: - تمييز العدد للأيام
+
+/// «يوم واحد»، «يومان»، «٣ أيام»، «١١ يومًا» — لا «12 يوم».
+private func streakDays(_ n: Int) -> String {
+    switch n {
+    case 1:      return "يوم واحد"
+    case 2:      return "يومان"
+    case 3...10: return "\(n.counterText) أيام"
+    default:     return "\(n.counterText) يومًا"
+    }
+}
+
+/// عنوان التتابع في الودجة الكبيرة، بالصفة موافقةً للعدد.
+private func streakCaption(_ n: Int) -> String {
+    switch n {
+    case 0:      return "ابدأ تتابعك اليوم"
+    case 1:      return "يوم واحد متتابع"
+    case 2:      return "يومان متتابعان"
+    case 3...10: return "\(n.counterText) أيام متتابعة"
+    default:     return "\(n.counterText) يومًا متتابعًا"
     }
 }

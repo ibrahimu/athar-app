@@ -99,7 +99,7 @@ enum L10nTable {
       "grpPrayer":"الصلاة","rowAthan":"تنبيه دخول الوقت","subAthan":"إشعار عند أذان كل صلاة",
       "rowCalc":"طريقة الحساب","rowAsr":"وقت العصر","rowLocation":"الموقع",
       "grpDisplay":"العرض","rowAppearance":"المظهر","rowFont":"حجم الخط","rowHaptics":"الاهتزاز عند العدّ",
-      "grpStats":"أثري","statStreak":"يوم متتابع","statBest":"أطول تتابع","statTotal":"مجموع الأذكار","rowReset":"تصفير الإحصائيات",
+      "grpStats":"أثري","statStreak":"أيام التتابع","statBest":"أطول تتابع","statTotal":"مجموع الأذكار","rowReset":"تصفير الإحصائيات",
       "grpAbout":"عن التطبيق","rowVersion":"الإصدار","rowPrivacy":"سياسة الخصوصية","rowSupport":"الدعم والتواصل",
       "rowSources":"المصادر والحقوق","rowSadaqah":"تصدّق عبر إحسان","rowShare":"انشر التطبيق",
       "appearance":"المظهر","lighting":"الإضاءة","sysMode":"حسب الجهاز","lightMode":"فاتح","darkMode":"داكن",
