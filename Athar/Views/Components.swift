@@ -536,19 +536,22 @@ struct EightPointStar: Shape {
 struct SurahMedallion: View {
     let number: Int
     var size: CGFloat = 46
+    // لون الطابع يُمرَّر كقيمة (لا يُقرأ ساكنًا) ليُعاد رسم النجمة فور تبديل الثيم.
+    var tint: Color = Theme.accent
 
     var body: some View {
         ZStack {
             EightPointStar()
-                .fill(Theme.gold.opacity(0.12))
+                .fill(tint.opacity(0.12))
             EightPointStar()
-                .stroke(Theme.goldGradient, lineWidth: 1.4)
+                .stroke(LinearGradient(colors: [tint, tint.opacity(0.7)],
+                                       startPoint: .topTrailing, endPoint: .bottomLeading), lineWidth: 1.4)
             EightPointStar(innerRatio: 0.72)
-                .stroke(Theme.gold.opacity(0.35), lineWidth: 0.7)
+                .stroke(tint.opacity(0.35), lineWidth: 0.7)
                 .padding(5)
             Text(number.counterText)
                 .font(.system(size: size * 0.28, weight: .semibold, design: .rounded))
-                .foregroundStyle(Theme.gold)
+                .foregroundStyle(tint)
         }
         .frame(width: size, height: size)
     }

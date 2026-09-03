@@ -34,7 +34,7 @@ struct WatchPrayerView: View {
 
     private var times: PrayerTimes? { store.prayerTimes(for: now) }
     private var upcoming: (prayer: Prayer, date: Date)? {
-        if let n = times?.next(after: now) { return n }
+        if let n = times?.nextPrayer(after: now) { return n }
         guard let tm = Calendar.current.date(byAdding: .day, value: 1, to: now),
               let t = store.prayerTimes(for: tm), let f = t[.fajr] else { return nil }
         return (.fajr, f)

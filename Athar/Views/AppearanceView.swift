@@ -87,9 +87,11 @@ struct AppearanceView: View {
                             .frame(width: 26, height: 26)
                             .shadow(color: accent.opacity(0.35), radius: 4, y: 2)
                         if on {
+                            // لون الورق لا الأبيض: بعض الطوابع لها لون فاتح في الوضع
+                            // الداكن، فالأبيض عليه يختفي. الورق دائمًا نقيض اللون.
                             Image(systemName: "checkmark")
                                 .font(.system(size: 12, weight: .bold))
-                                .foregroundStyle(.white)
+                                .foregroundStyle(canvas)
                         }
                     }
                     RoundedRectangle(cornerRadius: 5, style: .continuous)
@@ -310,8 +312,7 @@ struct AppearanceView: View {
             SettingsCard {
                 ForEach(Array(store.visibleTabs.enumerated()), id: \.element) { i, tab in
                     HStack(spacing: 12) {
-                        Image(systemName: tab.icon)
-                            .font(.system(size: 14))
+                        TabGlyph(tab: tab, size: 14)
                             .foregroundStyle(Theme.accent)
                             .frame(width: 30, height: 30)
                             .background(Circle().fill(Theme.accentSoft))
@@ -357,8 +358,7 @@ struct AppearanceView: View {
                     ForEach(Array(store.hiddenTabs.enumerated()), id: \.element) { i, tab in
                         Button { add(tab) } label: {
                             HStack(spacing: 12) {
-                                Image(systemName: tab.icon)
-                                    .font(.system(size: 14))
+                                TabGlyph(tab: tab, size: 14)
                                     .foregroundStyle(Theme.inkFaint)
                                     .frame(width: 30, height: 30)
                                     .background(Circle().fill(Theme.surfaceAlt))

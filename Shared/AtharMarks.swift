@@ -46,6 +46,11 @@ struct PrayerMatShape: Shape {
 // MARK: - تحويل شكل إلى أيقونة تبويب (قالب أحادي اللون يتلوّن مع الاختيار)
 
 enum AtharIconRenderer {
+    /// الرمزان المرسومان — يُبنيان مرة واحدة عند أول استعمال، فلا يومض
+    /// رمز بديل (مكعّب) قبل ظهور الرمز الصحيح في الشريط.
+    @MainActor static let prayerMat: Image = templateImage(PrayerMatShape())
+    @MainActor static let kaaba: Image = templateImage(KaabaShape())
+
     @MainActor
     static func templateImage(_ shape: some Shape, size: CGFloat = 27) -> Image {
         let r = ImageRenderer(content:
@@ -55,5 +60,28 @@ enum AtharIconRenderer {
         if let ui = r.uiImage?.withRenderingMode(.alwaysTemplate) { return Image(uiImage: ui) }
         #endif
         return Image(systemName: "square")
+    }
+}
+
+// MARK: - رمز التبويب الموحّد
+
+/// رمز التبويب كما يظهر في الشريط السفلي تمامًا — تستعمله شاشة الترتيب أيضًا
+/// حتى لا تختلف صورة التبويب بين المكانين (الصلاة سجّادة، والحج كعبة، لا مكعّب).
+struct TabGlyph: View {
+    let tab: AppTab
+    var size: CGFloat = 15
+
+    @ViewBuilder
+    var body: some View {
+        switch tab {
+        case .prayer:
+            PrayerMatShape().fill(style: FillStyle(eoFill: true))
+                .frame(width: size * 1.2, height: size * 1.2)
+        case .hajj:
+            KaabaShape().fill(style: FillStyle(eoFill: true))
+                .frame(width: size * 1.2, height: size * 1.2)
+        default:
+            Image(systemName: tab.icon).font(.system(size: size))
+        }
     }
 }

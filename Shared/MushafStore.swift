@@ -291,9 +291,12 @@ extension AtharStore {
         return Int((Double(Quran.pageCount) / Double(khatmahTotalDays)).rounded(.up))
     }
 
-    /// اليوم الحالي في الخطة (١ فأعلى).
+    /// اليوم الحالي في الخطة (١ فأعلى) — مقيَّد بمدة الخطة.
+    /// بلا هذا القيد يُطبع «اليوم ٤٥ من ٣٠» بعد انقضاء المدة، وينطوي باقي
+    /// المصحف كلّه في ورد يوم واحد، ويخرج فرق التقدّم عن حدود الخطة.
     var khatmahDayIndex: Int {
-        max(1, Self.dayNumber() - khatmahStartDay + 1)
+        let d = max(1, Self.dayNumber() - khatmahStartDay + 1)
+        return khatmahTotalDays > 0 ? min(d, khatmahTotalDays) : d
     }
 
     /// مدى صفحات اليوم: من آخر ما قُرئ إلى هدف اليوم.
@@ -376,14 +379,29 @@ enum HighlightColor: String, CaseIterable, Identifiable {
 }
 
 
-/// نمطا عرض المصحف — بطلب المستخدم: الخياران معًا.
+/// أنماط عرض المصحف الثلاثة.
 enum ReadingMode: String, CaseIterable, Identifiable {
-    case page   // نص متصل كصفحة المصحف المطبوع
-    case ayah   // كل آية في سطرها، أوضح للقراءة والتدبّر
+    case page    // نص متصل كصفحة المصحف المطبوع
+    case framed  // الصفحة نفسها داخل إطار مزخرف كالمصحف المطبوع
+    case ayah    // كل آية في سطرها، أوضح للقراءة والتدبّر
 
     var id: String { rawValue }
-    var title: String { self == .page ? loc("modePage") : loc("modeAyah") }
-    var icon: String { self == .page ? "book.pages.fill" : "list.bullet" }
+
+    var title: String {
+        switch self {
+        case .page:   return loc("modePage")
+        case .framed: return loc("modeFramed")
+        case .ayah:   return loc("modeAyah")
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .page:   return "book.pages.fill"
+        case .framed: return "rectangle.portrait.inset.filled"
+        case .ayah:   return "list.bullet"
+        }
+    }
 }
 
 

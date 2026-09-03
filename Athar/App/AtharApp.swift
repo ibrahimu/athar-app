@@ -13,7 +13,11 @@ struct AtharApp: App {
                     get: { !store.didOnboard },
                     set: { if !$0 { store.didOnboard = true } }
                 )) {
-                    OnboardingView().environmentObject(store)
+                    // الشاشة المعروضة لا ترث اتجاه الواجهة ولا صبغتها من الجذر، فنفرضهما صراحةً.
+                    OnboardingView()
+                        .environmentObject(store)
+                        .environment(\.layoutDirection, AppConfig.arabicOnly ? .rightToLeft : store.appLanguage.layoutDirection)
+                        .tint(Theme.accent)
                 }
                 .environmentObject(store)
                 .environment(\.layoutDirection, AppConfig.arabicOnly ? .rightToLeft : store.appLanguage.layoutDirection)

@@ -103,19 +103,21 @@ struct HomeView: View {
     }
 
     private var hijriDate: String {
+        // أرقام لاتينية كبقية أرقام التطبيق — الأرقام الهندية ٠ تُقرأ نقطةً عند العرض.
         var cal = Calendar(identifier: .islamicUmmAlQura)
-        cal.locale = Locale(identifier: "ar_SA")
+        cal.locale = Locale(identifier: "ar_SA@numbers=latn")
         let f = DateFormatter()
         f.calendar = cal
-        f.locale = Locale(identifier: "ar_SA")
+        f.locale = Locale(identifier: "ar_SA@numbers=latn")
         f.dateFormat = "EEEE، d MMMM yyyy"
         return f.string(from: now) + " هـ"
     }
 
     // MARK: Next prayer
 
+    /// الشروق ليس صلاة فيُتخطّى — وإلا صبغ لونُه اليومَ وملأ الحلقة صباحًا كل يوم.
     private var upcomingPrayer: (prayer: Prayer, date: Date)? {
-        if let next = store.prayerTimes(for: now)?.next(after: now) { return next }
+        if let next = store.prayerTimes(for: now)?.nextPrayer(after: now) { return next }
         guard let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: now),
               let t = store.prayerTimes(for: tomorrow), let fajr = t[.fajr]
         else { return nil }
@@ -195,7 +197,7 @@ struct HomeView: View {
             statTile(value: store.displayStreak.counterText,
                      label: loc("statStreak"),
                      icon: "flame.fill",
-                     color: Theme.gold)
+                     color: Theme.accent2)
             statTile(value: store.totalDhikrCount.counterText,
                      label: loc("statTotal"),
                      icon: "infinity",
@@ -204,7 +206,8 @@ struct HomeView: View {
     }
 
     private func statTile(value: String, label: String, icon: String, color: Color) -> some View {
-        AtharCard(padding: 14) {
+        // صبغة بلون الطابع لتتّسق مع بقية البطاقات (لا تبقى دافئة/صفراء).
+        AtharCard(padding: 14, tint: Theme.accent) {
             VStack(alignment: .leading, spacing: 6) {
                 HStack(spacing: 6) {
                     Image(systemName: icon)
@@ -404,11 +407,21 @@ struct CategoryTile: View {
                     .foregroundStyle(Theme.ink)
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
-                Text("\(category.items.count.counterText) ذكر")
+                Text(itemsLabel(category.items.count))
                     .font(Theme.display(11))
                     .foregroundStyle(Theme.inkFaint)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    /// تمييز العدد في العربية: جمع مجرور من ٣ إلى ١٠، ومفرد منصوب منوّن فيما فوقها.
+    private func itemsLabel(_ n: Int) -> String {
+        switch n {
+        case 1:      return "ذكر واحد"
+        case 2:      return "ذكران"
+        case 3...10: return "\(n.counterText) أذكار"
+        default:     return "\(n.counterText) ذكرًا"
         }
     }
 }

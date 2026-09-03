@@ -63,6 +63,8 @@ struct DhikrSessionView: View {
             }
         }
         .onAppear(perform: seed)
+        // السحب يغيّر الصفحة دون عدّ، فنحفظ الموضع أيضًا ليعود المستخدم حيث ترك.
+        .onChange(of: index) { _, _ in saveSession() }
         .overlay { if showCompletion { completionOverlay } }
         .animation(Motion.smooth, value: showCompletion)
     }
@@ -98,55 +100,59 @@ struct DhikrSessionView: View {
     }
 
     private func dhikrPage(_ dhikr: Dhikr) -> some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                AtharCard(padding: 22, elevation: .e2, tint: color) {
-                    VStack(alignment: .leading, spacing: 18) {
-                        // خيط علوي بلون القسم — حاشية مذهّبة تحت النص لا تنافسه
-                        Capsule().fill(Theme.gradient(for: category.accent))
-                            .frame(width: 44, height: 3)
-                            .opacity(0.85)
-                            .frame(maxWidth: .infinity)
-
-                        Text(dhikr.text)
-                            .font(Theme.dhikrFont(size: 22, scale: store.fontScale))
-                            .foregroundStyle(Theme.ink)
-                            .lineSpacing(14)
-                            .multilineTextAlignment(.center)
-                            .frame(maxWidth: .infinity)
-
-                        if dhikr.hasReference {
-                            Text(dhikr.reference)
-                                .font(Theme.display(12, weight: .medium))
-                                .foregroundStyle(color)
-                                .padding(.horizontal, 12).padding(.vertical, 6)
-                                .background(Capsule().fill(color.opacity(0.12)))
+        // ارتفاع أدنى لا ثابت: الذكر القصير يبقى في الوسط، والطويل (آية الكرسي
+        // وأذكار النوم) يمتدّ فيتحرّك التمرير بدل أن يُبتر نصفه بلا أيّ إشارة.
+        GeometryReader { geo in
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    AtharCard(padding: 22, elevation: .e2, tint: color) {
+                        VStack(alignment: .leading, spacing: 18) {
+                            // خيط علوي بلون القسم — حاشية مذهّبة تحت النص لا تنافسه
+                            Capsule().fill(Theme.gradient(for: category.accent))
+                                .frame(width: 44, height: 3)
+                                .opacity(0.85)
                                 .frame(maxWidth: .infinity)
+
+                            Text(dhikr.text)
+                                .font(Theme.dhikrFont(size: 22, scale: store.fontScale))
+                                .foregroundStyle(Theme.ink)
+                                .lineSpacing(14)
+                                .multilineTextAlignment(.center)
+                                .frame(maxWidth: .infinity)
+
+                            if dhikr.hasReference {
+                                Text(dhikr.reference)
+                                    .font(Theme.display(12, weight: .medium))
+                                    .foregroundStyle(color)
+                                    .padding(.horizontal, 12).padding(.vertical, 6)
+                                    .background(Capsule().fill(color.opacity(0.12)))
+                                    .frame(maxWidth: .infinity)
+                            }
                         }
                     }
-                }
 
-                if dhikr.hasVirtue {
-                    HStack(alignment: .top, spacing: 8) {
-                        Image(systemName: "sparkle")
-                            .font(.system(size: 12))
-                            .foregroundStyle(Theme.gold)
-                            .padding(.top, 3)
-                        Text(dhikr.virtue)
-                            .font(Theme.display(13))
-                            .foregroundStyle(Theme.inkSoft)
-                            .multilineTextAlignment(.leading)
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                    if dhikr.hasVirtue {
+                        HStack(alignment: .top, spacing: 8) {
+                            Image(systemName: "sparkle")
+                                .font(.system(size: 12))
+                                .foregroundStyle(Theme.gold)
+                                .padding(.top, 3)
+                            Text(dhikr.virtue)
+                                .font(Theme.display(13))
+                                .foregroundStyle(Theme.inkSoft)
+                                .multilineTextAlignment(.leading)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .padding(.horizontal, 4)
                     }
-                    .padding(.horizontal, 4)
                 }
+                .padding(.horizontal, 18)
+                .padding(.vertical, 16)
+                .readableWidth(720)
+                .frame(minHeight: geo.size.height, alignment: .center)
             }
-            .padding(.horizontal, 18)
-            .padding(.vertical, 16)
-            .readableWidth(720)
-            .containerRelativeFrame(.vertical, alignment: .center)
+            .scrollBounceBehavior(.basedOnSize)
         }
-        .scrollBounceBehavior(.basedOnSize)
     }
 
     private var bottomBar: some View {
@@ -176,7 +182,13 @@ struct DhikrSessionView: View {
             }
             .buttonStyle(.plain)
 
-            Text(left == 0 ? loc("اسحب للذكر التالي") : (store.countTapArea == .screen ? loc("اضغط أي مكان للعدّ") : loc("اضغط الدائرة للعدّ")))
+            // لو تخطّى المستخدم أذكارًا بالسحب ثم فرغ عدّ الأخير، لا «تالٍ» يسحب
+            // إليه — فندلّه على ما بقي بدل تلميح لا يقود إلى شيء.
+            Text(left == 0
+                 ? (isLastPageWithUnfinished
+                    ? loc("بقيت أذكار لم تكتمل — اضغط للرجوع إليها")
+                    : loc("اسحب للذكر التالي"))
+                 : (store.countTapArea == .screen ? loc("اضغط أي مكان للعدّ") : loc("اضغط الدائرة للعدّ")))
                 .font(Theme.display(12, weight: .medium))
                 .foregroundStyle(Theme.inkFaint)
         }
@@ -235,6 +247,8 @@ struct DhikrSessionView: View {
 
     private func seed() {
         guard remaining.isEmpty else { return }
+        // نستعيد عدّ اليوم إن وُجد: مَن بلغ ٣٤٠ من ٣٦٧ ثم خرج لا يُطالَب بالبدء من الصفر.
+        guard !restoreSession() else { return }
         remaining = Dictionary(uniqueKeysWithValues: category.items.map { ($0.id, $0.count) })
     }
 
@@ -246,6 +260,7 @@ struct DhikrSessionView: View {
         remaining[current.id] = left - 1
         store.totalDhikrCount += 1
         store.touchStreak()
+        saveSession()
 
         if remaining[current.id] == 0 {
             Haptics.done(enabled: store.hapticsEnabled)
@@ -254,7 +269,12 @@ struct DhikrSessionView: View {
                 WidgetCenter.shared.reloadAllTimelines()
                 showCompletion = true
             } else {
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { advance() }
+                // نلتقط الصفحة التي أُجّل الانتقال منها: لو سحب المستخدم خلال
+                // ثلث الثانية لقفز التأجيل فوق ذكر كامل ولم يُعدّ أبدًا.
+                let from = index
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                    if index == from { advance() }
+                }
             }
         } else {
             Haptics.step(enabled: store.hapticsEnabled)
@@ -265,9 +285,18 @@ struct DhikrSessionView: View {
         category.items.allSatisfy { (remaining[$0.id] ?? $0.count) == 0 }
     }
 
+    /// آخر صفحة وقد فرغ عدّها بينما خلفها أذكار لم تُعدّ — الحالة التي لا «تالٍ» فيها.
+    private var isLastPageWithUnfinished: Bool {
+        index >= category.items.count - 1 && !isCategoryComplete
+    }
+
     private func advance() {
-        guard index < category.items.count - 1 else { return }
-        withAnimation(Motion.smooth) { index += 1 }
+        if index < category.items.count - 1 {
+            withAnimation(Motion.smooth) { index += 1 }
+        } else if let next = category.items.firstIndex(where: { (remaining[$0.id] ?? $0.count) > 0 }) {
+            // نهاية القائمة وقد بقي ما لم يُعدّ: نرجع إليه بدل ضغطٍ لا يفعل شيئًا.
+            withAnimation(Motion.smooth) { index = next }
+        }
     }
 
     private func resetCounts() {
@@ -275,6 +304,42 @@ struct DhikrSessionView: View {
             remaining = Dictionary(category.items.map { ($0.id, $0.count) }, uniquingKeysWith: { first, _ in first })
             index = 0
         }
+        saveSession()
+    }
+
+    // MARK: حفظ عدّ اليوم
+
+    /// العدّ المتبقّي كان في @State وحده، فكان الخروج من الشاشة يمحو جهد الجلسة كلّها.
+    /// نحفظه بطابع اليوم كما تُحفظ الفئات المكتملة، فيسقط تلقائيًا مع يوم جديد.
+    private var sessionDayKey: String { "athar.session.day.\(category.id)" }
+    private var sessionKey: String { "athar.session.\(category.id)" }
+    private var sessionIndexKey: String { "athar.session.index.\(category.id)" }
+
+    private func saveSession() {
+        let defaults = store.defaults
+        defaults.set(AtharStore.dayStamp(), forKey: sessionDayKey)
+        defaults.set(remaining, forKey: sessionKey)
+        defaults.set(index, forKey: sessionIndexKey)
+    }
+
+    /// يُرجع true إن استُعيدت جلسة اليوم. نُعيد بناء القاموس من أذكار الفئة نفسها
+    /// كي لا يفسد المحفوظ الحسابَ لو تغيّرت البيانات في تحديث.
+    private func restoreSession() -> Bool {
+        let defaults = store.defaults
+        guard defaults.string(forKey: sessionDayKey) == AtharStore.dayStamp(),
+              let saved = defaults.dictionary(forKey: sessionKey) as? [String: Int]
+        else { return false }
+
+        let restored = Dictionary(uniqueKeysWithValues: category.items.map {
+            ($0.id, min(max(0, saved[$0.id] ?? $0.count), $0.count))
+        })
+        // الجلسة المكتملة لا تُستعاد: «أذكار بعد الصلاة» تُعاد بعد كل صلاة،
+        // فلو أعدنا أصفارها لفُتحت الشاشة على عدّ لا يستجيب لضغطة.
+        guard restored.values.contains(where: { $0 > 0 }) else { return false }
+
+        remaining = restored
+        index = max(0, min(defaults.integer(forKey: sessionIndexKey), category.items.count - 1))
+        return true
     }
 
     private var shareText: String {

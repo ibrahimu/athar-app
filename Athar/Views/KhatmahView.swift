@@ -143,11 +143,17 @@ struct KhatmahView: View {
         }
     }
 
+    /// تمييز العدد في العربية: الواحد بلا عدد، والاثنان مثنّى، ومن ٣ إلى ١٠
+    /// جمع قلّة (أجزاء). ولذلك لا يصحّ «٤ جزء» ولا «٢ جزء».
     private var planSummary: String {
         let per = Int((Double(Quran.pageCount) / Double(days)).rounded(.up))
         let juz = Double(30) / Double(days)
-        let juzText = juz >= 1 ? "\(Int(juz.rounded()).counterText) جزء" : loc("نحو نصف جزء")
-        return "\(per.counterText) صفحة تقريبًا كل يوم — \(juzText) يوميًّا"
+        let n = Int(juz.rounded())
+        let juzText = juz < 1 ? loc("نحو نصف جزء")
+                    : n == 1 ? loc("جزء")
+                    : n == 2 ? loc("جزءان")
+                    : loc("%1$@ أجزاء", n.counterText)
+        return loc("%1$@ صفحة تقريبًا كل يوم — %2$@ يوميًّا", per.counterText, juzText)
     }
 
     // MARK: التحدي النشط
@@ -155,10 +161,16 @@ struct KhatmahView: View {
     private var active: some View {
         VStack(spacing: 22) {
             ringSection.appearStagger(0)
-            statusLine.appearStagger(1)
-            todayCard.appearStagger(2)
-            if !store.khatmahMode.slotNames.isEmpty { slots.appearStagger(3) }
-            actions.appearStagger(4)
+            // عند الإتمام لا معنى لبطاقة ورد اليوم ولا لأزرار العدّ: نطاقها
+            // يصير ٦٠٤–٦٠٤، والضغط عليها لا يغيّر شيئًا ويكرّر هزّة الإتمام.
+            if isComplete {
+                completionCard.appearStagger(1)
+            } else {
+                statusLine.appearStagger(1)
+                todayCard.appearStagger(2)
+                if !store.khatmahMode.slotNames.isEmpty { slots.appearStagger(3) }
+                actions.appearStagger(4)
+            }
             cancelButton.appearStagger(5)
         }
     }
@@ -201,13 +213,20 @@ struct KhatmahView: View {
     @ViewBuilder
     private var statusLine: some View {
         let d = store.khatmahDelta
+        // تمييز العدد: صفحة واحدة، صفحتان، ثم جمع القلّة (٣–١٠ صفحات)،
+        // ثم المفرد المنصوب (١١ فأكثر صفحة).
+        let n = abs(d)
+        let byPages = n == 1 ? loc("بصفحة واحدة")
+                    : n == 2 ? loc("بصفحتين")
+                    : n <= 10 ? loc("بـ%1$@ صفحات", n.counterText)
+                    : loc("بـ%1$@ صفحة", n.counterText)
         Group {
             if d >= 0 {
-                Label(d == 0 ? loc("على الخطة تمامًا") : loc("متقدّم بـ%1$@ صفحة — ما شاء الله", d.counterText),
+                Label(d == 0 ? loc("على الخطة تمامًا") : loc("متقدّم %1$@ — ما شاء الله", byPages),
                       systemImage: "checkmark.seal.fill")
                     .foregroundStyle(Theme.accent)
             } else {
-                Label(loc("متأخّر بـ%1$@ صفحة — عوّضها على مهل", (-d).counterText),
+                Label(loc("متأخّر %1$@ — عوّضها على مهل", byPages),
                       systemImage: "arrow.counterclockwise")
                     .foregroundStyle(Theme.accent(for: "gold"))
             }
@@ -224,8 +243,13 @@ struct KhatmahView: View {
         let startRef = Quran.firstAyah(ofPage: range.lowerBound)
         let surahName = Quran.surah(startRef.surah)?.name ?? ""
         let juz = Quran.juz(of: startRef)
-        let wardTotal = max(1, range.count)
-        let wardDone = min(wardTotal, max(0, store.khatmahPagesDone - (range.lowerBound - 1)))
+        // نافذة اليوم تُحسب من الخطة لا من التقدّم: نطاق العرض يبدأ من
+        // «الصفحة التالية» فيتقلّص كلما قرأ، ولو قِسنا عليه لبقي المقروء صفرًا أبدًا.
+        let per = store.khatmahPagesPerDay
+        let dayStart = min(Quran.pageCount, (store.khatmahDayIndex - 1) * per + 1)
+        let dayEnd = min(Quran.pageCount, store.khatmahDayIndex * per)
+        let wardTotal = max(1, dayEnd - dayStart + 1)
+        let wardDone = min(wardTotal, max(0, store.khatmahPagesDone - (dayStart - 1)))
         let wardFrac = Double(wardDone) / Double(wardTotal)
         let shape = RoundedRectangle(cornerRadius: Theme.Radius.xl, style: .continuous)
 
@@ -369,14 +393,58 @@ struct KhatmahView: View {
         }
     }
 
-    private var cancelButton: some View {
-        Button(loc("إنهاء التحدي")) {
-            store.cancelKhatmah()
-            Haptics.tap(enabled: store.hapticsEnabled)
+    /// بطاقة الإتمام: تحلّ محلّ ورد اليوم والأزرار عند بلوغ ٦٠٤، وتفتح باب
+    /// ختمة جديدة حتى لا يكون المخرج الوحيد هو حذف الختمة.
+    private var completionCard: some View {
+        let shape = RoundedRectangle(cornerRadius: Theme.Radius.xl, style: .continuous)
+
+        return VStack(spacing: 12) {
+            Image(systemName: "checkmark.seal.fill")
+                .font(.system(size: 34))
+                .foregroundStyle(Theme.goldGradient)
+            Text(loc("تمّت الختمة — تقبّل الله"))
+                .font(Theme.display(19, weight: .bold))
+                .foregroundStyle(Theme.ink)
+                .multilineTextAlignment(.center)
+            Text(loc("ختمتَ المصحف كاملًا. ابدأ ختمة جديدة متى شئت."))
+                .font(Theme.display(13))
+                .foregroundStyle(Theme.inkSoft)
+                .multilineTextAlignment(.center)
+
+            Button {
+                store.startKhatmah(days: store.khatmahTotalDays, mode: store.khatmahMode)
+                Haptics.done(enabled: store.hapticsEnabled)
+            } label: {
+                Text(loc("ابدأ ختمة جديدة"))
+                    .font(Theme.display(15, weight: .semibold))
+                    .gradientButton(Theme.gradient(for: "green"), glow: Theme.accent)
+            }
+            .pressable()
+            .padding(.top, 2)
         }
-        .font(Theme.display(13))
-        .foregroundStyle(Theme.inkFaint)
-        .padding(.top, 4)
+        .frame(maxWidth: .infinity)
+        .padding(Theme.Space.xl)
+        .background(heroBackground(shape))
+    }
+
+    @State private var confirmEnd = false
+
+    /// «إنهاء التحدي» يمحو الصفحات المقروءة أيضًا ولا يمكن استرجاعها،
+    /// فيُستأذن قبله كما في «تصفير كل الإحصائيات».
+    private var cancelButton: some View {
+        Button(loc("إنهاء التحدي")) { confirmEnd = true }
+            .font(Theme.display(13))
+            .foregroundStyle(Theme.inkFaint)
+            .padding(.top, 4)
+            .confirmationDialog(loc("إنهاء التحدي؟"), isPresented: $confirmEnd, titleVisibility: .visible) {
+                Button(loc("إنهاء وحذف التقدّم"), role: .destructive) {
+                    store.cancelKhatmah()
+                    Haptics.tap(enabled: store.hapticsEnabled)
+                }
+                Button(loc("cancel"), role: .cancel) {}
+            } message: {
+                Text(loc("سيُحذف تقدّمك في الختمة ولا يمكن استرجاعه."))
+            }
     }
 }
 

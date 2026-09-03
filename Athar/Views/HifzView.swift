@@ -19,6 +19,7 @@ struct HifzView: View {
     @State private var showPicker = false
     @State private var sessionPassed = 0
     @State private var sessionStumbled = 0
+    @State private var loaded = false
 
     private var current: AyahRef? { index < queue.count ? queue[index] : nil }
 
@@ -78,13 +79,19 @@ struct HifzView: View {
         }
         .sheet(isPresented: $showPicker) {
             HifzPicker { refs in
-                for r in refs where store.card(for: r) == nil {
-                    store.recordReview(r, passed: false)   // تدخل الطابور اليوم
-                }
+                enroll(refs)
                 loadQueue()
             }
+            // الأوراق لا ترث اتجاه الواجهة من الجذر، فنفرضه صراحةً.
+            .environment(\.layoutDirection, AppConfig.arabicOnly ? .rightToLeft : store.appLanguage.layoutDirection)
         }
-        .onAppear(perform: loadQueue)
+        // التحميل مرة واحدة: العودة إلى التبويب لا تُلغي جلسة جارية.
+        // التحديث المقصود يبقى عبر «تحديث» أو بعد الإضافة من المنتقي.
+        .onAppear {
+            guard !loaded else { return }
+            loaded = true
+            loadQueue()
+        }
     }
 
     // MARK: الجلسة
@@ -105,8 +112,6 @@ struct HifzView: View {
 
                     ayahCard(ref)
 
-                    stageHint
-
                     if let card = store.card(for: ref), card.lapses > 0 {
                         Label(loc("تعثّرت فيها %1$@ مرة — كرّرها", card.lapses.counterText),
                               systemImage: "arrow.trianglehead.counterclockwise")
@@ -117,10 +122,17 @@ struct HifzView: View {
                     }
                 }
                 .padding(.horizontal, 20)
-                .padding(.bottom, 16)
+                .padding(.bottom, 8)
                 .readableWidth(620)
             }
             .scrollIndicators(.hidden)
+
+            // التوجيه ثابت فوق الأزرار (خارج التمرير) فلا يُقصّ خلف الزر.
+            stageHint
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, 20)
+                .padding(.bottom, 10)
 
             controls(ref)
         }
@@ -381,7 +393,7 @@ struct HifzView: View {
             .appearStagger(3)
 
             if store.memorizedCount > 0 {
-                Text("\(store.memorizedCount.counterText) آية ثبتت معك")
+                Text("\(ayahCountText(store.memorizedCount)) ثبتت معك")
                     .font(Theme.display(12))
                     .foregroundStyle(Theme.inkFaint)
                     .padding(.top, 6)
@@ -415,6 +427,21 @@ struct HifzView: View {
     }
 
     // MARK: المنطق
+
+    /// إضافة ما اختاره إلى الحفظ كبطاقات جديدة — لا كتعثّر.
+    /// `MemoryCard.new` موعدها اليوم أصلًا، فتدخل طابور اليوم دون أن يُوسم
+    /// ما لم يره بعد بأنه «تعثّرت فيه»، ودون تضخيم عدّاد التعثّر لاحقًا.
+    private func enroll(_ refs: [AyahRef]) {
+        let today = AtharStore.dayNumber()
+        var all = store.memoryCards
+        for r in refs where all[r.id] == nil { all[r.id] = MemoryCard.new(today: today) }
+        store.memoryCards = all
+    }
+
+    /// تمييز العدد: من ٣ إلى ١٠ جمعٌ «آيات»، وما عداه مفرد «آية».
+    private func ayahCountText(_ n: Int) -> String {
+        (3...10).contains(n) ? "\(n.counterText) آيات" : "\(n.counterText) آية"
+    }
 
     private func loadQueue() {
         queue = store.dueForReview
@@ -452,9 +479,22 @@ struct HifzView: View {
     /// أوائل الحروف: يبقي أول حرف من كل كلمة ويستبدل الباقي بنقاط.
     private func hint(for ref: AyahRef) -> String {
         (Quran.text(ref) ?? "").ayahWords.map { w in
-            let bare = w.strippedForSearch
+            let bare = bareLetters(w)
             guard let first = bare.first else { return w }
             return bare.count <= 1 ? String(first) : "\(first)ـ"
         }.joined(separator: " ")
+    }
+
+    /// تجريد التشكيل وحده — دون توحيد صور الهمزة كما يفعل تجريد البحث،
+    /// ليبقى أول الحرف كما رُسم في المصحف (أَحَدٌ ← أ، لا ا).
+    private func bareLetters(_ w: String) -> String {
+        var out = String.UnicodeScalarView()
+        for u in w.unicodeScalars {
+            let v = u.value
+            if (0x064B...0x065F).contains(v) || v == 0x0670 || v == 0x0640 { continue } // تشكيل + ألف خنجرية + تطويل
+            if (0x06D6...0x06ED).contains(v) { continue }                                // علامات وقف وتجويد
+            out.append(u)
+        }
+        return String(out)
     }
 }

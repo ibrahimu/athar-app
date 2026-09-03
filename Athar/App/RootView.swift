@@ -3,14 +3,14 @@ import SwiftUI
 struct RootView: View {
     @EnvironmentObject private var store: AtharStore
     @State private var selection: AppTab = .home
-    @State private var prayerMatIcon: Image?
-    @State private var kaabaIcon: Image?
+    /// تبويب مخفيّ من الشريط طُلب فتحه من شاشة اليوم — يُعرض كورقة كاملة.
+    @State private var pushedTab: AppTab?
 
     @ViewBuilder
     private func icon(for tab: AppTab) -> some View {
         switch tab {
-        case .prayer: if let prayerMatIcon { prayerMatIcon } else { Image(systemName: tab.icon) }
-        case .hajj:   if let kaabaIcon { kaabaIcon } else { Image(systemName: tab.icon) }
+        case .prayer: AtharIconRenderer.prayerMat
+        case .hajj:   AtharIconRenderer.kaaba
         default:      Image(systemName: tab.icon)
         }
     }
@@ -23,13 +23,14 @@ struct RootView: View {
                     .tag(tab)
             }
         }
-        .task {
-            if prayerMatIcon == nil { prayerMatIcon = AtharIconRenderer.templateImage(PrayerMatShape()) }
-            if kaabaIcon == nil { kaabaIcon = AtharIconRenderer.templateImage(KaabaShape()) }
-        }
         .onChange(of: store.visibleTabs) { _, tabs in
             // لو حُذف التبويب المختار، ارجع لليوم (موجود دائمًا) بدل شاشة فارغة.
             if !tabs.contains(selection) { selection = .home }
+        }
+        // كل شاشة تبويب تحمل NavigationStack خاصًّا بها، فنعرضها كما هي بلا تغليف.
+        .sheet(item: $pushedTab) { tab in
+            view(for: tab)
+                .environment(\.layoutDirection, AppConfig.arabicOnly ? .rightToLeft : store.appLanguage.layoutDirection)
         }
     }
 
@@ -44,12 +45,18 @@ struct RootView: View {
         case .hajj:     HajjView()
         case .qibla:    NavigationStack { QiblaView(isRootTab: true) }
         case .hifz:     NavigationStack { HifzView(isRootTab: true) }
+        case .recitation: NavigationStack { RecitationView(isRootTab: true) }
         case .settings: SettingsView()
         }
     }
 
-    /// تنقّل من شاشة اليوم — إن كان التبويب مخفيًا، افتح المصحف بدلًا منه.
+    /// تنقّل من شاشة اليوم — وإن كان التبويب مخفيًا من الشريط عُرض كورقة،
+    /// حتى لا تبتلع البطاقةُ النقرةَ بلا أي أثر.
     private func open(_ tab: AppTab) {
-        selection = store.visibleTabs.contains(tab) ? tab : .home
+        if store.visibleTabs.contains(tab) {
+            selection = tab
+        } else {
+            pushedTab = tab
+        }
     }
 }

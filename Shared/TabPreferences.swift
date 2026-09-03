@@ -2,7 +2,7 @@ import Foundation
 
 /// التبويبات المتاحة في الشريط السفلي. المستخدم يختار أيّها يظهر وبأي ترتيب.
 enum AppTab: String, CaseIterable, Identifiable, Codable {
-    case home, mushaf, adhkar, prayer, tasbih, hajj, qibla, hifz, settings
+    case home, mushaf, adhkar, prayer, tasbih, hajj, qibla, hifz, recitation, settings
 
     var id: String { rawValue }
 
@@ -16,6 +16,7 @@ enum AppTab: String, CaseIterable, Identifiable, Codable {
         case .hajj:     return loc("hajj")
         case .qibla:    return loc("qibla")
         case .hifz:     return loc("hifz")
+        case .recitation: return loc("التلاوة")
         case .settings: return loc("settings")
         }
     }
@@ -27,15 +28,16 @@ enum AppTab: String, CaseIterable, Identifiable, Codable {
         case .adhkar:   return "text.book.closed.fill"
         case .prayer:   return "moon.stars.fill"        // بديل — الفعلي سجّادة مخصّصة
         case .tasbih:   return "circle.hexagongrid.fill"
-        case .hajj:     return "cube.fill"              // الكعبة (مكعّب)
+        case .hajj:     return "cube.fill"              // احتياط فقط — الظاهر دائمًا كعبة مرسومة
         case .qibla:    return "location.north.line.fill"
         case .hifz:     return "brain.head.profile"
+        case .recitation: return "waveform"
         case .settings: return "gearshape.fill"
         }
     }
 
-    /// التبويبات ذات الأيقونة المرسومة (لا SF): الصلاة = سجّادة مصلّى.
-    var usesCustomIcon: Bool { self == .prayer }
+    /// التبويبات ذات الأيقونة المرسومة (لا SF): سجّادة الصلاة وكعبة الحج.
+    var usesCustomIcon: Bool { self == .prayer || self == .hajj }
 
     /// «اليوم» ثابت دائمًا — هو مدخل التطبيق.
     var isPinned: Bool { self == .home }

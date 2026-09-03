@@ -10,6 +10,7 @@ struct SettingsView: View {
     @State private var permissionDenied = false
     @State private var scheduledAlerts = 0
     @State private var testSent = false
+    @State private var showCityPicker = false
 
     private var morningBinding: Binding<Date> {
         Binding(
@@ -41,9 +42,10 @@ struct SettingsView: View {
                         sunanReminders.appearStagger(2)
                         prayer.appearStagger(3)
                         display.appearStagger(4)
-                        stats.appearStagger(5)
-                        about.appearStagger(6)
-                        blessing.appearStagger(7)
+                        sources.appearStagger(5)
+                        stats.appearStagger(6)
+                        about.appearStagger(7)
+                        blessing.appearStagger(8)
                     }
                     .padding(.horizontal, 18)
                     .padding(.top, 6)
@@ -227,8 +229,15 @@ struct SettingsView: View {
                     SettingsDivider()
                     Button {
                         Task {
-                            testSent = await Reminders.sendTestAlert()
-                            if !testSent { permissionDenied = true }
+                            // التأكيد مؤقّت: يعود الصف بعد ثوانٍ إلى «جرّب التنبيه الآن»
+                            // حتى تُنتج كل ضغطة تغيّرًا مرئيًا، ولا يبقى وعدٌ بتنبيهٍ وصل.
+                            guard await Reminders.sendTestAlert() else {
+                                permissionDenied = true
+                                return
+                            }
+                            withAnimation(Motion.snappy) { testSent = true }
+                            try? await Task.sleep(for: .seconds(8))
+                            withAnimation(Motion.snappy) { testSent = false }
                         }
                     } label: {
                         SettingsScreenRow(icon: testSent ? "checkmark.circle.fill" : "bell.badge.waveform.fill",
@@ -262,9 +271,23 @@ struct SettingsView: View {
                         set: { store.asrMethod = $0; refreshPrayers() }))
 
                 SettingsDivider()
-                SettingsScreenRow(icon: "location.fill", tint: Theme.accent(for: "calm"), title: loc("rowLocation")) {
-                    SettingsValue(text: store.placeName)
+                Button { showCityPicker = true } label: {
+                    SettingsScreenRow(icon: "location.fill", tint: Theme.accent(for: "calm"), title: loc("rowLocation")) {
+                        HStack(spacing: 6) {
+                            SettingsValue(text: store.placeName)
+                            Image(systemName: "chevron.forward")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(Theme.inkFaint)
+                        }
+                    }
                 }
+                .buttonStyle(.plain)
+            }
+            // الأوراق لا ترث اتجاه الكتابة من جذر التطبيق، فنثبّته صراحةً.
+            .sheet(isPresented: $showCityPicker) {
+                LocationPickerHost(store: store)
+                    .environment(\.layoutDirection,
+                                 AppConfig.arabicOnly ? .rightToLeft : store.appLanguage.layoutDirection)
             }
         }
     }
@@ -391,6 +414,65 @@ struct SettingsView: View {
         .frame(maxWidth: .infinity)
     }
 
+    // MARK: المصادر والتوثيق
+
+    /// بطاقة توثيق بارزة تطمئن المستخدم أنّ كل نصٍّ في التطبيق من مصدر معلوم،
+    /// مع ثلاث رقاقات موجزة، وكامل التفصيل بلمسة على SourcesView.
+    private var sources: some View {
+        VStack(spacing: 8) {
+            SettingsGroupTitle(text: loc("المصادر والتوثيق"), tint: Theme.accent(for: "green"))
+            NavigationLink { SourcesView() } label: {
+                SettingsCard {
+                    VStack(alignment: .leading, spacing: 14) {
+                        HStack(spacing: 13) {
+                            SettingsScreenChip(icon: "checkmark.seal.fill", tint: Theme.accent(for: "green"))
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(loc("نصوصٌ موثّقة ومراجَعة"))
+                                    .font(Theme.display(16, weight: .medium))
+                                    .foregroundStyle(Theme.ink)
+                                Text(loc("اطّلع على مصدر كل ما في التطبيق"))
+                                    .font(Theme.display(12))
+                                    .foregroundStyle(Theme.inkFaint)
+                            }
+                            Spacer(minLength: 8)
+                            Image(systemName: "chevron.forward")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(Theme.inkFaint)
+                        }
+                        HStack(spacing: 8) {
+                            sourceChip("book.closed.fill", loc("المصحف"), loc("مصحف تنزيل"))
+                            sourceChip("moon.stars.fill", loc("الأذكار"), loc("الكتاب والسنّة"))
+                            sourceChip("location.north.line.fill", loc("المواقيت"), loc("حساب فلكي"))
+                        }
+                    }
+                    .padding(16)
+                }
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    private func sourceChip(_ icon: String, _ title: String, _ sub: String) -> some View {
+        VStack(spacing: 5) {
+            Image(systemName: icon)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(Theme.accent)
+            Text(title)
+                .font(Theme.display(11.5, weight: .semibold))
+                .foregroundStyle(Theme.ink)
+            Text(sub)
+                .font(Theme.display(9.5))
+                .foregroundStyle(Theme.inkFaint)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 11)
+        .background(RoundedRectangle(cornerRadius: 13, style: .continuous).fill(Theme.accent.opacity(0.06)))
+        .overlay(RoundedRectangle(cornerRadius: 13, style: .continuous)
+            .strokeBorder(Theme.accent.opacity(0.14), lineWidth: 0.5))
+    }
+
     // MARK: عن التطبيق
 
     private var about: some View {
@@ -407,18 +489,6 @@ struct SettingsView: View {
                 linkRow("lifepreserver.fill", Theme.accent(for: "sea"), loc("rowSupport"),
                         "https://ibrahimu.github.io/athar-app/support.html")
                 SettingsDivider()
-                NavigationLink { SourcesView() } label: {
-                    SettingsScreenRow(icon: "text.book.closed.fill", tint: Theme.accent(for: "sea"),
-                                title: loc("rowSources"),
-                                subtitle: loc("نصوص المصحف والأذكار والخطوط")) {
-                        Image(systemName: "chevron.forward")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(Theme.inkFaint)
-                    }
-                }
-                .buttonStyle(.plain)
-
-                SettingsDivider()
                 Link(destination: URL(string: "https://ehsan.sa")!) {
                     SettingsScreenRow(icon: "heart.fill", tint: Theme.accent(for: "gold"),
                                 title: loc("rowSadaqah"),
@@ -434,7 +504,7 @@ struct SettingsView: View {
                 ShareLink(item: Self.appStoreURL,
                           message: Text(loc("تطبيق أثر — أذكار وأوقات الصلاة ومسبحة. مجاني بلا إعلانات، ويعمل بدون إنترنت."))) {
                     SettingsScreenRow(icon: "square.and.arrow.up.fill", tint: Theme.accent,
-                                title: loc("rowShare"), subtitle: loc("دلَّ على خيرٍ فله مثل أجر فاعله")) {
+                                title: loc("rowShare"), subtitle: loc("مَن دلَّ على خيرٍ فله مثل أجر فاعله")) {
                         Image(systemName: "chevron.forward")
                             .font(.system(size: 12, weight: .semibold))
                             .foregroundStyle(Theme.inkFaint)
@@ -578,6 +648,21 @@ struct SettingsScreenRow<Trailing: View>: View {
 extension SettingsScreenRow where Trailing == EmptyView {
     init(icon: String, tint: Color = Theme.accent, title: String, subtitle: String? = nil) {
         self.init(icon: icon, tint: tint, title: title, subtitle: subtitle) { EmptyView() }
+    }
+}
+
+/// مضيف صغير يملك مزوّد الموقع طوال عمر الورقة: LocationPickerView يستقبله
+/// كـ@ObservedObject أي أنه لا يملكه، فلو أُنشئ داخل مغلِّف الورقة لضاع مع كل
+/// إعادة رسم وانقطع تتبّع الموقع في منتصفه.
+private struct LocationPickerHost: View {
+    @StateObject private var location: LocationProvider
+
+    init(store: AtharStore) {
+        _location = StateObject(wrappedValue: LocationProvider(store: store))
+    }
+
+    var body: some View {
+        LocationPickerView(location: location)
     }
 }
 

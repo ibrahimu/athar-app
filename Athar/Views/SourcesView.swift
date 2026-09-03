@@ -49,7 +49,18 @@ struct SourcesView: View {
                         index: 3
                     )
 
-                    closing.appearStagger(4)
+                    block(
+                        icon: "waveform",
+                        title: loc("التلاوة الصوتية"),
+                        body: loc("التلاوات من موقع **MP3Quran.net**، متاحة للعموم بلا مقابل ولا اشتراك، وكلها برواية حفص عن عاصم مرتّلة."),
+                        linkTitle: "mp3quran.net",
+                        url: "https://mp3quran.net",
+                        note: loc("لا يتصل التطبيق بالشبكة إلا حين تضغط «تشغيل» أو «تنزيل». وما نزّلته يعمل بلا إنترنت."),
+                        accent: Theme.accent(for: "dusk"),
+                        index: 4
+                    )
+
+                    closing.appearStagger(5)
                 }
                 .padding(.horizontal, 18)
                 .padding(.top, 8)

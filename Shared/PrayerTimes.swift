@@ -237,9 +237,15 @@ struct PrayerTimes {
                 end:       tomorrowFajr)
     }
 
-    /// The next prayer today, or nil once Isha has passed.
+    /// The next entry in today's timetable — including الشروق, which is not a prayer.
     func next(after now: Date = Date()) -> (prayer: Prayer, date: Date)? {
         ordered.first { $0.date > now }
+    }
+
+    /// الصلاة القادمة فعليًا — يتخطّى الشروق لأنه ليس صلاة ولا يُذكَّر به.
+    /// هذا ما تعرضه الشاشات والويدجت تحت عنوان «الصلاة القادمة».
+    func nextPrayer(after now: Date = Date()) -> (prayer: Prayer, date: Date)? {
+        ordered.first { $0.prayer.isPrayer && $0.date > now }
     }
 
     /// The prayer whose time has most recently entered.

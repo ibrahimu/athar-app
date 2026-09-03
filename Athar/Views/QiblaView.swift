@@ -10,6 +10,16 @@ struct QiblaView: View {
     @StateObject private var compass = HeadingProvider()
     @State private var didAlignHaptic = false
 
+    /// زوايا العرض بعد فكّ الالتفاف: قراءة البوصلة تقفز من ٣٥٩° إلى ٠°، ولو حرّكنا
+    /// الرسم على الزاوية الخام لدار القرص والسهم دورة كاملة عكسية عند كل مرور بالشمال.
+    /// تبقى nil قبل أول قراءة، فيتبع العرض الزاوية الخام — وجهاز بلا بوصلة يبقى سهمه على زاوية القبلة.
+    @State private var shownArrow: Double?
+    @State private var shownDial: Double?
+
+    /// منتقي الموقع: يُنشأ عند أول فتح فقط، فشاشة القبلة لا تحتاج خدمات الموقع قبل ذلك.
+    @State private var location: LocationProvider?
+    @State private var showCityPicker = false
+
     @Environment(\.colorScheme) private var scheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -42,6 +52,18 @@ struct QiblaView: View {
 
     private var isAligned: Bool { (offBy ?? 999) <= 4 }
 
+    /// أقرب زاوية مكافئة للهدف انطلاقًا من الزاوية الحالية (الفرق ضمن ±١٨٠°)،
+    /// حتى يسلك الدوران الطريق الأقصر بدل الالتفاف الكامل.
+    private static func unwound(_ current: Double, toward target: Double) -> Double {
+        var d = (target - current).truncatingRemainder(dividingBy: 360)
+        if d > 180 { d -= 360 } else if d < -180 { d += 360 }
+        return current + d
+    }
+
+    /// ما يُرسم فعلًا: الزاوية المفكوكة إن وُجدت، وإلا الزاوية الخام.
+    private var arrowRotation: Double { shownArrow ?? arrowAngle }
+    private var dialRotation: Double { shownDial ?? -(compass.heading ?? 0) }
+
     var body: some View {
         ZStack {
             AtharBackground()
@@ -73,15 +95,37 @@ struct QiblaView: View {
         .toolbar(isRootTab ? .visible : .hidden, for: .tabBar)
         .onAppear { compass.start() }
         .onDisappear { compass.stop() }
-        .onChange(of: isAligned) { _, aligned in
-            // اهتزازة واحدة عند الانطباق، ولا تتكرر حتى يبتعد ثم يعود.
-            if aligned, !didAlignHaptic {
+        .onChange(of: offBy) { _, off in
+            guard let off else { return }
+            // اهتزازة واحدة عند الانطباق (≤٤°)، ولا تعود إلا بعد ابتعاد حقيقي (>١٢°).
+            // نراقب الزاوية لا الحالة، لأن اهتزاز اليد حول الحدّ يقلب الحالة كل ثانية مرارًا.
+            if off <= 4, !didAlignHaptic {
                 Haptics.done(enabled: store.hapticsEnabled)
                 didAlignHaptic = true
-            } else if !aligned {
+            } else if off > 12 {
                 didAlignHaptic = false
             }
         }
+        .onChange(of: arrowAngle) { old, new in
+            shownArrow = Self.unwound(shownArrow ?? old, toward: new)
+        }
+        .onChange(of: compass.heading) { old, new in
+            shownDial = Self.unwound(shownDial ?? -(old ?? 0), toward: -(new ?? 0))
+        }
+        .sheet(isPresented: $showCityPicker) {
+            if let location {
+                // الأوراق لا ترث اتجاه التخطيط من الجذر، فنثبّته صراحةً كما في شاشة الصلاة.
+                LocationPickerView(location: location)
+                    .environment(\.layoutDirection,
+                                 AppConfig.arabicOnly ? .rightToLeft : store.appLanguage.layoutDirection)
+            }
+        }
+    }
+
+    /// يفتح منتقي الموقع، ويُنشئ مزوّد الموقع عند أول مرة.
+    private func openCityPicker() {
+        if location == nil { location = LocationProvider(store: store) }
+        showCityPicker = true
     }
 
     // MARK: البوصلة
@@ -124,8 +168,8 @@ struct QiblaView: View {
                     .offset(y: -128)
                     .rotationEffect(.degrees(Double(i) * 15))
             }
-            .rotationEffect(.degrees(-(compass.heading ?? 0)))
-            .animation(.smooth(duration: 0.25), value: compass.heading)
+            .rotationEffect(.degrees(dialRotation))
+            .animation(.smooth(duration: 0.25), value: dialRotation)
 
             // حروف الجهات الأربع، تدور مع الجهاز — الشمال أبرزها والبقية مُلمَّحة
             ForEach(cardinalMarks) { mark in
@@ -135,8 +179,8 @@ struct QiblaView: View {
                     .offset(y: -152)
                     .rotationEffect(.degrees(mark.angle))
             }
-            .rotationEffect(.degrees(-(compass.heading ?? 0)))
-            .animation(.smooth(duration: 0.25), value: compass.heading)
+            .rotationEffect(.degrees(dialRotation))
+            .animation(.smooth(duration: 0.25), value: dialRotation)
 
             // علامة القبلة الثابتة على الإطار — ماسة ذهبية عند زاوية القبلة، تدور مع القرص
             Image(systemName: "diamond.fill")
@@ -144,27 +188,27 @@ struct QiblaView: View {
                 .foregroundStyle(Theme.gold)
                 .shadow(color: Theme.gold.opacity(0.35), radius: 3)
                 .offset(y: -142)
-                .rotationEffect(.degrees(arrowAngle))
-                .animation(.smooth(duration: 0.25), value: arrowAngle)
+                .rotationEffect(.degrees(arrowRotation))
+                .animation(.smooth(duration: 0.25), value: arrowRotation)
 
-            // سهم القبلة — تعبئة رأسية متدرّجة (رأس مضيء ← ذيل ناعم)، ونقطة توهّج عند الرأس
+            // سهم القبلة — أكبر عنصر في الشاشة، فيلبس لون الطابع دائمًا لا عند الانطباق فقط.
+            // الانطباق يزيد شدّة الظلّ والتوهّج، ولا يغيّر اللون (الذهبي يبقى للزخرفة الصغيرة).
             QiblaArrow()
-                .fill(isAligned
-                      ? AnyShapeStyle(Theme.accentGradient)
-                      : AnyShapeStyle(LinearGradient(colors: [Theme.gold, Theme.gold.opacity(0.6)],
-                                                     startPoint: .top, endPoint: .bottom)))
+                .fill(Theme.accentGradient)
                 .frame(width: 46, height: 128)
-                .shadow(color: (isAligned ? Theme.accent : Theme.gold).opacity(0.22), radius: 5, y: 3)
+                .shadow(color: Theme.accent.opacity(isAligned ? 0.30 : 0.18),
+                        radius: isAligned ? 8 : 5, y: 3)
                 .overlay(alignment: .top) {
                     Circle()
-                        .fill(isAligned ? Theme.accent : Theme.gold)
+                        .fill(Theme.accent)
+                        .opacity(isAligned ? 1 : 0.75)
                         .frame(width: 7, height: 7)
                         .blur(radius: 2)
                         .offset(y: -2)
                 }
                 .offset(y: -46)
-                .rotationEffect(.degrees(arrowAngle))
-                .animation(.smooth(duration: 0.25), value: arrowAngle)
+                .rotationEffect(.degrees(arrowRotation))
+                .animation(.smooth(duration: 0.25), value: arrowRotation)
                 .animation(.smooth(duration: 0.2), value: isAligned)
 
             // القلب: الكعبة — توهّج محيطي عند الانطباق، وهالة تتمدّد مرّة واحدة احتفاءً
@@ -228,19 +272,27 @@ struct QiblaView: View {
                     .monospacedDigit()
             }
 
-            // رقاقة الموقع/المسافة — بنفس نبرة رقاقات الصلاة، تربط الشاشتين معًا
-            HStack(spacing: 6) {
-                Image(systemName: "location.fill")
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(Theme.accent)
-                Text(store.placeName)
-                Text("·")
-                Text(distanceText)
+            // رقاقة الموقع/المسافة — بنفس نبرة رقاقات الصلاة، تربط الشاشتين معًا.
+            // وهي زرّ يفتح منتقي الموقع، فالاتجاه كلّه مبنيّ على هذا الموقع ولا بدّ من طريق لتغييره.
+            Button { openCityPicker() } label: {
+                HStack(spacing: 6) {
+                    Image(systemName: "location.fill")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(Theme.accent)
+                    Text(store.placeName)
+                    Text("·")
+                    Text(distanceText)
+                    Image(systemName: "chevron.down")
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundStyle(Theme.inkFaint)
+                }
+                .font(Theme.display(12, weight: .medium))
+                .foregroundStyle(Theme.inkSoft)
+                .padding(.horizontal, 12).padding(.vertical, 7)
+                .background(Capsule().fill(Theme.accentSoft))
             }
-            .font(Theme.display(12, weight: .medium))
-            .foregroundStyle(Theme.inkSoft)
-            .padding(.horizontal, 12).padding(.vertical, 7)
-            .background(Capsule().fill(Theme.accentSoft))
+            .buttonStyle(.plain)
+            .accessibilityLabel(loc("الموقع: %1$@ — اضغط لتغييره", store.placeName))
             .padding(.top, 4)
         }
         .animation(.smooth(duration: 0.2), value: isAligned)

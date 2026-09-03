@@ -3,6 +3,8 @@ import SwiftUI
 struct MushafView: View {
     @EnvironmentObject private var store: AtharStore
     @State private var query = ""
+    /// نتائج البحث في نصّ المصحف — تُحسب مرّةً واحدة لكل استعلام لا مع كل رسم.
+    @State private var hits: [AyahRef] = []
 
     private var filtered: [Surah] {
         let q = query.trimmingCharacters(in: .whitespaces)
@@ -15,12 +17,6 @@ struct MushafView: View {
         }
     }
 
-    private var searchHits: [AyahRef] {
-        let q = query.trimmingCharacters(in: .whitespaces)
-        guard q.count >= 3, filtered.isEmpty || q.count >= 4 else { return [] }
-        return Quran.search(q, limit: 25)
-    }
-
     var body: some View {
         NavigationStack {
             ZStack {
@@ -31,6 +27,7 @@ struct MushafView: View {
                             stopMarkCard
                             continueCard
                             toolsRow
+                            recitationCard
                             if !store.bookmarks.isEmpty { bookmarksCard }
                             SectionHeader(title: loc("suras"), tint: Theme.accent(for: "gold"))
                                 .padding(.top, 2)
@@ -44,9 +41,9 @@ struct MushafView: View {
                             .appearStagger(i)
                         }
 
-                        if !searchHits.isEmpty {
+                        if !hits.isEmpty {
                             SettingsGroupTitle(text: loc("آيات مطابقة"))
-                            ForEach(searchHits) { ref in
+                            ForEach(hits) { ref in
                                 NavigationLink { SurahReaderView(surahId: ref.surah, scrollTo: ref) } label: {
                                     SearchHitRow(ref: ref, query: query)
                                 }
@@ -56,7 +53,7 @@ struct MushafView: View {
 
                         if query.isEmpty { sourceCredit }
 
-                        if filtered.isEmpty && searchHits.isEmpty && !query.isEmpty {
+                        if filtered.isEmpty && hits.isEmpty && !query.isEmpty {
                             ContentUnavailableView(loc("لا توجد نتائج"), systemImage: "magnifyingglass",
                                                    description: Text(loc("جرّب اسم سورة أو جزءًا من آية")))
                                 .padding(.top, 50)
@@ -67,11 +64,65 @@ struct MushafView: View {
                     .readableWidth(620)
                 }
                 .scrollIndicators(.hidden)
+                // البحث يمسح ٦٢٣٦ آية ويجرّد تشكيلها — لو جرى في الخيط الرئيسي
+                // مع كل حرف لتقطّعت الكتابة. فيُمهَل ربع ثانية ويُلغى بالحرف
+                // التالي، ثم يجري خارج الخيط الرئيسي مرّةً واحدة لكل استعلام.
+                .task(id: query) {
+                    let q = query.trimmingCharacters(in: .whitespaces)
+                    guard q.count >= 3, filtered.isEmpty || q.count >= 4 else {
+                        hits = []
+                        return
+                    }
+                    try? await Task.sleep(for: .milliseconds(250))
+                    guard !Task.isCancelled else { return }
+                    let found = await Task.detached(priority: .userInitiated) {
+                        Quran.search(q, limit: 25)
+                    }.value
+                    guard !Task.isCancelled else { return }
+                    hits = found
+                }
             }
+            .overlay(alignment: .bottom) { MiniPlayer() }
             .navigationTitle(loc("mushaf"))
             .navigationBarTitleDisplayMode(.inline)
             .searchable(text: $query, prompt: Text(loc("searchMushaf")))
         }
+    }
+
+    // MARK: التلاوة
+
+    /// مدخل التلاوة الصوتية: يفتح شاشةً تُشغّل السور بثًّا أو تنزّلها للاستماع بلا إنترنت.
+    private var recitationCard: some View {
+        let audio = Recitation.shared
+        let sum = audio.downloadedSummary(reciter: audio.reciterId)
+        return NavigationLink { RecitationView() } label: {
+            AtharCard(padding: 14, elevation: .e2, tint: Theme.accent) {
+                HStack(spacing: 13) {
+                    Image(systemName: "waveform")
+                        .font(.system(size: 18))
+                        .foregroundStyle(Theme.accent)
+                        .frame(width: 38, height: 38)
+                        .background(Circle().fill(Theme.accent.opacity(0.13)))
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(loc("الاستماع للقرآن"))
+                            .font(Theme.display(15, weight: .semibold))
+                            .foregroundStyle(Theme.ink)
+                        Text(sum.count > 0
+                             ? loc("%1$@ · %2$@ سورة محمَّلة", audio.reciter.name, sum.count.counterText)
+                             : loc("%1$@ · شغّلها أو نزّلها للاستماع بلا إنترنت", audio.reciter.name))
+                            .font(Theme.display(11))
+                            .foregroundStyle(Theme.inkFaint)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.8)
+                    }
+                    Spacer(minLength: 4)
+                    Image(systemName: "chevron.forward")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(Theme.inkFaint)
+                }
+            }
+        }
+        .pressable()
     }
 
     /// إسناد نص المصحف — شرط رخصة Tanzil: إظهار المصدر بوضوح مع رابط.
@@ -169,7 +220,7 @@ struct MushafView: View {
             NavigationLink { HifzView() } label: {
                 toolTile("brain.head.profile", Theme.accent(for: "sea"), loc("memorize"),
                          store.dueForReview.isEmpty
-                            ? "\(store.memorizedCount.counterText) آية محفوظة"
+                            ? "\(store.memorizedCount.ayahCountText) محفوظة"
                             : "\(store.dueForReview.count.counterText) للمراجعة اليوم",
                          badge: !store.dueForReview.isEmpty)
             }
@@ -256,17 +307,19 @@ struct MushafView: View {
 
 struct SurahRow: View {
     let surah: Surah
+    // يُقرأ لون الطابع هنا (لا داخل النجمة) ليتبدّل الصف مع الثيم فورًا.
+    var accent: Color = Theme.accent
 
     var body: some View {
         AtharCard(padding: 14) {
             HStack(spacing: 14) {
-                SurahMedallion(number: surah.id, size: 46)
+                SurahMedallion(number: surah.id, size: 46, tint: accent)
 
                 VStack(alignment: .leading, spacing: 3) {
                     Text(loc("سورة %1$@", surah.name))
                         .font(Theme.display(17, weight: .semibold))
                         .foregroundStyle(Theme.ink)
-                    Text("\(surah.revelation) · \(surah.ayahCount.counterText) آية")
+                    Text("\(surah.revelation) · \(surah.ayahCount.ayahCountText)")
                         .font(Theme.display(12))
                         .foregroundStyle(Theme.inkFaint)
                 }
@@ -298,5 +351,14 @@ struct SearchHitRow: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
+    }
+}
+
+// MARK: - تمييز العدد
+
+private extension Int {
+    /// «٣ آيات» لا «٣ آية»: تمييز العدد من ٣ إلى ١٠ جمعٌ مجرور، وما فوقها مفرد.
+    var ayahCountText: String {
+        (3...10).contains(self) ? "\(counterText) آيات" : "\(counterText) آية"
     }
 }

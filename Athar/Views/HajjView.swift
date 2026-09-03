@@ -85,7 +85,7 @@ struct HajjView: View {
                     HStack(spacing: 6) {
                         Image(systemName: "list.bullet.rectangle.portrait")
                             .font(.system(size: 12, weight: .semibold))
-                        Text(loc("\(guide.steps.count.counterText) خطوات"))
+                        Text(loc("%1$@ خطوات", guide.steps.count.counterText))
                             .font(Theme.display(13, weight: .semibold))
                         Spacer()
                         Text(loc("ابدأ الدليل"))
@@ -126,7 +126,7 @@ struct HajjGuideView: View {
                     HStack(spacing: 8) {
                         Image(systemName: "list.bullet.rectangle.portrait.fill")
                             .font(.system(size: 13))
-                        Text(loc("\(guide.steps.count.counterText) خطوات · بالأدعية المأثورة"))
+                        Text(loc("%1$@ خطوات · بالأدعية المأثورة", guide.steps.count.counterText))
                             .font(Theme.display(13, weight: .semibold))
                     }
                     .foregroundStyle(tint)

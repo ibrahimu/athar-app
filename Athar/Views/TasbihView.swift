@@ -131,7 +131,13 @@ struct TasbihView: View {
             ForEach(targets, id: \.self) { target in
                 let selected = store.tasbihTarget == target
                 Button {
+                    // العدّاد تراكميّ، والأشواط والرقم المعروض مشتقّان منه بالقسمة
+                    // والباقي. فلو غيّرنا الهدف وحده لأُعيدت كتابة ما مضى: شوط تامّ
+                    // يختفي والرقم يقفز. لذا نُرحّل الأشواط وبقيّة الشوط إلى الهدف الجديد.
+                    let done = store.tasbihCount / store.tasbihTarget
+                    let rest = store.tasbihCount % store.tasbihTarget
                     store.tasbihTarget = target
+                    store.tasbihCount = done * target + min(rest, target - 1)
                     Haptics.tap(enabled: store.hapticsEnabled)
                 } label: {
                     Text(target.counterText)

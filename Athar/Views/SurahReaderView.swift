@@ -27,21 +27,49 @@ struct ReadingPalette {
     }
 }
 
+/// إبقاء الشاشة يقظة بعدّاد لا ببوليان: القارئ يفتح سورةً فوق سورة، و«الظهور»
+/// للجديدة يسبق «الاختفاء» للقديمة — فلو كتب كلٌّ منهما القيمة مباشرةً لأطفأ
+/// القارئُ المغادر الشاشةَ على قارئٍ ما زال مفتوحًا. العدّاد يمنع هذا التداخل.
+private enum ReaderWake {
+    private static var depth = 0
+
+    static func enter() {
+        depth += 1
+        UIApplication.shared.isIdleTimerDisabled = true
+    }
+
+    static func exit() {
+        depth = max(0, depth - 1)
+        UIApplication.shared.isIdleTimerDisabled = depth > 0
+    }
+}
+
 struct SurahReaderView: View {
     let surahId: Int
     var scrollTo: AyahRef? = nil
 
     @EnvironmentObject private var store: AtharStore
+    @StateObject private var audio = Recitation.shared
     @State private var showControls = false
     @State private var selected: AyahRef? = nil
     @State private var currentRef: AyahRef?
 
-    private var surah: Surah? { Quran.surah(surahId) }
+    /// السورة الفاعلة الآن — تتبع موضع القراءة الحيّ لا السورة التي فُتح بها
+    /// القارئ، وإلا ارتدّ التبديل بين «صفحة» و«آية آية» إلى أول سورةٍ فُتحت
+    /// وضاع موضع القارئ بعد تقليب عشرات الصفحات.
+    private var activeSurahId: Int { (currentRef ?? scrollTo)?.surah ?? surahId }
+
+    private var surah: Surah? { Quran.surah(activeSurahId) }
     private var palette: ReadingPalette { .of(store.readingTheme) }
 
-    /// اسم السورة الظاهرة الآن — يتغيّر أثناء تقليب الصفحات عبر حدود السور.
+    /// رقم السورة الظاهرة الآن — يتغيّر أثناء تقليب الصفحات عبر حدود السور.
+    private var visibleSurahId: Int {
+        (currentRef ?? AyahRef(surah: surahId, ayah: 1)).surah
+    }
+
+    /// اسم السورة الظاهرة الآن.
     private var visibleSurahName: String {
-        Quran.surah((currentRef ?? AyahRef(surah: surahId, ayah: 1)).surah)?.name ?? ""
+        Quran.surah(visibleSurahId)?.name ?? ""
     }
 
     var body: some View {
@@ -49,7 +77,7 @@ struct SurahReaderView: View {
             palette.paper.ignoresSafeArea()
                 .animation(Motion.smooth, value: store.readingTheme)
 
-            if store.readingMode == .page {
+            if store.readingMode != .ayah {
                 MushafPager(
                     startPage: Quran.page(of: currentRef ?? scrollTo ?? AyahRef(surah: surahId, ayah: 1)),
                     palette: palette,
@@ -57,6 +85,7 @@ struct SurahReaderView: View {
                     bookmarks: Set(store.bookmarks),
                     highlights: store.highlights,
                     isDark: store.readingTheme == .night,
+                    framed: store.readingMode == .framed,
                     onTapAyah: { selected = $0 },
                     onPageVisible: { page in
                         let ref = Quran.firstAyah(ofPage: page)
@@ -67,7 +96,12 @@ struct SurahReaderView: View {
                 ayahModeBody
             }
         }
-        .overlay(alignment: .bottom) { positionBar }
+        .overlay(alignment: .bottom) {
+            VStack(spacing: 6) {
+                MiniPlayer()
+                positionBar
+            }
+        }
         .navigationTitle(loc("سورة %1$@", visibleSurahName))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.hidden, for: .tabBar)
@@ -77,17 +111,28 @@ struct SurahReaderView: View {
                     Image(systemName: "textformat.size")
                 }
             }
+            // استماعٌ للسورة المفتوحة — بثًّا أو من التنزيل إن كانت محمَّلة.
+            ToolbarItem(placement: .topBarTrailing) {
+                Button { audio.toggle(surah: visibleSurahId) } label: {
+                    Image(systemName: audio.surah == visibleSurahId && audio.isPlaying
+                          ? "pause.circle" : "play.circle")
+                }
+            }
         }
         .sheet(isPresented: $showControls) {
-            ReaderControls().presentationDetents([.height(430)])
+            // ارتفاعٌ ثانٍ كبير: معاينة البسملة تكبر مع المكبِّر وحجم النظام،
+            // فلولاه انقطعت سِمة الصفحة أسفل الورقة ولم يبلغها القارئ.
+            ReaderControls().presentationDetents([.height(430), .large])
+                .environment(\.layoutDirection, AppConfig.arabicOnly ? .rightToLeft : store.appLanguage.layoutDirection)
         }
         .sheet(item: $selected) { ref in
             AyahActions(ref: ref).presentationDetents([.medium, .large])
+                .environment(\.layoutDirection, AppConfig.arabicOnly ? .rightToLeft : store.appLanguage.layoutDirection)
         }
         .toolbarColorScheme(store.readingTheme == .night ? .dark : .light, for: .navigationBar)
         // القارئ يُمسك المصحف دقائق دون لمس — لا تنطفئ الشاشة عليه.
-        .onAppear { UIApplication.shared.isIdleTimerDisabled = true }
-        .onDisappear { UIApplication.shared.isIdleTimerDisabled = false }
+        .onAppear { ReaderWake.enter() }
+        .onDisappear { ReaderWake.exit() }
     }
 
     // MARK: عرض آية آية (تمرير عمودي)
@@ -105,7 +150,7 @@ struct SurahReaderView: View {
                             .padding(.vertical, 20)
                     }
 
-                    AyahListPage(surahId: surahId, palette: palette,
+                    AyahListPage(surahId: activeSurahId, palette: palette,
                                  scale: store.mushafFontScale,
                                  bookmarks: Set(store.bookmarks),
                                  highlights: store.highlights,
@@ -121,9 +166,12 @@ struct SurahReaderView: View {
             }
             .scrollIndicators(.hidden)
             .onAppear {
-                if let t = scrollTo {
+                // الموضع الحيّ أولًا ليصل التبديل من «صفحة» إلى الآية نفسها.
+                if let t = currentRef ?? scrollTo {
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
-                        withAnimation(Motion.smooth) { proxy.scrollTo(t, anchor: .center) }
+                        // القائمة تسجّل أرقام الآيات (Int) لا AyahRef،
+                        // فالقفز بالمرجع نفسه لا يطابق شيئًا ولا يحدث شيء.
+                        withAnimation(Motion.smooth) { proxy.scrollTo(t.ayah, anchor: .center) }
                     }
                 }
             }
@@ -186,7 +234,7 @@ struct SurahReaderView: View {
                         .frame(width: 44, height: 1)
                 }
 
-                Text("\(surah.revelation) · \(surah.ayahCount.counterText) آية")
+                Text("\(surah.revelation) · \(surah.ayahCount.ayahCountText)")
                     .font(Theme.display(12, weight: .medium))
                     .foregroundStyle(palette.faint)
                     .padding(.horizontal, 12).padding(.vertical, 5)
@@ -216,7 +264,7 @@ struct SurahReaderView: View {
             }
             .padding(.vertical, 20)
 
-            if surahId < 114, let next = Quran.surah(surahId + 1) {
+            if activeSurahId < 114, let next = Quran.surah(activeSurahId + 1) {
                 NavigationLink { SurahReaderView(surahId: next.id) } label: {
                     HStack(spacing: 8) {
                         Text(loc("سورة %1$@", next.name))
@@ -254,6 +302,7 @@ struct MushafPager: View {
     let bookmarks: Set<AyahRef>
     let highlights: [String: String]
     let isDark: Bool
+    var framed: Bool = false
     let onTapAyah: (AyahRef) -> Void
     let onPageVisible: (Int) -> Void
 
@@ -266,7 +315,7 @@ struct MushafPager: View {
                     ForEach(1...Quran.pageCount, id: \.self) { page in
                         MushafPageContent(page: page, palette: palette, scale: scale,
                                           bookmarks: bookmarks, highlights: highlights,
-                                          isDark: isDark, onTapAyah: onTapAyah)
+                                          isDark: isDark, framed: framed, onTapAyah: onTapAyah)
                             .containerRelativeFrame(.horizontal)
                             .id(page)
                     }
@@ -296,6 +345,7 @@ private struct MushafPageContent: View {
     let bookmarks: Set<AyahRef>
     let highlights: [String: String]
     let isDark: Bool
+    var framed: Bool = false
     let onTapAyah: (AyahRef) -> Void
 
     /// آيات الصفحة مقسومة أشواطًا: كل شوط سورة واحدة، لتظهر فاتحة
@@ -314,6 +364,28 @@ private struct MushafPageContent: View {
 
     var body: some View {
         ScrollView {
+            if framed {
+                pageStack
+                    .padding(.horizontal, 17)
+                    .padding(.top, 20)
+                    .padding(.bottom, 16)
+                    .background(MushafFrame(palette: palette))
+                    .padding(.horizontal, 12)
+                    .padding(.top, 10)
+                    .padding(.bottom, 74)
+                    .readableWidth(700)
+            } else {
+                pageStack
+                    .padding(.horizontal, 20)
+                    .padding(.top, 12)
+                    .padding(.bottom, 70)
+                    .readableWidth(700)
+            }
+        }
+        .scrollIndicators(.hidden)
+    }
+
+    private var pageStack: some View {
             VStack(spacing: 14 * scale) {
                 ForEach(runs, id: \.first) { run in
                     if let first = run.first, first.ayah == 1 {
@@ -336,12 +408,6 @@ private struct MushafPageContent: View {
                     .overlay(Capsule().strokeBorder(palette.hairline.opacity(0.6), lineWidth: 0.5))
                     .padding(.top, 6)
             }
-            .padding(.horizontal, 20)
-            .padding(.top, 12)
-            .padding(.bottom, 70)
-            .readableWidth(700)
-        }
-        .scrollIndicators(.hidden)
     }
 
     /// فاتحة سورة تبدأ في هذه الصفحة: إطار مزخرف بالاسم ثم البسملة.
@@ -449,70 +515,74 @@ struct ReaderControls: View {
     var body: some View {
         ZStack {
             AtharBackground()
-            VStack(spacing: 22) {
-                Capsule().fill(Theme.hairline).frame(width: 36, height: 5).padding(.top, 10)
+            // المحتوى يطول مع مكبِّر الخطّ ومع حجم نصّ النظام، فبلا تمرير
+            // تُقتطع «سِمة الصفحة» أسفل الورقة ولا سبيل للوصول إليها.
+            ScrollView {
+                VStack(spacing: 22) {
+                    Capsule().fill(Theme.hairline).frame(width: 36, height: 5).padding(.top, 10)
 
-                VStack(spacing: 12) {
-                    HStack {
-                        Text(loc("readerFont")).font(Theme.display(15, weight: .semibold)).foregroundStyle(Theme.ink)
-                        Spacer()
-                        Text(String(format: "%.0f٪", store.mushafFontScale * 100))
-                            .font(Theme.display(14)).foregroundStyle(Theme.inkSoft).monospacedDigit()
+                    VStack(spacing: 12) {
+                        HStack {
+                            Text(loc("readerFont")).font(Theme.display(15, weight: .semibold)).foregroundStyle(Theme.ink)
+                            Spacer()
+                            Text(String(format: "%.0f٪", store.mushafFontScale * 100))
+                                .font(Theme.display(14)).foregroundStyle(Theme.inkSoft).monospacedDigit()
+                        }
+                        HStack(spacing: 12) {
+                            Button { bump(-0.1) } label: { stepper("textformat.size.smaller") }
+                            Slider(value: Binding(get: { store.mushafFontScale },
+                                                  set: { store.mushafFontScale = $0 }),
+                                   in: 0.7...2.2, step: 0.05)
+                                .tint(Theme.accent)
+                            Button { bump(0.1) } label: { stepper("textformat.size.larger") }
+                        }
+                        Text(loc("بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ"))
+                            .font(Theme.dhikrFont(size: 21, scale: store.mushafFontScale))
+                            .foregroundStyle(Theme.ink)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Theme.surfaceAlt))
+                            .animation(Motion.snappy, value: store.mushafFontScale)
                     }
-                    HStack(spacing: 12) {
-                        Button { bump(-0.1) } label: { stepper("textformat.size.smaller") }
-                        Slider(value: Binding(get: { store.mushafFontScale },
-                                              set: { store.mushafFontScale = $0 }),
-                               in: 0.7...2.2, step: 0.05)
-                            .tint(Theme.accent)
-                        Button { bump(0.1) } label: { stepper("textformat.size.larger") }
-                    }
-                    Text(loc("بِسْمِ ٱللَّهِ ٱلرَّحْمَٰنِ ٱلرَّحِيمِ"))
-                        .font(Theme.dhikrFont(size: 21, scale: store.mushafFontScale))
-                        .foregroundStyle(Theme.ink)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(RoundedRectangle(cornerRadius: 14, style: .continuous).fill(Theme.surfaceAlt))
-                        .animation(Motion.snappy, value: store.mushafFontScale)
-                }
 
-                VStack(alignment: .leading, spacing: 10) {
-                    Text(loc("displayMode")).font(Theme.display(15, weight: .semibold)).foregroundStyle(Theme.ink)
-                    HStack(spacing: 10) {
-                        ForEach(ReadingMode.allCases) { mode in
-                            let on = store.readingMode == mode
-                            Button {
-                                store.readingMode = mode
-                                Haptics.tap(enabled: store.hapticsEnabled)
-                            } label: {
-                                HStack(spacing: 7) {
-                                    Image(systemName: mode.icon).font(.system(size: 14))
-                                    Text(mode.title).font(Theme.display(14, weight: on ? .semibold : .regular))
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text(loc("displayMode")).font(Theme.display(15, weight: .semibold)).foregroundStyle(Theme.ink)
+                        HStack(spacing: 10) {
+                            ForEach(ReadingMode.allCases) { mode in
+                                let on = store.readingMode == mode
+                                Button {
+                                    store.readingMode = mode
+                                    Haptics.tap(enabled: store.hapticsEnabled)
+                                } label: {
+                                    HStack(spacing: 7) {
+                                        Image(systemName: mode.icon).font(.system(size: 14))
+                                        Text(mode.title).font(Theme.display(14, weight: on ? .semibold : .regular))
+                                    }
+                                    .foregroundStyle(on ? Theme.onAccent : Theme.inkSoft)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 12)
+                                    .background(RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                        .fill(on ? Theme.accent : Theme.surfaceAlt))
                                 }
-                                .foregroundStyle(on ? Theme.onAccent : Theme.inkSoft)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 12)
-                                .background(RoundedRectangle(cornerRadius: 12, style: .continuous)
-                                    .fill(on ? Theme.accent : Theme.surfaceAlt))
+                                .pressable()
                             }
-                            .pressable()
                         }
                     }
-                }
 
-                VStack(alignment: .leading, spacing: 10) {
-                    Text(loc("pageTheme")).font(Theme.display(15, weight: .semibold)).foregroundStyle(Theme.ink)
-                    HStack(spacing: 10) {
-                        ForEach(ReadingTheme.allCases) { theme in
-                            themeChip(theme)
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text(loc("pageTheme")).font(Theme.display(15, weight: .semibold)).foregroundStyle(Theme.ink)
+                        HStack(spacing: 10) {
+                            ForEach(ReadingTheme.allCases) { theme in
+                                themeChip(theme)
+                            }
                         }
                     }
-                }
 
-                Spacer(minLength: 0)
+                    Spacer(minLength: 0)
+                }
+                .padding(.horizontal, 22)
+                .padding(.bottom, 18)
             }
-            .padding(.horizontal, 22)
-            .padding(.bottom, 18)
         }
     }
 
@@ -723,7 +793,12 @@ struct AyahActions: View {
 
                     SettingsDivider()
                     Button {
-                        store.recordReview(ref, passed: true)
+                        // إضافةٌ فقط، ومراجعةٌ راسبة كما في شاشة الحفظ: تدخل
+                        // الطابور اليوم. «نجحت» هنا تقفز بها صندوقًا بلا استرجاع
+                        // وتؤجّلها إلى الغد، وتكرار الضغط يزعم حفظها زورًا.
+                        if store.card(for: ref) == nil {
+                            store.recordReview(ref, passed: false)
+                        }
                         Haptics.done(enabled: store.hapticsEnabled)
                         dismiss()
                     } label: {
@@ -809,5 +884,44 @@ struct AyahListPage: View {
             }
         }
         .padding(.top, 8)
+    }
+}
+
+// MARK: - إطار صفحة المصحف
+
+/// إطار الصفحة المزخرف كالمصحف المطبوع — خطّان ووُريدات في الأركان،
+/// مرسومة كلّها هنا (لا صور مصحف منسوخة)، فتتبع سِمة القراءة وتعمل بلا إنترنت.
+struct MushafFrame: View {
+    let palette: ReadingPalette
+
+    var body: some View {
+        let outer = RoundedRectangle(cornerRadius: 12, style: .continuous)
+        let inner = RoundedRectangle(cornerRadius: 8, style: .continuous)
+        ZStack {
+            outer.fill(palette.ink.opacity(0.02))
+            outer.strokeBorder(palette.accent.opacity(0.50), lineWidth: 1.6)
+            inner.strokeBorder(palette.accent.opacity(0.28), lineWidth: 0.8).padding(5)
+        }
+        .overlay(alignment: .topLeading)     { rosette }
+        .overlay(alignment: .topTrailing)    { rosette }
+        .overlay(alignment: .bottomLeading)  { rosette }
+        .overlay(alignment: .bottomTrailing) { rosette }
+    }
+
+    private var rosette: some View {
+        EightPointStar(innerRatio: 0.55)
+            .fill(palette.accent.opacity(0.42))
+            .frame(width: 11, height: 11)
+            .padding(7)
+    }
+}
+
+// MARK: - تمييز العدد
+
+private extension Int {
+    /// «٣ آيات» لا «٣ آية»: تمييز العدد من ٣ إلى ١٠ جمعٌ مجرور، وما فوقها مفرد.
+    /// لا سورة أقلّ من ثلاث آيات، فلا حاجة لحالتَي المفرد والمثنّى.
+    var ayahCountText: String {
+        (3...10).contains(self) ? "\(counterText) آيات" : "\(counterText) آية"
     }
 }

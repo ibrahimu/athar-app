@@ -63,6 +63,10 @@
 		<string>NotoNaskhArabic-Medium.ttf</string>
 		<string>NotoNaskhArabic-Bold.ttf</string>
 	</array>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>audio</string>
+	</array>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 </dict>

@@ -16,7 +16,7 @@ struct PrayerProvider: TimelineProvider {
 
     private func entry(at date: Date, store: AtharStore) -> PrayerEntry {
         let today = store.prayerTimes(for: date)
-        var upcoming = today?.next(after: date)
+        var upcoming = today?.nextPrayer(after: date)
         if upcoming == nil,
            let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: date),
            let t = store.prayerTimes(for: tomorrow), let fajr = t[.fajr] {

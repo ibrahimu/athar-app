@@ -17,8 +17,9 @@ struct PrayerView: View {
     private var times: PrayerTimes? { store.prayerTimes(for: now) }
 
     /// Next prayer today, rolling over to tomorrow's Fajr after Isha.
+    /// الشروق ليس صلاة فلا يُعرض هنا.
     private var upcoming: (prayer: Prayer, date: Date)? {
-        if let next = times?.next(after: now) { return next }
+        if let next = times?.nextPrayer(after: now) { return next }
         guard let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: now),
               let t = store.prayerTimes(for: tomorrow), let fajr = t[.fajr]
         else { return nil }
@@ -63,6 +64,7 @@ struct PrayerView: View {
             }
             .sheet(isPresented: $showCityPicker) {
                 LocationPickerView(location: location)
+                    .environment(\.layoutDirection, AppConfig.arabicOnly ? .rightToLeft : store.appLanguage.layoutDirection)
             }
         }
         .onReceive(ticker) { now = $0 }
@@ -396,7 +398,7 @@ struct PrayerView: View {
     private func qiyamSlot(_ label: String, _ date: Date) -> some View {
         VStack(spacing: 3) {
             Text(label).font(Theme.display(10)).foregroundStyle(Theme.inkFaint)
-            Text(Self.clock.string(from: date))
+            Text(Self.time(date, in: store.placeTimeZone))
                 .font(.system(size: 14, weight: .semibold, design: .rounded))
                 .foregroundStyle(Theme.ink)
                 .monospacedDigit()
@@ -404,9 +406,16 @@ struct PrayerView: View {
         .frame(maxWidth: .infinity)
     }
 
+    /// نافذة القيام تخصّ الليلة الجارية لا الليلة القادمة: قبل فجر اليوم نحن ما زلنا
+    /// في ليلةٍ بدأت من مغرب أمس، فلو أسندناها إلى مغرب اليوم لما دخلها المستخدم أبدًا.
     private var qiyamWindow: (lastThird: Date, midnight: Date, end: Date)? {
-        guard let t = times,
-              let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: now),
+        guard let t = times else { return nil }
+        if let fajr = t[.fajr], now < fajr,
+           let yesterday = Calendar.current.date(byAdding: .day, value: -1, to: now),
+           let ty = store.prayerTimes(for: yesterday) {
+            return ty.qiyam(tomorrowFajr: fajr)
+        }
+        guard let tomorrow = Calendar.current.date(byAdding: .day, value: 1, to: now),
               let tm = store.prayerTimes(for: tomorrow), let fajr = tm[.fajr]
         else { return nil }
         return t.qiyam(tomorrowFajr: fajr)
@@ -456,13 +465,6 @@ struct PrayerView: View {
         .overlay(RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous)
             .strokeBorder(Theme.hairline.opacity(0.5), lineWidth: 0.5))
     }
-
-    static let clock: DateFormatter = {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "ar_SA@numbers=latn")
-        f.dateFormat = "h:mm a"
-        return f
-    }()
 
     /// Renders an instant in the chosen place's own zone, so a city picked from
     /// another country reads the way a local there would read it.

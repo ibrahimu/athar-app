@@ -57,6 +57,9 @@ targets:
           - "Info.plist"
           - "AtharWidget.entitlements"
       - path: Shared
+        excludes:
+          # محرّك التلاوة للتطبيق وحده — لا داعي لحمله في الودجة.
+          - "Recitation.swift"
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.ibrahim.athar.widget

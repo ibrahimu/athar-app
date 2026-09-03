@@ -9,10 +9,10 @@ struct AdhkarIndexView: View {
         let needle = query.normalizedArabic
         return AdhkarLibrary.categories.compactMap { category in
             if category.title.normalizedArabic.contains(needle) { return category }
-            let hits = category.items.filter { $0.text.normalizedArabic.contains(needle) }
-            guard !hits.isEmpty else { return nil }
-            return DhikrCategory(id: category.id, title: category.title, subtitle: category.subtitle,
-                                 icon: category.icon, accent: category.accent, items: hits)
+            // البحث ترشيح للفئات لا بتر لأذكارها: لو دفعنا نسخة تحمل المطابق فقط
+            // لختمت الجلسة الفئة كاملة بمعرّفها بعد تكرارات معدودة.
+            guard category.items.contains(where: { $0.text.normalizedArabic.contains(needle) }) else { return nil }
+            return category
         }
     }
 
@@ -93,10 +93,15 @@ struct CategoryRow: View {
 
 extension String {
     /// Strips tashkeel and normalizes alef/ya so search matches how people type.
+    /// ونُسقِط كذلك علامات الوقف ورقم الآية (۝ ۚ ۖ …) وأرقامها الهندية، لأنّ النصّ
+    /// المحفوظ يحملها بين الكلمتين فتُفشل بحث العبارة، ثم نوحّد الفراغات لأنّ
+    /// إسقاطها يخلّف فراغًا مزدوجًا ولأنّ النصّ فيه أسطر جديدة.
     var normalizedArabic: String {
         let stripped = unicodeScalars.filter { scalar in
             !(0x0610...0x061A ~= scalar.value) &&
             !(0x064B...0x065F ~= scalar.value) &&
+            !(0x06D6...0x06ED ~= scalar.value) &&
+            !(0x0660...0x0669 ~= scalar.value) &&
             scalar.value != 0x0640 && scalar.value != 0x0670
         }
         return String(String.UnicodeScalarView(stripped))
@@ -105,5 +110,7 @@ extension String {
             .replacingOccurrences(of: "آ", with: "ا")
             .replacingOccurrences(of: "ى", with: "ي")
             .replacingOccurrences(of: "ة", with: "ه")
+            .split(whereSeparator: { $0.isWhitespace })
+            .joined(separator: " ")
     }
 }

@@ -1,0 +1,449 @@
+import Foundation
+import AVFoundation
+import MediaPlayer
+import Combine
+
+// MARK: - القارئ
+
+/// قارئ من موقع «MP3Quran.net» — تلاوات متاحة للعموم بلا اشتراك ولا ترخيص،
+/// وكلها برواية حفص عن عاصم مرتّلة. الملف يُبنى: العنوان + رقم السورة بثلاث خانات.
+struct Reciter: Identifiable, Hashable, Codable {
+    let id: String        // مفتاح المجلّد على الخادم — ثابت لا يتغيّر
+    let name: String      // الاسم كما يُعرف به
+    let base: String      // عنوان المجلّد، منتهٍ بشرطة مائلة
+
+    func url(surah: Int) -> URL? {
+        guard (1...114).contains(surah) else { return nil }
+        return URL(string: base + String(format: "%03d", surah) + ".mp3")
+    }
+}
+
+enum RecitationLibrary {
+    /// قائمة مختارة، تحقّقنا من عمل روابطها لكل السور.
+    static let reciters: [Reciter] = [
+        .init(id: "afs",    name: "مشاري العفاسي",        base: "https://server8.mp3quran.net/afs/"),
+        .init(id: "husr",   name: "محمود خليل الحصري",     base: "https://server13.mp3quran.net/husr/"),
+        .init(id: "minsh",  name: "محمد صديق المنشاوي",    base: "https://server10.mp3quran.net/minsh/"),
+        .init(id: "basit",  name: "عبدالباسط عبدالصمد",    base: "https://server7.mp3quran.net/basit/"),
+        .init(id: "sds",    name: "عبدالرحمن السديس",      base: "https://server11.mp3quran.net/sds/"),
+        .init(id: "shur",   name: "سعود الشريم",           base: "https://server7.mp3quran.net/shur/"),
+        .init(id: "maher",  name: "ماهر المعيقلي",         base: "https://server12.mp3quran.net/maher/"),
+        .init(id: "yasser", name: "ياسر الدوسري",          base: "https://server11.mp3quran.net/yasser/"),
+        .init(id: "shatri", name: "أبو بكر الشاطري",       base: "https://server11.mp3quran.net/shatri/"),
+        .init(id: "qtm",    name: "ناصر القطامي",          base: "https://server6.mp3quran.net/qtm/"),
+        .init(id: "hthfi",  name: "علي الحذيفي",           base: "https://server9.mp3quran.net/hthfi/"),
+        .init(id: "abkr",   name: "إدريس أبكر",            base: "https://server6.mp3quran.net/abkr/"),
+        .init(id: "ajm",    name: "أحمد العجمي",           base: "https://server10.mp3quran.net/ajm/"),
+        .init(id: "ayyub",  name: "محمد أيوب",             base: "https://server8.mp3quran.net/ayyub/"),
+    ]
+
+    static func reciter(id: String) -> Reciter? { reciters.first { $0.id == id } }
+
+    static let `default` = reciters[0]
+
+    /// جذر تخزين التلاوات المحمَّلة — خارج «المستندات» فلا يظهر للمستخدم كملفات،
+    /// ومستثنى من نسخ iCloud لأنه قابل للتنزيل من جديد.
+    static var root: URL {
+        let fm = FileManager.default
+        let dir = (try? fm.url(for: .applicationSupportDirectory, in: .userDomainMask,
+                               appropriateFor: nil, create: true))
+            ?? fm.temporaryDirectory
+        let out = dir.appendingPathComponent("Recitations", isDirectory: true)
+        if !fm.fileExists(atPath: out.path) {
+            try? fm.createDirectory(at: out, withIntermediateDirectories: true)
+            var u = out
+            var rv = URLResourceValues()
+            rv.isExcludedFromBackup = true
+            try? u.setResourceValues(rv)
+        }
+        return out
+    }
+
+    static func localURL(reciter: String, surah: Int) -> URL {
+        root.appendingPathComponent(reciter, isDirectory: true)
+            .appendingPathComponent(String(format: "%03d", surah) + ".mp3")
+    }
+
+    static func isDownloaded(reciter: String, surah: Int) -> Bool {
+        FileManager.default.fileExists(atPath: localURL(reciter: reciter, surah: surah).path)
+    }
+}
+
+// MARK: - حالة التنزيل
+
+enum DownloadState: Equatable {
+    case idle
+    case waiting
+    case downloading(Double)   // ٠..١
+    case done
+    case failed
+}
+
+// MARK: - المشغّل والمنزّل
+
+/// يشغّل سورة كاملة — من الملف المحمَّل إن وُجد، وإلا بثًّا من الشبكة.
+/// كل اتصال بالشبكة هنا لا يقع إلا بضغطة المستخدم على «تشغيل» أو «تنزيل».
+@MainActor
+final class Recitation: NSObject, ObservableObject {
+    static let shared = Recitation()
+
+    @Published private(set) var surah: Int?
+    @Published private(set) var reciterId: String = RecitationLibrary.default.id
+    @Published private(set) var isPlaying = false
+    @Published private(set) var isBuffering = false
+    @Published private(set) var progress: Double = 0     // ٠..١
+    @Published private(set) var elapsed: Double = 0
+    @Published private(set) var duration: Double = 0
+    @Published private(set) var failed = false
+    /// حالات التنزيل بمفتاح "قارئ/سورة".
+    @Published private(set) var downloads: [String: DownloadState] = [:]
+
+    /// يكرّر السورة عند انتهائها.
+    @Published var repeats = false
+
+    private var player: AVPlayer?
+    private var timeObserver: Any?
+    private var endObserver: NSObjectProtocol?
+    private var statusTask: Task<Void, Never>?
+    private lazy var session: URLSession = {
+        URLSession(configuration: .default, delegate: self, delegateQueue: nil)
+    }()
+    private var tasks: [Int: String] = [:]   // taskIdentifier -> key
+
+    var reciter: Reciter { RecitationLibrary.reciter(id: reciterId) ?? RecitationLibrary.default }
+
+    private static let reciterKey = "athar.recitation.reciter"
+
+    private override init() {
+        super.init()
+        if let saved = UserDefaults(suiteName: AtharStore.appGroup)?.string(forKey: Self.reciterKey),
+           RecitationLibrary.reciter(id: saved) != nil {
+            reciterId = saved
+        }
+    }
+
+    // MARK: القارئ
+
+    func select(_ r: Reciter) {
+        guard r.id != reciterId else { return }
+        let wasPlaying = isPlaying
+        let s = surah
+        stop()
+        reciterId = r.id
+        UserDefaults(suiteName: AtharStore.appGroup)?.set(r.id, forKey: Self.reciterKey)
+        if wasPlaying, let s { play(surah: s) }
+    }
+
+    // MARK: التشغيل
+
+    static func key(_ reciter: String, _ surah: Int) -> String { "\(reciter)/\(surah)" }
+
+    func state(reciter: String, surah: Int) -> DownloadState {
+        if RecitationLibrary.isDownloaded(reciter: reciter, surah: surah) { return .done }
+        return downloads[Self.key(reciter, surah)] ?? .idle
+    }
+
+    /// يشغّل السورة، أو يوقف/يستأنف إن كانت هي الجارية.
+    func toggle(surah s: Int) {
+        if surah == s, player != nil {
+            isPlaying ? pause() : resume()
+        } else {
+            play(surah: s)
+        }
+    }
+
+    func play(surah s: Int) {
+        teardown()
+        failed = false
+        surah = s
+
+        let local = RecitationLibrary.localURL(reciter: reciterId, surah: s)
+        let url: URL?
+        if FileManager.default.fileExists(atPath: local.path) {
+            url = local
+        } else {
+            url = reciter.url(surah: s)
+        }
+        guard let url else { failed = true; return }
+
+        activateSession()
+        let item = AVPlayerItem(url: url)
+        let p = AVPlayer(playerItem: item)
+        p.automaticallyWaitsToMinimizeStalling = true
+        player = p
+        isBuffering = !url.isFileURL
+
+        timeObserver = p.addPeriodicTimeObserver(
+            forInterval: CMTime(seconds: 0.4, preferredTimescale: 600), queue: .main
+        ) { [weak self] t in
+            guard let self else { return }
+            MainActor.assumeIsolated {
+                let d = item.duration.seconds
+                self.duration = (d.isFinite && d > 0) ? d : self.duration
+                self.elapsed = t.seconds
+                self.progress = self.duration > 0 ? min(1, max(0, t.seconds / self.duration)) : 0
+                if self.isBuffering, t.seconds > 0 { self.isBuffering = false }
+                self.updateNowPlayingTime()
+            }
+        }
+
+        endObserver = NotificationCenter.default.addObserver(
+            forName: .AVPlayerItemDidPlayToEndTime, object: item, queue: .main
+        ) { [weak self] _ in
+            guard let self else { return }
+            MainActor.assumeIsolated {
+                if self.repeats {
+                    p.seek(to: .zero); p.play()
+                } else if let cur = self.surah, cur < 114 {
+                    self.play(surah: cur + 1)          // يتابع إلى السورة التالية
+                } else {
+                    self.stop()
+                }
+            }
+        }
+
+        // فشل التحميل (لا إنترنت مثلًا) — أظهر الخطأ بدل صمتٍ غامض.
+        statusTask = Task { [weak self] in
+            for await status in item.publisher(for: \.status).values {
+                guard let self else { return }
+                if status == .failed {
+                    self.failed = true
+                    self.isBuffering = false
+                    self.isPlaying = false
+                    return
+                }
+                if status == .readyToPlay { return }
+            }
+        }
+
+        p.play()
+        isPlaying = true
+        setupRemoteCommands()
+        updateNowPlayingInfo()
+    }
+
+    func pause() {
+        player?.pause()
+        isPlaying = false
+        updateNowPlayingTime()
+    }
+
+    func resume() {
+        guard player != nil else { if let s = surah { play(surah: s) }; return }
+        activateSession()
+        player?.play()
+        isPlaying = true
+        updateNowPlayingTime()
+    }
+
+    func stop() {
+        teardown()
+        surah = nil
+        isPlaying = false
+        isBuffering = false
+        progress = 0; elapsed = 0; duration = 0
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
+        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+    }
+
+    func seek(to fraction: Double) {
+        guard let p = player, duration > 0 else { return }
+        let t = CMTime(seconds: duration * min(1, max(0, fraction)), preferredTimescale: 600)
+        p.seek(to: t)
+    }
+
+    func next() { if let s = surah, s < 114 { play(surah: s + 1) } }
+    func previous() { if let s = surah, s > 1 { play(surah: s - 1) } }
+
+    private func teardown() {
+        statusTask?.cancel(); statusTask = nil
+        if let o = timeObserver { player?.removeTimeObserver(o); timeObserver = nil }
+        if let o = endObserver { NotificationCenter.default.removeObserver(o); endObserver = nil }
+        player?.pause()
+        player = nil
+    }
+
+    private func activateSession() {
+        let s = AVAudioSession.sharedInstance()
+        try? s.setCategory(.playback, mode: .spokenAudio)
+        try? s.setActive(true)
+    }
+
+    // MARK: شاشة القفل
+
+    private var remoteReady = false
+
+    private func setupRemoteCommands() {
+        guard !remoteReady else { return }
+        remoteReady = true
+        let c = MPRemoteCommandCenter.shared()
+        c.playCommand.addTarget { [weak self] _ in
+            guard let self else { return .commandFailed }
+            return MainActor.assumeIsolated { self.resume(); return .success }
+        }
+        c.pauseCommand.addTarget { [weak self] _ in
+            guard let self else { return .commandFailed }
+            return MainActor.assumeIsolated { self.pause(); return .success }
+        }
+        c.nextTrackCommand.addTarget { [weak self] _ in
+            guard let self else { return .commandFailed }
+            return MainActor.assumeIsolated { self.next(); return .success }
+        }
+        c.previousTrackCommand.addTarget { [weak self] _ in
+            guard let self else { return .commandFailed }
+            return MainActor.assumeIsolated { self.previous(); return .success }
+        }
+    }
+
+    private func updateNowPlayingInfo() {
+        guard let s = surah, let su = Quran.surah(s) else { return }
+        var info: [String: Any] = [:]
+        info[MPMediaItemPropertyTitle] = "سورة \(su.name)"
+        info[MPMediaItemPropertyArtist] = reciter.name
+        info[MPMediaItemPropertyAlbumTitle] = "القرآن الكريم — أثر"
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = info
+    }
+
+    private func updateNowPlayingTime() {
+        guard MPNowPlayingInfoCenter.default().nowPlayingInfo != nil else { return }
+        var info = MPNowPlayingInfoCenter.default().nowPlayingInfo ?? [:]
+        info[MPNowPlayingInfoPropertyElapsedPlaybackTime] = elapsed
+        if duration > 0 { info[MPMediaItemPropertyPlaybackDuration] = duration }
+        info[MPNowPlayingInfoPropertyPlaybackRate] = isPlaying ? 1.0 : 0.0
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = info
+    }
+
+    // MARK: التنزيل
+
+    func download(surah s: Int, reciter r: Reciter? = nil) {
+        let rec = r ?? reciter
+        let k = Self.key(rec.id, s)
+        guard !RecitationLibrary.isDownloaded(reciter: rec.id, surah: s) else { return }
+        if case .downloading = downloads[k] { return }
+        if downloads[k] == .waiting { return }
+        guard let url = rec.url(surah: s) else { return }
+
+        downloads[k] = .waiting
+        let task = session.downloadTask(with: url)
+        tasks[task.taskIdentifier] = k
+        task.resume()
+    }
+
+    func delete(surah s: Int, reciter r: Reciter? = nil) {
+        let rec = r ?? reciter
+        try? FileManager.default.removeItem(at: RecitationLibrary.localURL(reciter: rec.id, surah: s))
+        downloads.removeValue(forKey: Self.key(rec.id, s))
+        // لو كانت هي الجارية بثًّا من الملف، أوقفها حتى لا يبقى مؤشّر على ملف محذوف.
+        if surah == s, reciterId == rec.id { stop() }
+        objectWillChange.send()
+    }
+
+    /// عدد السور المحمَّلة وحجمها الكلي لقارئ معيّن (أو لكل القرّاء).
+    func downloadedSummary(reciter id: String? = nil) -> (count: Int, bytes: Int64) {
+        let fm = FileManager.default
+        let roots: [URL]
+        if let id {
+            roots = [RecitationLibrary.root.appendingPathComponent(id, isDirectory: true)]
+        } else {
+            roots = (try? fm.contentsOfDirectory(at: RecitationLibrary.root,
+                                                 includingPropertiesForKeys: nil)) ?? []
+        }
+        var count = 0
+        var bytes: Int64 = 0
+        for dir in roots {
+            let files = (try? fm.contentsOfDirectory(at: dir, includingPropertiesForKeys: [.fileSizeKey])) ?? []
+            for f in files where f.pathExtension == "mp3" {
+                count += 1
+                bytes += Int64((try? f.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0)
+            }
+        }
+        return (count, bytes)
+    }
+
+    func deleteAll(reciter id: String? = nil) {
+        stop()
+        let fm = FileManager.default
+        if let id {
+            try? fm.removeItem(at: RecitationLibrary.root.appendingPathComponent(id, isDirectory: true))
+        } else {
+            try? fm.removeItem(at: RecitationLibrary.root)
+        }
+        downloads.removeAll()
+        objectWillChange.send()
+    }
+}
+
+// MARK: - مندوب التنزيل
+
+extension Recitation: URLSessionDownloadDelegate {
+    nonisolated func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask,
+                                didFinishDownloadingTo location: URL) {
+        // انقل الملف الآن — يُحذف المؤقّت فور رجوع هذه الدالة.
+        let id = downloadTask.taskIdentifier
+        let fm = FileManager.default
+        let staged = fm.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".mp3")
+        let moved = (try? fm.moveItem(at: location, to: staged)) != nil
+        let ok = (downloadTask.response as? HTTPURLResponse).map { (200...299).contains($0.statusCode) } ?? false
+
+        Task { @MainActor [weak self] in
+            guard let self, let key = self.tasks.removeValue(forKey: id) else {
+                try? fm.removeItem(at: staged); return
+            }
+            let parts = key.split(separator: "/")
+            guard moved, ok, parts.count == 2, let s = Int(parts[1]) else {
+                try? fm.removeItem(at: staged)
+                self.downloads[key] = .failed
+                return
+            }
+            let dest = RecitationLibrary.localURL(reciter: String(parts[0]), surah: s)
+            try? fm.createDirectory(at: dest.deletingLastPathComponent(),
+                                    withIntermediateDirectories: true)
+            try? fm.removeItem(at: dest)
+            do {
+                try fm.moveItem(at: staged, to: dest)
+                self.downloads[key] = .done
+            } catch {
+                try? fm.removeItem(at: staged)
+                self.downloads[key] = .failed
+            }
+        }
+    }
+
+    nonisolated func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask,
+                                didWriteData bytesWritten: Int64,
+                                totalBytesWritten: Int64,
+                                totalBytesExpectedToWrite: Int64) {
+        guard totalBytesExpectedToWrite > 0 else { return }
+        let f = Double(totalBytesWritten) / Double(totalBytesExpectedToWrite)
+        let id = downloadTask.taskIdentifier
+        Task { @MainActor [weak self] in
+            guard let self, let key = self.tasks[id] else { return }
+            self.downloads[key] = .downloading(min(1, max(0, f)))
+        }
+    }
+
+    nonisolated func urlSession(_ session: URLSession, task: URLSessionTask,
+                                didCompleteWithError error: Error?) {
+        guard error != nil else { return }
+        let id = task.taskIdentifier
+        Task { @MainActor [weak self] in
+            guard let self, let key = self.tasks.removeValue(forKey: id) else { return }
+            self.downloads[key] = .failed
+        }
+    }
+}
+
+// MARK: - عرض الحجم
+
+extension Int64 {
+    /// حجم بوحدة عربية — «٨٣٨ ك.ب» بدل «KB 838»، فالوحدة اللاتينية
+    /// ينقلها ترتيب النص ثنائي الاتجاه إلى ما قبل الرقم فتُقرأ مقلوبة.
+    var fileSizeText: String {
+        let mb = Double(self) / 1_048_576
+        if mb >= 1 {
+            let v = (mb * 10).rounded() / 10
+            return "\(v == v.rounded() ? String(Int(v)) : String(format: "%.1f", v)) م.ب"
+        }
+        return "\(Swift.max(1, Int((Double(self) / 1024).rounded()))) ك.ب"
+    }
+}
