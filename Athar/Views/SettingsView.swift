@@ -639,24 +639,4 @@ private struct LocationPickerHost: View {
     }
 }
 
-/// حافة التمرير العلوية: يذوب المحتوى إلى لون الورق عند حدّ شريط العنوان، فلا
-/// يُقرأ نصٌّ تحت زرّ الرجوع كما ظهر في لقطات المراجعة. التدرّج يبدأ داخل منطقة
-/// الشريط ولا يغطّي من المحتوى إلا ثماني نقاط، حتى لا يبهت عنوان المجموعة الأولى
-/// والشاشة في راحتها. وعلى iOS 26 نطلب أثر الحافة الناعم صراحةً، فالشريط لا
-/// يعامل ScrollView تلقائيًا في كل الحالات. نسخة محلّية للملف؛ موضعها Components لاحقًا.
-private struct PaperTopEdge: ViewModifier {
-    func body(content: Content) -> some View {
-        let faded = content.overlay(alignment: .top) {
-            LinearGradient(colors: [Theme.canvas, .clear], startPoint: .top, endPoint: .bottom)
-                .frame(height: 24)
-                .offset(y: -16)
-                .allowsHitTesting(false)
-        }
-        if #available(iOS 26, *) {
-            faded.scrollEdgeEffectStyle(.soft, for: .top)
-        } else {
-            faded
-        }
-    }
-}
 

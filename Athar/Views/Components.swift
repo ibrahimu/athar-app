@@ -791,3 +791,36 @@ struct MaybeStack<Content: View>: View {
         if embedded { content } else { NavigationStack { content } }
     }
 }
+
+// MARK: - حافة التمرير العلوية
+
+/// تدرّجٌ من لون الورق يبدأ من أعلى الشاشة ويخفت بنعومة تحت شريط العنوان، فلا يُقرأ
+/// نصٌّ خلف زرّ الرجوع ولا تظهر كتلةٌ مصمتة بحافة حادّة. أثر الحافة الذي يرسمه
+/// iOS 26 تلقائيًا يُطفأ صراحةً — كان هو مصدر الكتلة التي رآها إبراهيم.
+struct PaperTopEdge: ViewModifier {
+    var height: CGFloat = 120
+
+    func body(content: Content) -> some View {
+        let faded = content.overlay(alignment: .top) {
+            LinearGradient(stops: [
+                .init(color: Theme.canvas,               location: 0.00),
+                .init(color: Theme.canvas.opacity(0.92), location: 0.35),
+                .init(color: Theme.canvas.opacity(0.55), location: 0.65),
+                .init(color: Theme.canvas.opacity(0),    location: 1.00),
+            ], startPoint: .top, endPoint: .bottom)
+            .frame(height: height)
+            .ignoresSafeArea(edges: .top)
+            .allowsHitTesting(false)
+        }
+        if #available(iOS 26, *) {
+            faded.scrollEdgeEffectHidden(true, for: .top)
+        } else {
+            faded
+        }
+    }
+}
+
+extension View {
+    /// تدرّج الورق العلوي المشترك — لكل شاشة ذات شريط عنوان ومحتوى يمرّ تحته.
+    func paperTopEdge(height: CGFloat = 120) -> some View { modifier(PaperTopEdge(height: height)) }
+}
