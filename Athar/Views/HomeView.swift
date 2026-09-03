@@ -259,6 +259,8 @@ struct HomeView: View {
         } label: {
             AtharCard(padding: 18, elevation: .e2, tint: color) {
                 VStack(alignment: .leading, spacing: 12) {
+                    // الشارة وحدها في الصفّ العلوي — سهم «arrow.forward» الذي كان يطفو
+                    // في زاويتها استُبدل بسهم صغير في طرف صفّ العنوان كبقيّة بطاقات التنقّل.
                     HStack {
                         if done {
                             Label(loc("أتممتها اليوم"), systemImage: "checkmark.seal.fill")
@@ -273,13 +275,13 @@ struct HomeView: View {
                                 .padding(.horizontal, 10).padding(.vertical, 5)
                                 .background(Capsule().fill(color.opacity(0.14)))
                         }
-                        Spacer()
-                        Image(systemName: done ? "checkmark.seal.fill" : "arrow.forward")
-                            .font(.system(size: 16, weight: .semibold))
-                            .foregroundStyle(color)
                     }
 
                     HStack(alignment: .center, spacing: 14) {
+                        // الرقاقة في الطرف البادئ كسائر بطاقات التطبيق (بطاقة الصلاة، البلاطات،
+                        // صدقة اليوم)، فلا تقفز الأيقونة من حافة إلى أخرى أثناء التمرير.
+                        IconChip(icon: category.icon, tint: color, size: .lg)
+
                         VStack(alignment: .leading, spacing: 4) {
                             Text(category.title)
                                 .font(Theme.display(23, weight: .bold))
@@ -291,7 +293,9 @@ struct HomeView: View {
                         }
                         .frame(maxWidth: .infinity, alignment: .leading)
 
-                        IconChip(icon: category.icon, tint: color, size: .lg)
+                        Image(systemName: "chevron.forward")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(Theme.inkFaint)
                     }
                 }
             }
@@ -351,8 +355,10 @@ struct HomeView: View {
                     SectionHeader(title: loc("أقسام أخرى"), tint: Theme.accent(for: "dusk"))
                 }
                 .buttonStyle(.plain)
-                LazyVGrid(columns: [GridItem(.flexible(), spacing: 12),
-                                    GridItem(.flexible(), spacing: 12)], spacing: 12) {
+                // محاذاة علوية: البلاطات متساوية الارتفاع بحجز سطرَي الوصف، وإن اختلفت
+                // بقيت رؤوسها على خطّ واحد بدل توسيط الأقصر منها.
+                LazyVGrid(columns: [GridItem(.flexible(), spacing: 12, alignment: .top),
+                                    GridItem(.flexible(), spacing: 12, alignment: .top)], spacing: 12) {
                     ForEach(off) { tab in
                         NavigationLink { SectionDestination(tab: tab) } label: {
                             SectionTile(tab: tab, tint: Theme.accent(for: tab.accentKey))

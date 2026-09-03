@@ -6,24 +6,25 @@ struct AppearanceView: View {
     @State private var editing = false
 
     var body: some View {
-        ZStack {
-            AtharBackground()
-            ScrollView {
-                VStack(spacing: 24) {
-                    if !AppConfig.arabicOnly { languagePicker }
-                    themes
-                    iconStylePicker
-                    backgroundPicker
-                    appearanceMode
-                    tabBar
-                }
-                .padding(.horizontal, Theme.gutter)
-                .padding(.top, 8)
-                .padding(.bottom, 32)
-                .readableWidth(560)
+        ScrollView {
+            VStack(spacing: 24) {
+                if !AppConfig.arabicOnly { languagePicker }
+                themes
+                iconStylePicker
+                backgroundPicker
+                appearanceMode
+                tabBar
             }
-            .scrollIndicators(.hidden)
+            .padding(.horizontal, Theme.gutter)
+            .padding(.top, 8)
+            .padding(.bottom, 32)
+            .readableWidth(560)
         }
+        .scrollIndicators(.hidden)
+        .modifier(PaperTopEdge())
+        // الخلفية خلف ScrollView لا حوله في ZStack، فيبقى هو جذر الشاشة الذي
+        // يكتشفه شريط العنوان ويعامل حافته العلوية عند التمرير تحته.
+        .background { AtharBackground() }
         .navigationTitle(loc("appearance"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.hidden, for: .tabBar)
@@ -382,8 +383,9 @@ struct AppearanceView: View {
                                 Spacer()
                                 Image(systemName: "plus.circle.fill")
                                     .font(.system(size: 18))
+                                    // المعطَّل «حاضر لكن خامل»: hairline لون الفواصل الشعرية ويكاد يختفي في رمز بحجم ١٨.
                                     .foregroundStyle(store.visibleTabs.count >= AppTab.maxVisible
-                                                     ? Theme.hairline : Theme.accent)
+                                                     ? Theme.inkFaint : Theme.accent)
                             }
                             .padding(.horizontal, 14).padding(.vertical, 10)
                             .contentShape(Rectangle())
@@ -406,7 +408,7 @@ struct AppearanceView: View {
         Button(action: action) {
             Image(systemName: icon)
                 .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(enabled ? Theme.accent : Theme.hairline)
+                .foregroundStyle(enabled ? Theme.accent : Theme.inkFaint)
                 .frame(width: 26, height: 26)
                 .background(Circle().fill(Theme.surfaceAlt))
                 .contentShape(Rectangle().inset(by: -9))
@@ -446,3 +448,25 @@ struct AppearanceView: View {
         Haptics.tap(enabled: store.hapticsEnabled)
     }
 }
+
+/// حافة التمرير العلوية: يذوب المحتوى إلى لون الورق عند حدّ شريط العنوان، فلا
+/// يُقرأ نصٌّ تحت زرّ الرجوع كما ظهر في لقطات المراجعة. التدرّج يبدأ داخل منطقة
+/// الشريط ولا يغطّي من المحتوى إلا ثماني نقاط، حتى لا يبهت عنوان المجموعة الأولى
+/// والشاشة في راحتها. وعلى iOS 26 نطلب أثر الحافة الناعم صراحةً، فالشريط لا
+/// يعامل ScrollView تلقائيًا في كل الحالات. نسخة محلّية للملف؛ موضعها Components لاحقًا.
+private struct PaperTopEdge: ViewModifier {
+    func body(content: Content) -> some View {
+        let faded = content.overlay(alignment: .top) {
+            LinearGradient(colors: [Theme.canvas, .clear], startPoint: .top, endPoint: .bottom)
+                .frame(height: 24)
+                .offset(y: -16)
+                .allowsHitTesting(false)
+        }
+        if #available(iOS 26, *) {
+            faded.scrollEdgeEffectStyle(.soft, for: .top)
+        } else {
+            faded
+        }
+    }
+}
+

@@ -171,11 +171,14 @@ struct QiblaView: View {
             .rotationEffect(.degrees(dialRotation))
             .animation(.smooth(duration: 0.25), value: dialRotation)
 
-            // حروف الجهات الأربع، تدور مع الجهاز — الشمال أبرزها والبقية مُلمَّحة
+            // حروف الجهات الأربع: مواضعها تدور مع الجهاز — الشمال أبرزها والبقية مُلمَّحة.
+            // الحرف نفسه يُدار عكس دوران موضعه والقرص فيبقى قائمًا؛ وإلا قُرئت «ج»
+            // المقلوبة «2»، ورقدت «ق» و«غ» على جنبيهما بلا معنى.
             ForEach(cardinalMarks) { mark in
                 Text(mark.letter)
                     .font(Theme.display(mark.angle == 0 ? 13 : 12, weight: mark.angle == 0 ? .bold : .semibold))
-                    .foregroundStyle(Theme.inkSoft.opacity(mark.angle == 0 ? 1 : 0.4))
+                    .foregroundStyle(Theme.inkSoft.opacity(mark.angle == 0 ? 1 : 0.55))
+                    .rotationEffect(.degrees(-(mark.angle + dialRotation)))   // يبقي الحرف قائمًا
                     .offset(y: -152)
                     .rotationEffect(.degrees(mark.angle))
             }

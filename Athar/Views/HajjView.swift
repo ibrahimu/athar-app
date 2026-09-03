@@ -39,8 +39,9 @@ struct HajjView: View {
 
     private var header: some View {
         VStack(spacing: 6) {
+            // عنوان الصفحة (٢٤ ثقيل) يعلو عناوين البطاقات (١٨ نصف ثقيل) فلا تنافسه.
             Text(loc("مناسك بين يديك"))
-                .font(Theme.display(23, weight: .bold))
+                .font(Theme.display(24, weight: .bold))
                 .foregroundStyle(Theme.ink)
             Text(loc("دليل منظّم خطوة بخطوة، بالأدعية المأثورة."))
                 .font(Theme.display(13))
@@ -58,7 +59,8 @@ struct HajjView: View {
         } label: {
             AtharCard(padding: 20, elevation: .e2, tint: tint) {
                 VStack(alignment: .leading, spacing: 14) {
-                    HStack(alignment: .top) {
+                    // الشارة تتوسّط دائرة الأيقونة رأسيًا لا تتعلّق بحافتها العليا.
+                    HStack(alignment: .center) {
                         // رمز مختلف لكل نسك، بلون واحد على دائرة صبغته
                         ZStack {
                             Circle().fill(tint.opacity(0.13))
@@ -80,7 +82,7 @@ struct HajjView: View {
 
                     VStack(alignment: .leading, spacing: 5) {
                         Text(guide.title)
-                            .font(Theme.display(21, weight: .bold))
+                            .font(Theme.display(18, weight: .semibold))
                             .foregroundStyle(Theme.ink)
                         Text(guide.subtitle)
                             .font(Theme.display(13))

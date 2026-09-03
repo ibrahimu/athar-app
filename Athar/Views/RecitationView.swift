@@ -92,7 +92,18 @@ struct RecitationView: View {
             .scrollIndicators(.hidden)
         }
         .overlay(alignment: .bottom) {
-            if selecting { selectionBar } else { MiniPlayer() }
+            // شريط التبويب مخفيّ هنا، فكانت صفوف القائمة تمرّ تحت الشريط وتظهر كاملةً في
+            // شريحة مؤشّر الرئيسية؛ خلفية ورقية متدرّجة تُذيبها تحته وتغطّي تلك الشريحة.
+            Group { if selecting { selectionBar } else { MiniPlayer() } }
+                .background(alignment: .bottom) {
+                    if selecting || audio.surah != nil {
+                        LinearGradient(colors: [Theme.canvas.opacity(0), Theme.canvas],
+                                       startPoint: .top, endPoint: .bottom)
+                            .padding(.top, -28)
+                            .ignoresSafeArea(edges: .bottom)
+                            .allowsHitTesting(false)
+                    }
+                }
         }
         .searchable(text: $query, prompt: loc("ابحث عن سورة"))
         // العدد والحجم من المُنسِّقَين نفسيهما اللذين تستعملهما رقاقة «المحمَّل» وشريط
@@ -117,7 +128,9 @@ struct RecitationView: View {
         }
         .sheet(isPresented: $showSleep) {
             SleepTimerSheet()
-                .presentationDetents([.height(430)])
+                // ارتفاع ثابت (٤٣٠) كان أقصر من الصفوف الثمانية فالتصقت البطاقة بحافة الشاشة.
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
                 .environment(\.layoutDirection, AppConfig.arabicOnly ? .rightToLeft : store.appLanguage.layoutDirection)
         }
     }
@@ -160,8 +173,12 @@ struct RecitationView: View {
         } label: {
             AtharCard(padding: 16, elevation: .e2, tint: Theme.accent) {
                 VStack(spacing: 14) {
+                    // زرّ التشغيل في البداية كما في كل صفٍّ وفي الشريط المصغّر تحته، والقرص في النهاية.
                     HStack(spacing: 14) {
-                        SurahDisc(number: su.id, size: 58, playing: audio.isPlaying)
+                        PlayGlyph(playing: audio.isPlaying && !resume,
+                                  buffering: audio.isBuffering && !resume, size: 46) {
+                            resume ? audio.play(surah: su.id) : audio.toggle(surah: su.id)
+                        }
                         VStack(alignment: .leading, spacing: 3) {
                             Text(caption)
                                 .font(Theme.display(11, weight: .medium))
@@ -176,10 +193,7 @@ struct RecitationView: View {
                                 .lineLimit(1)
                         }
                         Spacer(minLength: 4)
-                        PlayGlyph(playing: audio.isPlaying && !resume,
-                                  buffering: audio.isBuffering && !resume, size: 46) {
-                            resume ? audio.play(surah: su.id) : audio.toggle(surah: su.id)
-                        }
+                        SurahDisc(number: su.id, size: 58, playing: audio.isPlaying)
                     }
                     if !resume {
                         ProgressStrip(progress: audio.progress,
@@ -378,7 +392,7 @@ struct RecitationView: View {
             .padding(.horizontal, 14).padding(.vertical, 10)
             // السطح المشترك نفسه الذي يطفو فوقه، لا نسخة يدوية بتعبئة مسطّحة وحدّ أثقل.
             .background(CardSurface(radius: Theme.Radius.md, elevation: .e2))
-            .padding(.horizontal, 14)
+            .padding(.horizontal, Theme.gutter)
             .padding(.bottom, 8)
             .transition(.move(edge: .bottom).combined(with: .opacity))
         }
@@ -507,12 +521,14 @@ struct PlayerView: View {
             }
             .sheet(isPresented: $showSleep) {
                 SleepTimerSheet()
-                    .presentationDetents([.height(430)])
+                    .presentationDetents([.medium, .large])
+                    .presentationDragIndicator(.visible)
                     .environment(\.layoutDirection, AppConfig.arabicOnly ? .rightToLeft : store.appLanguage.layoutDirection)
             }
             .sheet(isPresented: $showSpeed) {
                 SpeedSheet()
-                    .presentationDetents([.height(300)])
+                    .presentationDetents([.height(240)])
+                    .presentationDragIndicator(.visible)
                     .environment(\.layoutDirection, AppConfig.arabicOnly ? .rightToLeft : store.appLanguage.layoutDirection)
             }
             // خليّة «محمَّلة» تجاور خلايا حالةٍ لا تُضغط فتُقرأ حالةً، ولمسةٌ عابرة تُسقط نحو ١٠ م.ب.
@@ -833,7 +849,7 @@ struct SleepTimerSheet: View {
                                 }
                                 .buttonStyle(.plain)
                                 .accessibilityAddTraits(audio.sleep == t ? .isSelected : [])
-                                if i < SleepTimer.choices.count - 1 { SettingsDivider() }
+                                if i < SleepTimer.choices.count - 1 { SettingsDivider(inset: 46) }
                             }
                         }
                     }
@@ -916,7 +932,7 @@ struct ReciterPicker: View {
                         SettingsCard {
                             ForEach(Array(RecitationLibrary.reciters.enumerated()), id: \.element.id) { i, r in
                                 reciterRow(r)
-                                if i < RecitationLibrary.reciters.count - 1 { SettingsDivider() }
+                                if i < RecitationLibrary.reciters.count - 1 { SettingsDivider(inset: 46) }
                             }
                         }
                         Text(loc("التلاوات من موقع MP3Quran.net، متاحة للعموم بلا مقابل، برواية حفص عن عاصم."))
@@ -991,6 +1007,10 @@ struct SurahDisc: View {
     let number: Int
     var size: CGFloat = 60
     var playing: Bool = false
+    /// اللونان قيمتان مخزّنتان لا قراءةً ساكنة، وإلا بقي القرص بطابع الثيم السابق
+    /// حين تتساوى مدخلاته بعد التبديل.
+    var tint: Color = Theme.accent
+    var tint2: Color = Theme.accent2
 
     /// النبض يتوقّف مع «تقليل الحركة» كسائر حركات التطبيق.
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -998,15 +1018,17 @@ struct SurahDisc: View {
     var body: some View {
         ZStack {
             EightPointStar(innerRatio: 0.66)
-                .fill(Theme.accent.opacity(0.10))
+                .fill(tint.opacity(0.10))
             EightPointStar(innerRatio: 0.66)
-                .stroke(Theme.accentGradient, lineWidth: size > 100 ? 2 : 1.2)
+                .stroke(LinearGradient(colors: [tint, tint2],
+                                       startPoint: .topTrailing, endPoint: .bottomLeading),
+                        lineWidth: size > 100 ? 2 : 1.2)
             EightPointStar(innerRatio: 0.74)
-                .stroke(Theme.accent.opacity(0.30), lineWidth: 0.7)
+                .stroke(tint.opacity(0.30), lineWidth: 0.7)
                 .padding(size * 0.11)
             Text(number.counterText)
                 .font(.system(size: size * 0.26, weight: .semibold, design: .rounded))
-                .foregroundStyle(Theme.accent)
+                .foregroundStyle(tint)
         }
         .frame(width: size, height: size)
         // الحركة مربوطة بـ playing نفسها: كانت مربوطة بعلمٍ يتبدّل مرّةً عند الظهور،
@@ -1063,6 +1085,12 @@ struct ProgressStrip: View {
     /// الشريط المصغّر لا يُسحب: مساحة لمسه الموسّعة كانت تبتلع ضغطة زرّ التشغيل
     /// فوقه، والسحب متاحٌ في صفحة المشغّل.
     var seekable: Bool = true
+    /// الألوان قيمًا مخزّنة لا قراءةً ساكنة في الجسم: SwiftUI يتخطّى الجسم إن تساوت
+    /// مدخلاته، فبقي امتلاء الشريط المصغّر أخضر بعد الانتقال إلى الطابع النيلي.
+    var tint: Color = Theme.accent
+    var tint2: Color = Theme.accent2
+    var surface: Color = Theme.surface
+    var inkFaint: Color = Theme.inkFaint
     var onSeek: (Double) -> Void
 
     private var clamped: Double { min(1, max(0, progress)) }
@@ -1073,18 +1101,19 @@ struct ProgressStrip: View {
                 let h: CGFloat = tall ? 7 : 4
                 let knob: CGFloat = 14
                 ZStack(alignment: .leading) {
-                    Capsule().fill(Theme.accent.opacity(0.14))
+                    Capsule().fill(tint.opacity(0.14))
                         .frame(height: h)
-                    Capsule().fill(Theme.accentGradient)
+                    Capsule().fill(LinearGradient(colors: [tint, tint2],
+                                                  startPoint: .topTrailing, endPoint: .bottomLeading))
                         .frame(width: max(h, g.size.width * clamped), height: h)
                     if tall && duration > 0 {
                         // المقبض يسير داخل الشريط لا خارجه، فلا يبرز عند الطرفين.
                         Circle()
-                            .fill(Theme.surface)
-                            .overlay(Circle().strokeBorder(Theme.accent, lineWidth: 3.2))
+                            .fill(surface)
+                            .overlay(Circle().strokeBorder(tint, lineWidth: 3.2))
                             .frame(width: knob, height: knob)
                             .offset(x: (g.size.width - knob) * clamped)
-                            .shadow(color: Theme.accent.opacity(0.25), radius: 3, y: 1)
+                            .shadow(color: tint.opacity(0.25), radius: 3, y: 1)
                     }
                 }
                 .frame(height: max(h, tall ? 14 : h), alignment: .center)
@@ -1103,7 +1132,7 @@ struct ProgressStrip: View {
                     Text(duration > 0 ? "−" + max(0, duration - elapsed).clockText : "—")
                 }
                 .font(.system(size: 12, weight: .medium, design: .rounded))
-                .foregroundStyle(Theme.inkFaint)
+                .foregroundStyle(inkFaint)
                 .monospacedDigit()
             }
         }
@@ -1202,7 +1231,7 @@ struct MiniPlayer: View {
         .padding(.horizontal, 13).padding(.vertical, 9)
         // السطح المشترك نفسه الذي يطفو فوقه، لا نسخة يدوية بتعبئة مسطّحة وحدّ أثقل.
         .background(CardSurface(radius: Theme.Radius.md, elevation: .e2))
-        .padding(.horizontal, 14)
+        .padding(.horizontal, Theme.gutter)   // بمحاذاة القوائم التي يطفو فوقها لا أعرض منها
         .padding(.bottom, 8)
         .transition(.move(edge: .bottom).combined(with: .opacity))
         .animation(Motion.smooth, value: audio.surah)
@@ -1212,6 +1241,11 @@ struct MiniPlayer: View {
 /// زرّ التنزيل بحالاته الأربع.
 struct DownloadGlyph: View {
     let surah: Int
+    /// الألوان قيمًا مخزّنة: مدخل الرمز الوحيد هو رقم السورة، فلا يعيد SwiftUI رسمه
+    /// بعد تبديل الثيم لو قرأ ألوانه ساكنةً في الجسم.
+    var tint: Color = Theme.accent
+    var danger: Color = Theme.danger
+    var inkFaint: Color = Theme.inkFaint
     @StateObject private var audio = Recitation.shared
 
     /// الرمز ٣٤ نقطة كي لا يرتفع الصفّ، وملمسه يتّسع إلى ٤٤.
@@ -1224,7 +1258,7 @@ struct DownloadGlyph: View {
             Button { audio.download(surah: surah) } label: {
                 Image(systemName: failed ? "exclamationmark.arrow.circlepath" : "arrow.down.circle")
                     .font(.system(size: 18))
-                    .foregroundStyle(failed ? Theme.danger : Theme.inkFaint)
+                    .foregroundStyle(failed ? danger : inkFaint)
                     .frame(width: 34, height: 34)
                     .contentShape(hitArea)
             }
@@ -1235,9 +1269,9 @@ struct DownloadGlyph: View {
         case .downloading(let f):
             cancelButton {
                 ZStack {
-                    Circle().stroke(Theme.accent.opacity(0.15), lineWidth: 2.5)
+                    Circle().stroke(tint.opacity(0.15), lineWidth: 2.5)
                     Circle().trim(from: 0, to: max(0.02, f))
-                        .stroke(Theme.accent, style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
+                        .stroke(tint, style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
                         .rotationEffect(.degrees(-90))
                 }
                 .frame(width: 20, height: 20)
@@ -1249,9 +1283,11 @@ struct DownloadGlyph: View {
                     audio.delete(surah: surah)
                 }
             } label: {
-                Image(systemName: "arrow.down.circle.fill")
+                // علامة صحّ مفرّغة لا قرصًا مصمتًا: القرص المملوء كان أعلى عنصرٍ في الصفّ
+                // وقرأه الناس دعوةً للتنزيل على السور التي لا تحتاج شيئًا.
+                Image(systemName: "checkmark.circle")
                     .font(.system(size: 18))
-                    .foregroundStyle(Theme.accent)
+                    .foregroundStyle(tint)
                     .frame(width: 34, height: 34)
                     .contentShape(hitArea)
             }
@@ -1266,7 +1302,7 @@ struct DownloadGlyph: View {
             content()
                 .overlay(Image(systemName: "xmark")
                     .font(.system(size: 7, weight: .bold))
-                    .foregroundStyle(Theme.accent))
+                    .foregroundStyle(tint))
                 .frame(width: 34, height: 34)
                 .contentShape(hitArea)
         }

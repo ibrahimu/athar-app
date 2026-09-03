@@ -345,6 +345,11 @@ struct SurahRow: View {
     // يُقرأ لون الطابع هنا (لا داخل النجمة) ليتبدّل الصف مع الثيم فورًا.
     var accent: Color = Theme.accent
 
+    /// «مكية · 7 آيات» بالترتيب نفسه الذي يظهر في صفّ التلاوة: يُمرَّر String لا
+    /// LocalizedStringKey (فذاك يفكّك الأجزاء المُدخَلة ويقلب ترتيبها)، وعلامة RLM
+    /// تثبّت اتجاه القراءة مهما كان مسار Text.
+    private var meta: String { "\u{200F}\(surah.revelation) · \(surah.ayahCount.ayahCountText)" }
+
     var body: some View {
         AtharCard(padding: 14) {
             HStack(spacing: 14) {
@@ -354,7 +359,7 @@ struct SurahRow: View {
                     Text(loc("سورة %1$@", surah.name))
                         .font(Theme.display(17, weight: .semibold))
                         .foregroundStyle(Theme.ink)
-                    Text("\(surah.revelation) · \(surah.ayahCount.ayahCountText)")
+                    Text(meta)
                         .font(Theme.display(12))
                         .foregroundStyle(Theme.inkFaint)
                 }

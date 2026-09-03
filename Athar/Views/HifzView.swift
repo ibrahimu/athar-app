@@ -110,30 +110,36 @@ struct HifzView: View {
             progressBar
             stageRail
 
-            ScrollView {
-                VStack(spacing: 20) {
-                    Text("\(Quran.surah(ref.surah)?.name ?? "") · الآية \(ref.ayah.counterText)")
-                        .font(Theme.display(13, weight: .semibold))
-                        .foregroundStyle(sea)
-                        .padding(.horizontal, 12).padding(.vertical, 5)
-                        .background(Capsule().fill(sea.opacity(0.10)))
-                        .padding(.top, 8)
+            // ارتفاع أدنى لا ثابت (كما في صفحة الذكر): الآية القصيرة تتوسّط المساحة بدل أن
+            // تلتصق بالأعلى ويبقى بينها وبين التوجيه والزرّ فراغ ٢٤٥ نقطة؛ والطويلة تمرّر.
+            GeometryReader { geo in
+                ScrollView {
+                    VStack(spacing: 20) {
+                        Text("\(Quran.surah(ref.surah)?.name ?? "") · الآية \(ref.ayah.counterText)")
+                            .font(Theme.display(13, weight: .semibold))
+                            .foregroundStyle(sea)
+                            .padding(.horizontal, 12).padding(.vertical, 5)
+                            .background(Capsule().fill(sea.opacity(0.10)))
+                            .padding(.top, 8)
 
-                    ayahCard(ref)
+                        ayahCard(ref)
 
-                    if let card = store.card(for: ref), card.lapses > 0 {
-                        Label(lapseText(card.lapses), systemImage: "arrow.trianglehead.counterclockwise")
-                            .font(Theme.display(12, weight: .medium))
-                            .foregroundStyle(Theme.gold)
-                            .padding(.horizontal, 12).padding(.vertical, 6)
-                            .background(Capsule().fill(Theme.gold.opacity(0.12)))
+                        if let card = store.card(for: ref), card.lapses > 0 {
+                            Label(lapseText(card.lapses), systemImage: "arrow.trianglehead.counterclockwise")
+                                .font(Theme.display(12, weight: .medium))
+                                .foregroundStyle(Theme.gold)
+                                .padding(.horizontal, 12).padding(.vertical, 6)
+                                .background(Capsule().fill(Theme.gold.opacity(0.12)))
+                        }
                     }
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 8)
+                    .readableWidth(620)
+                    .frame(minHeight: geo.size.height, alignment: .center)
                 }
-                .padding(.horizontal, 20)
-                .padding(.bottom, 8)
-                .readableWidth(620)
+                .scrollIndicators(.hidden)
+                .scrollBounceBehavior(.basedOnSize)
             }
-            .scrollIndicators(.hidden)
 
             // التوجيه ثابت فوق الأزرار (خارج التمرير) فلا يُقصّ خلف الزر.
             stageHint

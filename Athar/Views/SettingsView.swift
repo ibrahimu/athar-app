@@ -36,27 +36,32 @@ struct SettingsView: View {
 
     private var content: some View {
         Group {
-            ZStack {
-                AtharBackground(tint: Theme.accent, secondary: Theme.gold)
-                settingsAura
-                ScrollView {
-                    VStack(spacing: 30) {
-                        if !AppConfig.arabicOnly { languageRow.appearStagger(0) }
-                        reminders.appearStagger(1)
-                        sunanReminders.appearStagger(2)
-                        prayer.appearStagger(3)
-                        display.appearStagger(4)
-                        sources.appearStagger(5)
-                        stats.appearStagger(6)
-                        about.appearStagger(7)
-                        blessing.appearStagger(8)
-                    }
-                    .padding(.horizontal, Theme.gutter)
-                    .padding(.top, 6)
-                    .padding(.bottom, 34)
-                    .readableWidth(560)
+            ScrollView {
+                VStack(spacing: 30) {
+                    if !AppConfig.arabicOnly { languageRow.appearStagger(0) }
+                    reminders.appearStagger(1)
+                    sunanReminders.appearStagger(2)
+                    prayer.appearStagger(3)
+                    display.appearStagger(4)
+                    sources.appearStagger(5)
+                    stats.appearStagger(6)
+                    about.appearStagger(7)
+                    blessing.appearStagger(8)
                 }
-                .scrollIndicators(.hidden)
+                .padding(.horizontal, Theme.gutter)
+                .padding(.top, 6)
+                .padding(.bottom, 34)
+                .readableWidth(560)
+            }
+            .scrollIndicators(.hidden)
+            .modifier(PaperTopEdge())
+            // الخلفية خلف ScrollView لا حوله في ZStack، فيبقى هو جذر الشاشة الذي
+            // يكتشفه شريط العنوان ويعامل حافته العلوية عند التمرير تحته.
+            .background {
+                ZStack {
+                    AtharBackground(tint: Theme.accent, secondary: Theme.gold)
+                    settingsAura
+                }
             }
             .navigationTitle(loc("settings"))
             .navigationBarTitleDisplayMode(.inline)
@@ -417,12 +422,9 @@ struct SettingsView: View {
 
                 SettingsDivider()
                 Button { showResetConfirm = true } label: {
+                    // يفتح مربّع تأكيد لا شاشة، فلا سهم يعِد بانتقال لا يأتي.
                     SettingsRow(icon: "arrow.counterclockwise", tint: Theme.danger,
-                                title: loc("rowReset")) {
-                        Image(systemName: "chevron.forward")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(Theme.inkFaint)
-                    }
+                                title: loc("rowReset"))
                 }
                 .buttonStyle(.plain)
             }
@@ -540,12 +542,9 @@ struct SettingsView: View {
                 SettingsDivider()
                 ShareLink(item: Self.appStoreURL,
                           message: Text(loc("تطبيق أثر — أذكار وأوقات الصلاة ومسبحة. مجاني بلا إعلانات، ويعمل بلا إنترنت."))) {
+                    // يفتح ورقة المشاركة لا شاشة، والرقاقة تحمل رمز المشاركة أصلًا؛ فلا سهم.
                     SettingsRow(icon: "square.and.arrow.up.fill", tint: Theme.accent,
-                                title: loc("rowShare"), subtitle: loc("مَن دلَّ على خيرٍ فله مثل أجر فاعله")) {
-                        Image(systemName: "chevron.forward")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(Theme.inkFaint)
-                    }
+                                title: loc("rowShare"), subtitle: loc("مَن دلَّ على خيرٍ فله مثل أجر فاعله"))
                 }
                 .buttonStyle(.plain)
             }
@@ -637,6 +636,27 @@ private struct LocationPickerHost: View {
 
     var body: some View {
         LocationPickerView(location: location)
+    }
+}
+
+/// حافة التمرير العلوية: يذوب المحتوى إلى لون الورق عند حدّ شريط العنوان، فلا
+/// يُقرأ نصٌّ تحت زرّ الرجوع كما ظهر في لقطات المراجعة. التدرّج يبدأ داخل منطقة
+/// الشريط ولا يغطّي من المحتوى إلا ثماني نقاط، حتى لا يبهت عنوان المجموعة الأولى
+/// والشاشة في راحتها. وعلى iOS 26 نطلب أثر الحافة الناعم صراحةً، فالشريط لا
+/// يعامل ScrollView تلقائيًا في كل الحالات. نسخة محلّية للملف؛ موضعها Components لاحقًا.
+private struct PaperTopEdge: ViewModifier {
+    func body(content: Content) -> some View {
+        let faded = content.overlay(alignment: .top) {
+            LinearGradient(colors: [Theme.canvas, .clear], startPoint: .top, endPoint: .bottom)
+                .frame(height: 24)
+                .offset(y: -16)
+                .allowsHitTesting(false)
+        }
+        if #available(iOS 26, *) {
+            faded.scrollEdgeEffectStyle(.soft, for: .top)
+        } else {
+            faded
+        }
     }
 }
 

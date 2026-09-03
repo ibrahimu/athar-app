@@ -90,12 +90,14 @@ struct DhikrSessionView: View {
             }
             .frame(height: 6)
 
+            // العدّ «١ من ٢٥» في الجهة البادئة والنسبة في النهاية — كترتيب شريط الحفظ،
+            // فلا يتبادل الشريطان المتطابقان مواضع أرقامهما بين الشاشتين.
             HStack {
-                Text("\(Int(overallProgress * 100).counterText)٪")
+                Text("\((index + 1).counterText) من \(category.items.count.counterText)")
                     .font(Theme.display(12, weight: .medium))
                     .foregroundStyle(Theme.inkFaint)
                 Spacer()
-                Text("\((index + 1).counterText) من \(category.items.count.counterText)")
+                Text("\(Int(overallProgress * 100).counterText)٪")
                     .font(Theme.display(12, weight: .medium))
                     .foregroundStyle(Theme.inkFaint)
             }

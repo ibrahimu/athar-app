@@ -180,24 +180,19 @@ struct TasbihView: View {
             }
             .pressable()
 
+            // قراءة لا زرّ: كانت في قرص مصبوغ بحدّ شعري يطابق «تصفير» بجواره فتبدو زرًّا
+            // ثانيًا لا يفعل شيئًا. نصّ هادئ بعنوان خافت، بارتفاع الصفّ نفسه ليبقى محاذيًا.
             HStack(spacing: 6) {
                 Text(loc("الأشواط"))
                     .font(Theme.display(13))
                     .foregroundStyle(Theme.inkFaint)
                 Text(rounds.counterText)
                     .font(.system(size: 17, weight: .bold, design: .rounded))
-                    .foregroundStyle(LinearGradient(colors: [Theme.accent, Theme.accent.opacity(0.7)],
-                                                    startPoint: .top, endPoint: .bottom))
+                    .foregroundStyle(Theme.inkSoft)
                     .contentTransition(.numericText())
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 14)
-            .background(
-                RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous)
-                    .fill(Theme.accentSoft)
-                    .overlay(RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous)
-                        .strokeBorder(Theme.accent.opacity(0.14), lineWidth: 0.5))
-            )
         }
         .confirmationDialog(loc("تصفير العدّاد؟"), isPresented: $confirmReset, titleVisibility: .visible) {
             Button(loc("تصفير"), role: .destructive) {

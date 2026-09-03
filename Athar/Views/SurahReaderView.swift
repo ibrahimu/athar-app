@@ -14,9 +14,12 @@ struct ReadingPalette {
     static func of(_ theme: ReadingTheme) -> ReadingPalette {
         switch theme {
         case .paper:
+            // لون التمييز من سِمة التطبيق لا أخضرُ ثابت: كان منسوخًا من السِّمة الافتراضية
+            // فيبقى أخضر حين يختار المستخدم سِمةً أخرى، فتظهر على الصفحة الواحدة
+            // علاماتُ آيٍ خضراء وأزرارُ شريطٍ ومشغّلٌ بلونٍ آخر. البُنّي الداكن (سيبيا) مقصود.
             return .init(paper: Color(hex: 0xFBF9F3), ink: Color(hex: 0x14201B),
                          faint: Color(hex: 0x8A9992), secondary: Color(hex: 0x5A6560),
-                         accent: Color(hex: 0x1F6B4F), hairline: Color(hex: 0xE6E1D4))
+                         accent: Color(hex: Theme.current.accent.light), hairline: Color(hex: 0xE6E1D4))
         case .sepia:
             return .init(paper: Color(hex: 0xF4E9D6), ink: Color(hex: 0x3E3327),
                          faint: Color(hex: 0x9A8B72), secondary: Color(hex: 0x6E5E43),
@@ -25,7 +28,7 @@ struct ReadingPalette {
             // بطلب المستخدم: عكس النهاري — حبر أبيض على ورق أزرق داكن.
             return .init(paper: Color(hex: 0x0E1726), ink: Color(hex: 0xF2F5F8),
                          faint: Color(hex: 0x7C8AA0), secondary: Color(hex: 0xA6B2C4),
-                         accent: Color(hex: 0x6FC3A0), hairline: Color(hex: 0x1F2C42))
+                         accent: Color(hex: Theme.current.accent.dark), hairline: Color(hex: 0x1F2C42))
         }
     }
 }
@@ -109,9 +112,27 @@ struct SurahReaderView: View {
         .overlay(alignment: .bottom) {
             VStack(spacing: 6) {
                 MiniPlayer()
-                positionBar
+                // سطحٌ واحد يطفو أثناء التلاوة: كانت الكبسولة تحت المشغّل بفجوة ٦ نقاط
+                // يظهر فيها نصّ الآية مقطوعًا ويلتفّ حولها. الجزء والصفحة يبقيان في
+                // وضع «صفحة» برقم الصفحة، وفي المشغّل الكامل.
+                if audio.surah == nil { positionBar }
+            }
+            .background(alignment: .bottom) {
+                // شريط التبويب مخفيّ هنا، فلا شيء يغطّي شريط مؤشّر الرئيسية: كانت
+                // الآيات تمرّ تحت المشغّل ثم تعود ظاهرةً أسفله. تدرّجٌ بلون الورق
+                // يذيبها تحت الشريط ويمتدّ إلى حافة الشاشة.
+                LinearGradient(colors: [palette.paper.opacity(0), palette.paper],
+                               startPoint: .top, endPoint: .bottom)
+                    .padding(.top, -28)
+                    .ignoresSafeArea(edges: .bottom)
+                    .allowsHitTesting(false)
             }
         }
+        // عالمٌ لونيّ واحد: التطبيق قد يكون داكنًا والورق فاتحًا، فألوان المشغّل
+        // المصغّر «المتكيّفة» كانت تُحَلّ على سِمة التطبيق لا على الورق (بطاقة سوداء
+        // فوق ورقٍ كريمي). المحتوى والشريط السفلي يتبعان سِمة القراءة؛ الأوراق
+        // المنبثقة خارج هذا النطاق فتبقى على سِمة التطبيق.
+        .environment(\.colorScheme, store.readingTheme == .night ? .dark : .light)
         .navigationTitle(loc("سورة %1$@", visibleSurahName))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.hidden, for: .tabBar)
@@ -141,6 +162,11 @@ struct SurahReaderView: View {
             AyahActions(ref: ref).presentationDetents([.medium, .large])
                 .environment(\.layoutDirection, AppConfig.arabicOnly ? .rightToLeft : store.appLanguage.layoutDirection)
         }
+        // خلفية الشريط بلون الورق وظاهرة: بلا خلفيةٍ ظاهرة لا يقود toolbarColorScheme
+        // شريطَ الحالة، فتُرسم الساعة والبطارية بيضاء على ورقٍ كريمي حين يكون
+        // التطبيق داكنًا. الشكل لا يتغيّر، وشريط الحالة يتبع سِمة القراءة.
+        .toolbarBackground(palette.paper, for: .navigationBar)
+        .toolbarBackground(.visible, for: .navigationBar)
         .toolbarColorScheme(store.readingTheme == .night ? .dark : .light, for: .navigationBar)
         // القارئ يُمسك المصحف دقائق دون لمس — لا تنطفئ الشاشة عليه.
         .onAppear { ReaderWake.enter() }
@@ -176,7 +202,8 @@ struct SurahReaderView: View {
 
                     endOfSurah
                 }
-                .padding(.horizontal, 20)
+                // هامش الحافّة الموحّد، ليقع عمود الآيات على حافّة المشغّل المصغّر نفسها.
+                .padding(.horizontal, Theme.gutter)
                 .padding(.bottom, 60 + bottomReserve)
                 .readableWidth(700)
             }
@@ -384,26 +411,34 @@ private struct MushafPageContent: View {
     }
 
     var body: some View {
-        ScrollView {
-            if framed {
-                pageStack
-                    .padding(.horizontal, 17)
-                    .padding(.top, 20)
-                    .padding(.bottom, 16)
-                    .background(MushafFrame(palette: palette))
-                    .padding(.horizontal, 12)
-                    .padding(.top, 10)
-                    .padding(.bottom, 74 + bottomInset)
-                    .readableWidth(700)
-            } else {
-                pageStack
-                    .padding(.horizontal, 20)
-                    .padding(.top, 12)
-                    .padding(.bottom, 70 + bottomInset)
-                    .readableWidth(700)
+        // الصفحة لا تقصر عن الشاشة: في الصفحتين القصيرتين (١ و٢) كان رقم الصفحة
+        // يقف تحت آخر آية وسط الشاشة كرقاقةٍ ضائعة. حدٌّ أدنى للارتفاع يساوي المتاح
+        // ناقص هوامش الفرع (١٢+٧٠ سادة، ١٠+٢٠+١٦+٧٤ مؤطَّرة) وحجزَ المشغّل، فيثبت
+        // الرقم في ذيل الصفحة ولا يتغيّر شيء في الصفحات الممتلئة.
+        GeometryReader { geo in
+            ScrollView {
+                if framed {
+                    pageStack
+                        .frame(minHeight: max(0, geo.size.height - 120 - bottomInset), alignment: .top)
+                        .padding(.horizontal, 17)
+                        .padding(.top, 20)
+                        .padding(.bottom, 16)
+                        .background(MushafFrame(palette: palette))
+                        .padding(.horizontal, 12)
+                        .padding(.top, 10)
+                        .padding(.bottom, 74 + bottomInset)
+                        .readableWidth(700)
+                } else {
+                    pageStack
+                        .frame(minHeight: max(0, geo.size.height - 82 - bottomInset), alignment: .top)
+                        .padding(.horizontal, 20)
+                        .padding(.top, 12)
+                        .padding(.bottom, 70 + bottomInset)
+                        .readableWidth(700)
+                }
             }
+            .scrollIndicators(.hidden)
         }
-        .scrollIndicators(.hidden)
     }
 
     private var pageStack: some View {
@@ -432,6 +467,9 @@ private struct MushafPageContent: View {
                     }
                 }
 
+                // يدفع رقم الصفحة إلى ذيلها حين تقصر (مع الحدّ الأدنى للارتفاع أعلاه).
+                Spacer(minLength: 6)
+
                 Text(page.counterText)
                     .font(.system(size: 13, weight: .medium, design: .rounded))
                     .foregroundStyle(palette.secondary)
@@ -439,7 +477,6 @@ private struct MushafPageContent: View {
                     .padding(.horizontal, 12).padding(.vertical, 4)
                     .background(Capsule().fill(palette.ink.opacity(0.04)))
                     .overlay(Capsule().strokeBorder(palette.hairline.opacity(0.6), lineWidth: 0.5))
-                    .padding(.top, 6)
                     .accessibilityLabel(loc("صفحة %1$@", page.counterText))
             }
     }

@@ -460,64 +460,64 @@ struct LocationPickerView: View {
         }
     }
 
+    /// مدن بلد واحد تحت عنوانه.
+    private struct CityGroup: Identifiable {
+        let country: String
+        let cities: [City]
+        var id: String { country }
+    }
+
+    /// المدن مجمَّعة ببلدها بترتيب ورودها: يظهر اسم البلد عنوان مجموعة مرّة واحدة
+    /// بدل أن يتكرّر سطرًا فرعيًا تحت سبع مدن سعودية متتالية.
+    private var groups: [CityGroup] {
+        var order: [String] = [], map: [String: [City]] = [:]
+        for city in cities {
+            if map[city.country] == nil { order.append(city.country) }
+            map[city.country, default: []].append(city)
+        }
+        return order.map { CityGroup(country: $0, cities: map[$0] ?? []) }
+    }
+
     var body: some View {
         NavigationStack {
-            List {
-                Section {
-                    Button {
-                        location.request()
-                    } label: {
-                        HStack {
-                            Label(loc("استخدام موقعي الحالي"), systemImage: "location.fill")
-                            Spacer()
-                            if location.isResolving { ProgressView() }
-                            else if store.usesDeviceLocation {
-                                Image(systemName: "checkmark").foregroundStyle(Theme.accent)
-                            }
-                        }
-                    }
-                    if location.failed {
-                        Text(loc("تعذّر تحديد الموقع. تأكد من السماح للتطبيق بالوصول للموقع، أو اختر مدينتك يدويًا."))
+            // كانت الورقة الوحيدة في التطبيق على List النظام (خلفية رمادية، خلايا بيضاء،
+            // عنوان قسم نظامي)؛ صارت على ورق «أثر» وبطاقات الإعدادات كورقة اختيار القارئ.
+            ZStack {
+                AtharBackground()
+                ScrollView {
+                    VStack(spacing: 14) {
+                        deviceLocationCard
+                        Text(loc("موقعك يُستخدم على جهازك فقط لحساب أوقات الصلاة، ولا يُرسل إلى أي جهة."))
                             .font(Theme.display(12))
-                            .foregroundStyle(Theme.inkSoft)
-                        // الرفض الصريح لا يُرفع إلا من إعدادات النظام، فنفتحها كما في مسار
-                        // الإشعارات. (المقيَّد restricted لا يملك المستخدم تغييره، فيكفيه اختيار مدينة.)
-                        if location.status == .denied {
-                            Button(loc("فتح الإعدادات")) {
-                                if let url = URL(string: UIApplication.openSettingsURLString) {
-                                    UIApplication.shared.open(url)
-                                }
-                            }
-                            .font(Theme.display(13, weight: .semibold))
-                            .foregroundStyle(Theme.accent)
-                        }
-                    }
-                } footer: {
-                    Text(loc("موقعك يُستخدم على جهازك فقط لحساب أوقات الصلاة، ولا يُرسل إلى أي جهة."))
-                }
+                            .foregroundStyle(Theme.inkFaint)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 6)
 
-                Section(loc("المدن")) {
-                    ForEach(cities) { city in
-                        Button {
-                            store.setCity(city)
-                            WidgetCenter.shared.reloadAllTimelines()
-                            dismiss()
-                        } label: {
-                            HStack {
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(city.name).foregroundStyle(Theme.ink)
-                                    Text(city.country)
-                                        .font(Theme.display(11))
-                                        .foregroundStyle(Theme.inkFaint)
-                                }
-                                Spacer()
-                                if !store.usesDeviceLocation, store.cityId == city.id {
-                                    Image(systemName: "checkmark").foregroundStyle(Theme.accent)
+                        ForEach(groups) { group in
+                            VStack(spacing: 8) {
+                                SettingsGroupTitle(text: group.country)
+                                SettingsCard {
+                                    ForEach(Array(group.cities.enumerated()), id: \.element.id) { i, city in
+                                        cityRow(city)
+                                        // الفاصل يبدأ حيث يبدأ النص بعد دائرة التحديد (١٧ نقطة)، لا بعد رقاقة أيقونة.
+                                        if i < group.cities.count - 1 { SettingsDivider(inset: 46) }
+                                    }
                                 }
                             }
                         }
+
+                        if groups.isEmpty, !query.isEmpty {
+                            ContentUnavailableView.search(text: query)
+                                .padding(.top, 30)
+                        }
                     }
+                    .padding(.horizontal, Theme.gutter)
+                    .padding(.top, 8)
+                    .padding(.bottom, 30)
+                    .readableWidth(560)
                 }
+                .scrollIndicators(.hidden)
             }
             .searchable(text: $query, prompt: loc("ابحث عن مدينة"))
             .navigationTitle(loc("الموقع"))
@@ -534,5 +534,73 @@ struct LocationPickerView: View {
                 }
             }
         }
+    }
+
+    /// «استخدام موقعي الحالي» بصفّ الإعدادات الموحّد، وتحته سبب التعذّر ومخرجه إن وُجد.
+    private var deviceLocationCard: some View {
+        SettingsCard {
+            Button {
+                location.request()
+            } label: {
+                SettingsRow(icon: "location.fill", title: loc("استخدام موقعي الحالي")) {
+                    if location.isResolving {
+                        ProgressView()
+                    } else if store.usesDeviceLocation {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 17))
+                            .foregroundStyle(Theme.accent)
+                    }
+                }
+            }
+            .buttonStyle(.plain)
+
+            if location.failed {
+                SettingsDivider()
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(loc("تعذّر تحديد الموقع. تأكد من السماح للتطبيق بالوصول للموقع، أو اختر مدينتك يدويًا."))
+                        .font(Theme.display(12))
+                        .foregroundStyle(Theme.inkSoft)
+                        .fixedSize(horizontal: false, vertical: true)
+                    // الرفض الصريح لا يُرفع إلا من إعدادات النظام، فنفتحها كما في مسار
+                    // الإشعارات. (المقيَّد restricted لا يملك المستخدم تغييره، فيكفيه اختيار مدينة.)
+                    if location.status == .denied {
+                        Button(loc("فتح الإعدادات")) {
+                            if let url = URL(string: UIApplication.openSettingsURLString) {
+                                UIApplication.shared.open(url)
+                            }
+                        }
+                        .font(Theme.display(13, weight: .semibold))
+                        .foregroundStyle(Theme.accent)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 16)
+                .padding(.vertical, 12)
+            }
+        }
+    }
+
+    /// صفّ مدينة كصفّ القارئ: دائرة تحديد بادئة والاسم وحده — البلد عنوان مجموعته.
+    private func cityRow(_ city: City) -> some View {
+        let on = !store.usesDeviceLocation && store.cityId == city.id
+        return Button {
+            store.setCity(city)
+            WidgetCenter.shared.reloadAllTimelines()
+            dismiss()
+        } label: {
+            HStack(spacing: 12) {
+                Image(systemName: on ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 17))
+                    .foregroundStyle(on ? Theme.accent : Theme.hairline)
+                Text(city.name)
+                    .font(Theme.display(15, weight: on ? .semibold : .regular))
+                    .foregroundStyle(Theme.ink)
+                Spacer(minLength: 6)
+            }
+            .padding(.horizontal, 14).padding(.vertical, 12)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(on ? .isSelected : [])
     }
 }

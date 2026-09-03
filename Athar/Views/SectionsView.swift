@@ -63,8 +63,10 @@ struct SectionsView: View {
                     .padding(.bottom, 2)
                     .fixedSize(horizontal: false, vertical: true)
             }
-            LazyVGrid(columns: [GridItem(.flexible(), spacing: 12),
-                                GridItem(.flexible(), spacing: 12)], spacing: 12) {
+            // محاذاة علوية: تحجز البلاطة سطرَي الوصف فتتساوى، وإن اختلفت بقيت رؤوسها
+            // على خطّ واحد بدل أن يتوسّط الأقصر (القبلة) جارَه الأطول (الحج والعمرة).
+            LazyVGrid(columns: [GridItem(.flexible(), spacing: 12, alignment: .top),
+                                GridItem(.flexible(), spacing: 12, alignment: .top)], spacing: 12) {
                 ForEach(tabs) { tab in
                     let tile = SectionTile(tab: tab, tint: Theme.accent(for: tab.accentKey))
                     if !pushes, let open = onOpenTab {
@@ -102,7 +104,9 @@ struct SectionTile: View {
                 Text(tab.blurb)
                     .font(Theme.display(11))
                     .foregroundStyle(Theme.inkFaint)
-                    .lineLimit(2)
+                    // يُحجز سطران دائمًا، فتشترك بلاطات الصفّ في ارتفاع واحد وإن كان وصف
+                    // إحداها سطرًا واحدًا (القبلة) وجارتها سطرين (الحج والعمرة).
+                    .lineLimit(2, reservesSpace: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .fixedSize(horizontal: false, vertical: true)
             }

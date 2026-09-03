@@ -104,7 +104,9 @@ struct KhatmahView: View {
                             HStack(spacing: 12) {
                                 Image(systemName: mode == m ? "checkmark.circle.fill" : "circle")
                                     .font(.system(size: 18))
-                                    .foregroundStyle(mode == m ? Theme.accent : Theme.hairline)
+                                    // الحلقة غير المختارة بلون الفاصل كانت تكاد تختفي على البطاقة البيضاء؛
+                                    // رمادي أوضح يجعل الصفوف الثلاثة تُقرأ مجموعةً واحدة يُختار منها.
+                                    .foregroundStyle(mode == m ? Theme.accent : Theme.inkFaint.opacity(0.55))
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(m.title).font(Theme.display(15, weight: .semibold)).foregroundStyle(Theme.ink)
                                     Text(m.detail).font(Theme.display(11)).foregroundStyle(Theme.inkFaint)
