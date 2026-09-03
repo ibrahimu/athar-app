@@ -99,6 +99,7 @@ struct SurahReaderView: View {
                     onPageVisible: { page in
                         let ref = Quran.firstAyah(ofPage: page)
                         store.lastRead = ref
+                        store.noteReaderPage(page)          // الختمة تتقدّم بالقراءة
                         currentRef = ref
                     })
             } else {
@@ -167,7 +168,11 @@ struct SurahReaderView: View {
                                  highlights: store.highlights,
                                  isDark: store.readingTheme == .night,
                                  onTapAyah: { selected = $0 },
-                                 onVisible: { store.lastRead = $0; currentRef = $0 })
+                                 onVisible: {
+                                     store.lastRead = $0
+                                     store.noteReaderPage(Quran.page(of: $0))   // الختمة تتقدّم بالقراءة
+                                     currentRef = $0
+                                 })
 
                     endOfSurah
                 }

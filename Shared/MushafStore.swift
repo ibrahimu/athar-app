@@ -286,6 +286,14 @@ extension AtharStore {
 
     var khatmahActive: Bool { khatmahTotalDays > 0 }
 
+    /// القارئ بلغ صفحة: إن كانت الصفحة التي تلي «الصفحة التالية في الختمة» مباشرةً
+    /// فقد أُتمَّت تلك الصفحة فتُحتسب. خطوة واحدة فقط ولا قفز، حتى لا يُحتسب
+    /// فتحُ سورةٍ بعيدة قراءةً لكل ما قبلها.
+    func noteReaderPage(_ page: Int) {
+        guard khatmahActive, page == khatmahPagesDone + 2 else { return }
+        khatmahPagesDone = page - 1
+    }
+
     func startKhatmah(days: Int, mode: KhatmahMode) {
         khatmahTotalDays = days
         khatmahStartDay = Self.dayNumber()

@@ -181,6 +181,8 @@ struct OnboardingView: View {
             Button(loc("later")) { finish() }
                 .font(Theme.display(14))
                 .foregroundStyle(Theme.inkSoft)
+                .frame(minWidth: 88, minHeight: 44)     // هدف لمس كامل لا سطر نص وحده
+                .contentShape(Rectangle())
         }
         .padding(.horizontal, Theme.gutter)
         .padding(.bottom, 18)
