@@ -6,3 +6,4 @@ import Foundation
 extension CalculationMethod: SettingsChoice {}
 extension AsrMethod: SettingsChoice {}
 extension CountTapArea: SettingsChoice {}
+extension AthanSound: SettingsChoice {}

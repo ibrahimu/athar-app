@@ -60,7 +60,18 @@ struct SourcesView: View {
                         index: 4
                     )
 
-                    closing.appearStagger(5)
+                    block(
+                        icon: "speaker.wave.2.fill",
+                        title: loc("أصوات الأذان"),
+                        body: loc("«أذان المسجد النبوي»: تسجيل ejaz215 على Freesound برخصة CC BY 3.0. «أذان سعيد حاتم‌زاده» و«أذان عاقب عزيز»: ويكيميديا كومنز برخصة CC BY-SA 4.0. «أذان (تسجيل مفتوح)»: ويكيميديا كومنز، CC0. «أذان صباح فخري»: ويكيميديا كومنز، موسومٌ هناك ملكًا عامًّا."),
+                        linkTitle: "commons.wikimedia.org",
+                        url: "https://commons.wikimedia.org/wiki/Category:Adhan",
+                        note: loc("مقاطع التنبيه مقتطعة من أوائل التسجيلات (٣٠ ثانية حدّ iOS للإشعارات)، والتسجيل الكامل يُسمع من الإعدادات."),
+                        accent: Theme.accent(for: "gold"),
+                        index: 5
+                    )
+
+                    closing.appearStagger(6)
                 }
                 .padding(.horizontal, 18)
                 .padding(.top, 8)

@@ -46,6 +46,7 @@ final class AtharStore: ObservableObject {
         static let calcMethod        = "athar.calcMethod"
         static let asrMethod         = "athar.asrMethod"
         static let athanAlerts       = "athar.athanAlerts"
+        static let athanSound        = "athar.athanSound"
         static let didOnboard        = "athar.didOnboard"
         static let istighfarAlerts   = "athar.istighfarAlerts"
         static let istighfarEvery    = "athar.istighfarEveryHours"
@@ -88,6 +89,7 @@ final class AtharStore: ObservableObject {
             Key.calcMethod: CalculationMethod.ummAlQura.rawValue,
             Key.asrMethod: AsrMethod.standard.rawValue,
             Key.athanAlerts: false,
+            Key.athanSound: AthanSound.system.rawValue,
             Key.istighfarAlerts: false,
             Key.istighfarEvery: 3,
             Key.qiyamAlert: false,
@@ -248,6 +250,12 @@ final class AtharStore: ObservableObject {
     var athanAlerts: Bool {
         get { defaults.bool(forKey: Key.athanAlerts) }
         set { defaults.set(newValue, forKey: Key.athanAlerts); objectWillChange.send() }
+    }
+
+    /// صوت تنبيه الأذان — نغمة النظام أو أحد الأذانات المضمَّنة.
+    var athanSound: AthanSound {
+        get { AthanSound(rawValue: defaults.string(forKey: Key.athanSound) ?? "") ?? .system }
+        set { defaults.set(newValue.rawValue, forKey: Key.athanSound); objectWillChange.send() }
     }
 
     /// هل عُرضت شاشة الترحيب؟

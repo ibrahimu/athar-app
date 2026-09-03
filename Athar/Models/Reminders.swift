@@ -62,7 +62,7 @@ enum Reminders {
                 let content = UNMutableNotificationContent()
                 content.title = "حان وقت \(entry.prayer.title)"
                 content.body = "\(store.placeName) — أقم الصلاة، ولا تنسَ أذكار ما بعدها."
-                content.sound = .defaultCritical
+                content.sound = athanSound(store)
                 // حسّاس للوقت: يخترق «عدم الإزعاج» وأوضاع التركيز، لأن
                 // تنبيهًا يصل بعد فوات الوقت لا فائدة منه.
                 content.interruptionLevel = .timeSensitive
@@ -205,14 +205,20 @@ enum Reminders {
         await rescheduleSunan(store: store)
     }
 
+    /// صوت تنبيه الأذان الذي اختاره المستخدم — مقطع مضمَّن ≤ ٣٠ ث، أو نغمة النظام.
+    private static func athanSound(_ store: AtharStore) -> UNNotificationSound {
+        guard let name = store.athanSound.fileName else { return .defaultCritical }
+        return UNNotificationSound(named: UNNotificationSoundName(name + ".caf"))
+    }
+
     /// تنبيه تجريبي بعد ٥ ثوانٍ — ليتأكد المستخدم أن الإشعارات تعمل
     /// دون أن ينتظر دخول وقت صلاة.
-    static func sendTestAlert() async -> Bool {
+    static func sendTestAlert(store: AtharStore) async -> Bool {
         guard await requestAuthorization() else { return false }
         let content = UNMutableNotificationContent()
         content.title = "تنبيه تجريبي"
         content.body = "هكذا سيصلك تنبيه دخول وقت الصلاة."
-        content.sound = .defaultCritical
+        content.sound = athanSound(store)
         content.interruptionLevel = .timeSensitive
         let request = UNNotificationRequest(
             identifier: "athar.test.\(UUID().uuidString)",

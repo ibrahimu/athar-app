@@ -10,6 +10,7 @@ struct SettingsView: View {
     @State private var permissionDenied = false
     @State private var scheduledAlerts = 0
     @State private var testSent = false
+    @StateObject private var preview = AthanPreview.shared
     /// ختم آخر ضغطة على «جرّب التنبيه الآن»: لا يُطفئ التأكيدَ إلا مؤقّتُ
     /// أحدث ضغطة، وإلا محا مؤقّتُ الضغطة الأولى تأكيدَ الضغطة التي تلتها.
     @State private var testToken = 0
@@ -230,11 +231,26 @@ struct SettingsView: View {
 
                 if store.athanAlerts {
                     SettingsDivider()
+                    SettingsScreenPickerRow(icon: "speaker.wave.2.fill", tint: Theme.accent(for: "dusk"),
+                                            title: loc("صوت الأذان"), options: AthanSound.allCases,
+                                            selection: Binding(get: { store.athanSound },
+                                                               set: { store.athanSound = $0; refreshPrayers() }))
+                    if store.athanSound != .system {
+                        SettingsDivider()
+                        Button { preview.toggle(store.athanSound) } label: {
+                            SettingsScreenRow(icon: preview.playing == store.athanSound ? "stop.circle.fill" : "play.circle.fill",
+                                              tint: Theme.accent(for: "dusk"),
+                                              title: preview.playing == store.athanSound ? loc("إيقاف الاستماع") : loc("استمع للأذان كاملًا"),
+                                              subtitle: loc("التنبيه يصلك بأوّل ثلاثين ثانية منه")) { EmptyView() }
+                        }
+                        .buttonStyle(.plain)
+                    }
+                    SettingsDivider()
                     Button {
                         Task {
                             // التأكيد مؤقّت: يعود الصف بعد ثوانٍ إلى «جرّب التنبيه الآن»
                             // حتى تُنتج كل ضغطة تغيّرًا مرئيًا، ولا يبقى وعدٌ بتنبيهٍ وصل.
-                            guard await Reminders.sendTestAlert() else {
+                            guard await Reminders.sendTestAlert(store: store) else {
                                 permissionDenied = true
                                 return
                             }
