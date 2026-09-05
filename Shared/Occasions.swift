@@ -8,10 +8,10 @@ import Foundation
 struct HijriOccasion: Identifiable, Hashable {
     let id: String
     let title: String
-    /// الشهر الهجري (١ محرم … ١٢ ذو الحجة)، وصفر يعني «كل شهر».
+    /// الشهر الهجري (1 محرم … 12 ذو الحجة)، وصفر يعني «كل شهر».
     let month: Int
     let day: Int
-    /// عدد أيام المناسبة (١ ليوم واحد). ورمضان يُكتب ٣٠ وقد يكون الشهر ٢٩،
+    /// عدد أيام المناسبة (1 ليوم واحد). ورمضان يُكتب 30 وقد يكون الشهر 29،
     /// فتُقصّ النافذة على آخر الشهر في `occasions(on:)` كي لا يقع العيد داخلها.
     let days: Int
     /// ما يُشرع فيها — بأسلوب التطبيق.
@@ -42,7 +42,7 @@ enum Occasions {
               icon: "sun.max.fill", accent: "gold"),
         .init(id: "ramadan", title: "شهر رمضان", month: 9, day: 1, days: 30,
               detail: "شهر الصيام والقيام والقرآن والصدقة — فُرض صيامه على كل مسلم بالغ قادر.",
-              evidence: "شَهْرُ رَمَضَانَ الَّذِي أُنزِلَ فِيهِ الْقُرْآنُ… فَمَن شَهِدَ مِنكُمُ الشَّهْرَ فَلْيَصُمْهُ", evidenceSource: "البقرة: ١٨٥",
+              evidence: "شَهْرُ رَمَضَانَ الَّذِي أُنزِلَ فِيهِ الْقُرْآنُ… فَمَن شَهِدَ مِنكُمُ الشَّهْرَ فَلْيَصُمْهُ", evidenceSource: "البقرة: 185",
               icon: "moon.stars.fill", accent: "green"),
         .init(id: "lastTen", title: "العشر الأواخر من رمضان", month: 9, day: 21, days: 10,
               detail: "أفضل ليالي السنة، وفيها ليلة القدر — تُلتمس في الوتر منها، ويُسنّ الاعتكاف والاجتهاد في القيام.",
@@ -110,7 +110,7 @@ enum Occasions {
                 for offset in 0...3 {
                     var mm = m + offset, yy = y
                     if mm > 12 { mm -= 12; yy += 1 }
-                    // تُتخطّى الأيام البيض في ذي الحجة (١٣ منه من أيام التشريق).
+                    // تُتخطّى الأيام البيض في ذي الحجة (13 منه من أيام التشريق).
                     if o.id == "whiteDays", mm == 12 { continue }
                     if let d = self.date(year: yy, month: mm, day: o.day) { candidates.append(d) }
                 }
@@ -134,13 +134,13 @@ enum Occasions {
         let (y, m, d) = hijriComponents(date)
         return all.filter { o in
             guard o.isMonthly || o.month == m else { return false }
-            // ١٣ ذي الحجة من أيام التشريق ولا تُصام، فلا تُعرض فيها الأيام البيض.
+            // 13 ذي الحجة من أيام التشريق ولا تُصام، فلا تُعرض فيها الأيام البيض.
             if o.id == "whiteDays", m == 12 { return false }
             return d >= o.day && d < o.day + windowDays(o, year: y, month: m)
         }
     }
 
-    /// طول نافذة المناسبة في شهرٍ بعينه: لا تتجاوز آخر أيامه (رمضان قد يكون ٢٩ يومًا،
+    /// طول نافذة المناسبة في شهرٍ بعينه: لا تتجاوز آخر أيامه (رمضان قد يكون 29 يومًا،
     /// فلولا القصّ لظهر «شهر رمضان — جارية الآن» يوم عيد الفطر).
     /// وأيام التشريق تُخرِج «الأيام البيض» من ذي الحجة لأنها أيام أكلٍ وشربٍ لا صيام.
     static func windowDays(_ o: HijriOccasion, year: Int, month: Int) -> Int {

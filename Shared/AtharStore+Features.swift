@@ -57,7 +57,7 @@ extension AtharStore {
 
     // MARK: ضبط المواقيت يدويًّا وتنبيه الإقامة
 
-    /// تعديل بالدقائق لصلاة بعينها (−٣٠ … +٣٠) ليطابق تقويم مسجد الحيّ.
+    /// تعديل بالدقائق لصلاة بعينها (−30 … +30) ليطابق تقويم مسجد الحيّ.
     func prayerOffset(_ prayer: Prayer) -> Int {
         defaults.integer(forKey: FKey.offsetPrefix + prayer.rawValue)
     }
@@ -113,7 +113,7 @@ extension AtharStore {
         set { defaults.set(newValue, forKey: FKey.hadithReminder); objectWillChange.send() }
     }
 
-    /// وقت تذكير الحديث بالدقائق من منتصف الليل (الافتراضي ٨:٣٠ صباحًا).
+    /// وقت تذكير الحديث بالدقائق من منتصف الليل (الافتراضي 8:30 صباحًا).
     var hadithReminderMinutes: Int {
         get { defaults.object(forKey: FKey.hadithReminderMinutes) as? Int ?? (8 * 60 + 30) }
         set { defaults.set(newValue, forKey: FKey.hadithReminderMinutes); objectWillChange.send() }

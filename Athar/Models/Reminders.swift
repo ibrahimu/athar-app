@@ -53,9 +53,9 @@ enum Reminders {
         let calendar = Calendar.current
         let now = Date()
         let preMinutes = store.preAthanMinutes
-        // سقف iOS ٦٤ إشعارًا معلّقًا للتطبيق كله. الأذان ٥ في اليوم (١٠ مع تنبيه ما قبله)،
-        // ومعه حديث اليوم والقيام والاستغفار والسنن والأذكار والورد؛ فالأفق ٥ أيام
-        // بلا تنبيهٍ قبليّ و٣ معه، والجدولة تتجدّد عند كل فتح للتطبيق على كل حال.
+        // سقف iOS 64 إشعارًا معلّقًا للتطبيق كله. الأذان 5 في اليوم (10 مع تنبيه ما قبله)،
+        // ومعه حديث اليوم والقيام والاستغفار والسنن والأذكار والورد؛ فالأفق 5 أيام
+        // بلا تنبيهٍ قبليّ و3 معه، والجدولة تتجدّد عند كل فتح للتطبيق على كل حال.
         let iqamah = store.iqamahMinutes
         let extras = (preMinutes > 0 ? 1 : 0) + (iqamah > 0 ? 1 : 0)
         let days = extras == 0 ? 5 : (extras == 1 ? 3 : 2)
@@ -128,7 +128,7 @@ enum Reminders {
         }
     }
 
-    /// «بعد ٥ دقائق» / «بعد ١٥ دقيقة»: تمييز العدد يتبدّل بعد العشرة.
+    /// «بعد 5 دقائق» / «بعد 15 دقيقة»: تمييز العدد يتبدّل بعد العشرة.
     private static func minutesPhrase(_ n: Int) -> String {
         switch n {
         case 1:       return "بعد دقيقة"
@@ -151,7 +151,7 @@ enum Reminders {
         let now = Date()
         let minutes = store.hadithReminderMinutes
 
-        // أربعة أيام تكفي: الجدولة تتجدّد مع كل فتح، والسقف ٦٤ مشترك مع الأذان.
+        // أربعة أيام تكفي: الجدولة تتجدّد مع كل فتح، والسقف 64 مشترك مع الأذان.
         for dayOffset in 0..<4 {
             guard let day = calendar.date(byAdding: .day, value: dayOffset, to: now),
                   let fire = calendar.date(bySettingHour: minutes / 60, minute: minutes % 60,
@@ -193,7 +193,7 @@ enum Reminders {
         guard store.wirdEnabled else { return }
         await add(id: wirdId,
                   title: "وردك من القرآن",
-                  // «١٠ آيات تكفيك» لا «١٠ آية»: تمييز العدد في Int.ayahCountText.
+                  // «10 آيات تكفيك» لا «10 آية»: تمييز العدد في Int.ayahCountText.
                   body: "\(store.wirdTarget.ayahCountText) تكفيك اليوم — «أحبُّ الأعمال إلى الله أدومها».",
                   minutes: store.wirdReminderMinutes)
     }
@@ -259,7 +259,7 @@ enum Reminders {
                 $0 == jumuahId || $0.hasPrefix(fastingPrefix) || $0.hasPrefix(whitePrefix)
             })
 
-        // الجمعة ٩ صباحًا: الكهف والصلاة على النبي (weekday 6 = الجمعة)
+        // الجمعة 9 صباحًا: الكهف والصلاة على النبي (weekday 6 = الجمعة)
         if store.jumuahAlert {
             let c = UNMutableNotificationContent()
             c.title = "جمعة مباركة"
@@ -270,7 +270,7 @@ enum Reminders {
                 trigger: UNCalendarNotificationTrigger(dateMatching: dc, repeats: true)))
         }
 
-        // ليلة الاثنين والخميس ٩ مساءً (الأحد ١ والأربعاء ٤)
+        // ليلة الاثنين والخميس 9 مساءً (الأحد 1 والأربعاء 4)
         if store.fastingAlert {
             for (wd, day) in [(1, "الاثنين"), (4, "الخميس")] {
                 let c = UNMutableNotificationContent()
@@ -283,7 +283,7 @@ enum Reminders {
             }
         }
 
-        // الأيام البيض: مساء ١٢ هجري للأشهر الثلاثة القادمة
+        // الأيام البيض: مساء 12 هجري للأشهر الثلاثة القادمة
         if store.whiteDaysAlert {
             let hijri = Calendar(identifier: .islamicUmmAlQura)
             var cursor = Date()
@@ -294,7 +294,7 @@ enum Reminders {
                 cursor = eve.addingTimeInterval(86400 * 3)
                 let c = UNMutableNotificationContent()
                 c.title = "الأيام البيض"
-                c.body = "غدًا ١٣ من الشهر الهجري — صيام ١٣ و١٤ و١٥ كصيام الدهر."
+                c.body = "غدًا 13 من الشهر الهجري — صيام 13 و14 و15 كصيام الدهر."
                 c.sound = .default
                 let dc = Calendar.current.dateComponents([.year, .month, .day, .hour], from: eve)
                 try? await center.add(UNNotificationRequest(identifier: "\(whitePrefix)\(i)",
@@ -336,19 +336,19 @@ enum Reminders {
         case .asr:
             return day.isMultiple(of: 2)
                 ? "«مَنْ صَلَّى الْبَرْدَيْنِ دَخَلَ الْجَنَّةَ» — رواه البخاري"
-                : "﴿حَٰفِظُوا۟ عَلَى ٱلصَّلَوَٰتِ وَٱلصَّلَوٰةِ ٱلْوُسْطَىٰ﴾ — البقرة: ٢٣٨"
+                : "﴿حَٰفِظُوا۟ عَلَى ٱلصَّلَوَٰتِ وَٱلصَّلَوٰةِ ٱلْوُسْطَىٰ﴾ — البقرة: 238"
         default:
             let lines = [
-                "﴿وَأَقِمِ ٱلصَّلَوٰةَ لِذِكْرِىٓ﴾ — طه: ١٤",
-                "﴿إِنَّ ٱلصَّلَوٰةَ تَنْهَىٰ عَنِ ٱلْفَحْشَآءِ وَٱلْمُنكَرِ﴾ — العنكبوت: ٤٥",
+                "﴿وَأَقِمِ ٱلصَّلَوٰةَ لِذِكْرِىٓ﴾ — طه: 14",
+                "﴿إِنَّ ٱلصَّلَوٰةَ تَنْهَىٰ عَنِ ٱلْفَحْشَآءِ وَٱلْمُنكَرِ﴾ — العنكبوت: 45",
                 "«مَثَلُ الصَّلَوَاتِ الْخَمْسِ كَمَثَلِ نَهَرٍ جَارٍ غَمْرٍ عَلَى بَابِ أَحَدِكُمْ يَغْتَسِلُ مِنْهُ كُلَّ يَوْمٍ خَمْسَ مَرَّاتٍ» — رواه مسلم",
-                "﴿حَٰفِظُوا۟ عَلَى ٱلصَّلَوَٰتِ وَٱلصَّلَوٰةِ ٱلْوُسْطَىٰ﴾ — البقرة: ٢٣٨",
+                "﴿حَٰفِظُوا۟ عَلَى ٱلصَّلَوَٰتِ وَٱلصَّلَوٰةِ ٱلْوُسْطَىٰ﴾ — البقرة: 238",
             ]
             return lines[day % lines.count]
         }
     }
 
-    /// صوت تنبيه الأذان الذي اختاره المستخدم — مقطع مضمَّن ≤ ٣٠ ث، أو نغمة النظام.
+    /// صوت تنبيه الأذان الذي اختاره المستخدم — مقطع مضمَّن ≤ 30 ث، أو نغمة النظام.
     private static func athanSound(_ store: AtharStore) -> UNNotificationSound {
         // «نغمة النظام» = النغمة الافتراضية؛ الصوت الحرج يحتاج استحقاقًا من Apple لا نملكه،
         // ومن دونه لا يفعل شيئًا سوى إيهام القارئ بأنه يخترق الصامت.
@@ -386,12 +386,12 @@ enum IqamahChoice: Int, CaseIterable, Identifiable, SettingsChoice {
     var title: String {
         switch self {
         case .off: return "بدون"
-        case .m5:  return "بعد ٥ دقائق"
-        case .m10: return "بعد ١٠ دقائق"
-        case .m15: return "بعد ١٥ دقيقة"
-        case .m20: return "بعد ٢٠ دقيقة"
-        case .m25: return "بعد ٢٥ دقيقة"
-        case .m30: return "بعد ٣٠ دقيقة"
+        case .m5:  return "بعد 5 دقائق"
+        case .m10: return "بعد 10 دقائق"
+        case .m15: return "بعد 15 دقيقة"
+        case .m20: return "بعد 20 دقيقة"
+        case .m25: return "بعد 25 دقيقة"
+        case .m30: return "بعد 30 دقيقة"
         }
     }
     var shortTitle: String { title }
@@ -412,11 +412,11 @@ enum PreAthanChoice: Int, CaseIterable, SettingsChoice {
     var title: String {
         switch self {
         case .off: return loc("بدون")
-        case .m5:  return loc("قبل ٥ دقائق")
-        case .m10: return loc("قبل ١٠ دقائق")
-        case .m15: return loc("قبل ١٥ دقيقة")
-        case .m20: return loc("قبل ٢٠ دقيقة")
-        case .m30: return loc("قبل ٣٠ دقيقة")
+        case .m5:  return loc("قبل 5 دقائق")
+        case .m10: return loc("قبل 10 دقائق")
+        case .m15: return loc("قبل 15 دقيقة")
+        case .m20: return loc("قبل 20 دقيقة")
+        case .m30: return loc("قبل 30 دقيقة")
         }
     }
 

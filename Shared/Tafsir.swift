@@ -25,8 +25,8 @@ enum TafsirEdition: String, CaseIterable, Identifiable {
 
     var author: String {
         switch self {
-        case .saadi:    return "الشيخ عبد الرحمن بن ناصر السعدي (ت ١٣٧٦هـ)"
-        case .jalalayn: return "جلال الدين المحلّي (ت ٨٦٤هـ) وجلال الدين السيوطي (ت ٩١١هـ)"
+        case .saadi:    return "الشيخ عبد الرحمن بن ناصر السعدي (ت 1376هـ)"
+        case .jalalayn: return "جلال الدين المحلّي (ت 864هـ) وجلال الدين السيوطي (ت 911هـ)"
         }
     }
 
@@ -49,7 +49,7 @@ enum TafsirEdition: String, CaseIterable, Identifiable {
 }
 
 /// نصّ تفسير آية. حين يشرح المفسّر آيات مجتمعةً يُحال كل آية على أوّلها،
-/// فيُعرض النص مرة واحدة مع بيان مداه (الآيات ٤–٧).
+/// فيُعرض النص مرة واحدة مع بيان مداه (الآيات 4–7).
 struct TafsirEntry: Hashable {
     let edition: TafsirEdition
     let ref: AyahRef
@@ -60,7 +60,7 @@ struct TafsirEntry: Hashable {
 
     var coversRange: Bool { coversFrom != coversTo }
 
-    /// «الآية ٥» أو «الآيات ٤–٧».
+    /// «الآية 5» أو «الآيات 4–7».
     var rangeTitle: String {
         coversRange
             ? loc("الآيات %1$@–%2$@", coversFrom.counterText, coversTo.counterText)

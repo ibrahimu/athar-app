@@ -107,7 +107,7 @@ struct PrayerOffsetsView: View {
     }
 
     private func offsetText(_ m: Int) -> String {
-        m == 0 ? "٠" : (m > 0 ? "+\(m.counterText)" : "−\(abs(m).counterText)")
+        m == 0 ? "0" : (m > 0 ? "+\(m.counterText)" : "−\(abs(m).counterText)")
     }
 
     private func clock(_ d: Date) -> String {

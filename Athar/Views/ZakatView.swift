@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// حاسبة زكاة المال — تعمل بلا إنترنت: المستخدم يدخل أمواله وأسعار الذهب والفضة
-/// بنفسه، والتطبيق يحسب النصاب (٨٥ غرام ذهب) والواجب (ربع العشر) فورًا.
+/// بنفسه، والتطبيق يحسب النصاب (85 غرام ذهب) والواجب (ربع العشر) فورًا.
 /// الأسعار تُحفظ لأنها لا تتغيّر كل يوم، والمبالغ لا تُحفظ لأنها خاصّة وتتبدّل كل حَوْل.
 struct ZakatView: View {
     @EnvironmentObject private var store: AtharStore
@@ -194,7 +194,7 @@ struct ZakatView: View {
         VStack(spacing: 8) {
             SettingsGroupTitle(text: loc("أموالك"), tint: tint)
             SettingsCard {
-                // مجموعتان لأن باني الواجهة يقبل عشرة عناصر لا أكثر (٦ صفوف + ٥ فواصل = ١١).
+                // مجموعتان لأن باني الواجهة يقبل عشرة عناصر لا أكثر (6 صفوف + 5 فواصل = 11).
                 Group {
                     amountRow(.cash, icon: "banknote.fill", tint: Theme.accent(for: "green"),
                               title: loc("النقد"), subtitle: loc("في اليد والحسابات"), text: $cash)
@@ -252,7 +252,7 @@ struct ZakatView: View {
             TextField("0", text: text)
                 .keyboardType(.decimalPad)
                 .focused($focused, equals: field)
-                // بلا تسمية ينطق VoiceOver الحقول الثمانية كلها «٠» فلا يُعرف أيّها.
+                // بلا تسمية ينطق VoiceOver الحقول الثمانية كلها «0» فلا يُعرف أيّها.
                 .accessibilityLabel(subtitle.map { loc("%1$@ — %2$@", title, $0) } ?? title)
                 .font(.system(size: 16, weight: .medium, design: .rounded))
                 .foregroundStyle(Theme.ink)

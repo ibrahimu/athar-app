@@ -7,7 +7,7 @@ struct HadithSharh: Hashable {
     let text: String
 }
 
-/// شرح الأربعين النووية لابن دقيق العيد (ت ٧٠٢هـ) — لكل حديث من الأربعين شرحه.
+/// شرح الأربعين النووية لابن دقيق العيد (ت 702هـ) — لكل حديث من الأربعين شرحه.
 enum SharhLibrary {
     private struct File: Decodable {
         struct Meta: Decodable { let title: String; let author: String; let source: String; let note: String }

@@ -31,7 +31,7 @@ struct Hadith: Codable, Identifiable, Hashable {
     var bookId: String { id.hasPrefix("n") ? "nawawi40" : "riyad" }
     var bookTitle: String { bookId == "nawawi40" ? "الأربعون النووية" : "رياض الصالحين" }
 
-    /// «رياض الصالحين (١٢) — متفق عليه».
+    /// «رياض الصالحين (12) — متفق عليه».
     var citation: String {
         let base = "\(bookTitle) (\(n.counterText))"
         return source.isEmpty ? base : "\(base) — \(source)"

@@ -63,7 +63,7 @@ struct AthanSoundPicker: View {
                     HStack(alignment: .top, spacing: 12) {
                         Image(systemName: selected ? "checkmark.circle.fill" : "circle")
                             .font(.system(size: 18))
-                            .foregroundStyle(selected ? Theme.accent : Theme.inkFaint)   // hairline يكاد يختفي (تباين ١٫٣:١)
+                            .foregroundStyle(selected ? Theme.accent : Theme.inkFaint)   // hairline يكاد يختفي (تباين 1٫3:1)
                             .padding(.top, 1)
 
                         VStack(alignment: .leading, spacing: 3) {
@@ -99,7 +99,7 @@ struct AthanSoundPicker: View {
             }
 
             if isPlaying {
-                Text(loc("يُشغَّل التسجيل الكامل — التنبيه يستخدم أوّل ٣٠ ثانية"))
+                Text(loc("يُشغَّل التسجيل الكامل — التنبيه يستخدم أوّل 30 ثانية"))
                     .font(Theme.display(11))
                     .foregroundStyle(tint)
                     .padding(.top, 8)
