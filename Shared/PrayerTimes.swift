@@ -351,7 +351,8 @@ struct City: Identifiable, Hashable {
     static let all: [City] = [
         City(id: "makkah",   name: "مكة المكرمة",  country: "السعودية", latitude: 21.4225, longitude: 39.8262, tz: "Asia/Riyadh"),
         City(id: "madinah",  name: "المدينة المنورة", country: "السعودية", latitude: 24.4672, longitude: 39.6111, tz: "Asia/Riyadh"),
-        City(id: "riyadh",   name: "الرياض",       country: "السعودية", latitude: 24.7136, longitude: 46.6753, tz: "Asia/Riyadh"),
+        // إحداثيات تقويم أم القرى المرجعية للرياض (24°38′ ش، 46°43′ ق)؛ إحداثيات مركز المدينة الأخرى كانت تُزحزح الظهر دقيقة.
+        City(id: "riyadh",   name: "الرياض",       country: "السعودية", latitude: 24.633, longitude: 46.717, tz: "Asia/Riyadh"),
         City(id: "jeddah",   name: "جدة",          country: "السعودية", latitude: 21.4858, longitude: 39.1925, tz: "Asia/Riyadh"),
         City(id: "dammam",   name: "الدمام",       country: "السعودية", latitude: 26.3927, longitude: 49.9777, tz: "Asia/Riyadh"),
         City(id: "abha",     name: "أبها",         country: "السعودية", latitude: 18.2465, longitude: 42.5117, tz: "Asia/Riyadh"),
