@@ -64,6 +64,11 @@ let specs: [Spec] = [
           features: [.init(icon: "mic.fill", text: "التسميع الصوتي على الجهاز بلا إنترنت"), .init(icon: "bell.badge.fill", text: "أذان أو نغمة أو صامت لكل فريضة"),
                      .init(icon: "magnifyingglass", text: "بحث iOS: «الكهف» أو «الوضوء» يفتح مباشرة"), .init(icon: "square.and.arrow.up.on.square.fill", text: "تصدير بياناتك ملفًا واحدًا")],
           c1: Color(red: 0.24, green: 0.16, blue: 0.36), c2: Color(red: 0.38, green: 0.26, blue: 0.54)),
+    .init(file: "10", shots: ["18-home-rose.png", "17-appearance.png"], title: "12 طابعًا لونيًّا على ذوقك",
+          subtitle: "أخضر المصحف، رملي، بحري، وردي، نيلي، عسلي… كلٌّ بخلفيته وأيقوناته، فاتحًا وداكنًا",
+          features: [.init(icon: "paintpalette.fill", text: "12 طابعًا يبدّل اللون والخلفية معًا"), .init(icon: "sparkles", text: "ست خلفيات: نجوم وموج وسادة…"),
+                     .init(icon: "circle.lefthalf.filled", text: "فاتح أو داكن أو يتبع الجهاز"), .init(icon: "textformat.size", text: "حجم الخط وخط المصحف بيدك")],
+          c1: Color(red: 0.46, green: 0.18, blue: 0.30), c2: Color(red: 0.66, green: 0.30, blue: 0.44)),
 ]
 
 let W: CGFloat = 1290, H: CGFloat = 2796
