@@ -15,6 +15,12 @@
 - **التلاوة الصوتية**: ١٥ قارئًا بثًّا أو تنزيلًا، ومشغّل كامل بمؤقّت نوم وتحكّم من شاشة القفل.
 - **أصوات الأذان** بأسماء أصحابها، وتستمع إليها من داخل قائمة الاختيار.
 - **رتّبه على كيفك**: أي قسم يصلح تبويبًا في الشريط السفلي، وبطاقات شاشة «اليوم» تُرتَّب وتُخفى كما تحب، وشاشة «الأقسام» تجمع كل شيء في أربع عائلات.
+- **تلاوة آية بآية مع تظليل الموضع**: ثمانية قرّاء من everyayah.com، وتكرار كل آية للحفظ (٣/٥/١٠)، من أي آية في المصحف.
+- **خيار الصوت عند فتح الآية**: تلاوة الآية، أو قراءة تفسيرها بصوت الجهاز، أو بلا صوت.
+- **شرح الأربعين النووية** لابن دقيق العيد داخل كل حديث منها.
+- **ضبط المواقيت بالدقائق** لكل صلاة لتطابق مسجدك، و**تنبيه الإقامة** بعد الأذان، و**مدينة ثانية** بتوقيتها للمسافر.
+- **iPad**: التفسير جنبًا إلى جنب مع المصحف. و**مزامنة iCloud** اختيارية للتفضيلات والمفضّلة.
+- **ودجات** حديث اليوم واسم اليوم والراتبة القادمة، وورقة «ما الجديد».
 - **مصحف مؤطَّر**، وخطّ يتبع حجم خطّ النظام، وتسميات صوتية لكل الأزرار، وعشرات الإصلاحات.
 
 ## What's New (English)
@@ -29,10 +35,16 @@
 - **Quran recitation**: 15 reciters, stream or download, full player with sleep timer and lock-screen controls.
 - **Adhan sounds** by named reciters, previewed inside the picker.
 - **Make it yours**: any section can be a bottom tab, the Today screen's cards can be reordered or hidden, and a Sections screen groups everything into four families.
+- **Ayah-by-ayah recitation** with live highlighting: eight reciters, repeat each ayah for memorisation, start from any ayah.
+- **Sound on opening an ayah**: recite it, read its tafsir aloud, or stay silent — your choice.
+- **Commentary on al-Nawawi's Forty** by Ibn Daqiq al-Eid inside each hadith.
+- **Per-prayer minute adjustments** to match your mosque, an **iqamah alert**, and a **second city** in its own time zone.
+- **iPad**: tafsir side by side with the Mushaf. Optional **iCloud sync** for preferences and favourites.
+- **Widgets** for hadith of the day, name of the day and the next sunnah prayer, plus a What's New card.
 - Framed Mushaf, Dynamic Type, VoiceOver labels, and dozens of fixes.
 
 ## ملاحظات للرفع
 
-- كل المحتوى الجديد مضمَّن في التطبيق (بلا شبكة)؛ روابط الفتاوى تفتح Safari. التلاوة وحدها تتصل بـ MP3Quran.net بفعل المستخدم — سياسة الخصوصية (docs/privacy.html) حُدِّثت محليًّا لذلك و**يجب نشرها** (`git push`) قبل الإرسال.
+- كل المحتوى الجديد مضمَّن في التطبيق (بلا شبكة)؛ روابط الفتاوى تفتح Safari. التلاوة تتصل بـ MP3Quran.net والتلاوة آيةً آية بـ everyayah.com بفعل المستخدم — سياسة الخصوصية (docs/privacy.html) حُدِّثت محليًّا لذلك و**يجب نشرها** (`git push`) قبل الإرسال.
 - App Privacy في المتجر: لا تغيير — لا جمع بيانات.
 - لقطات المتجر: تحتاج لقطات جديدة للتفسير والحديث والأقسام.
