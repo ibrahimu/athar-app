@@ -31,8 +31,18 @@ final class AthanPreview: NSObject, ObservableObject, AVAudioPlayerDelegate {
     func stop() {
         player?.stop()
         player = nil
+        guard playing != nil else { return }
         playing = nil
+        // إغلاق الجلسة يعيد صوت التطبيقات الأخرى (موسيقى المستخدم) الذي خفضناه،
+        // ولا يُغلق إن كانت التلاوة هي المالكة للجلسة.
+        if !Recitation.shared.isPlaying {
+            try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        }
     }
+
+    /// يُستدعى عند ذهاب التطبيق للخلفية: الاستماع تجربةٌ لا تلاوة، فلا يستمرّ خلف الشاشة
+    /// وإن كان UIBackgroundModes: audio يسمح بذلك للتلاوة.
+    func stopIfBackgrounded() { stop() }
 
     nonisolated func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
         Task { @MainActor in self.stop() }

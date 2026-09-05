@@ -4,6 +4,7 @@ import SwiftUI
 /// الأصوات قبل أن يقرّر، لذا لا يُغلق الاختيارُ الشاشةَ — زرّ «تم» يفعل ذلك.
 /// تُدفع داخل مكدّس الإعدادات، فلا تنشئ مكدّسًا خاصًّا بها.
 struct AthanSoundPicker: View {
+    @Environment(\.scenePhase) private var scenePhase
     @EnvironmentObject private var store: AtharStore
     // بالنمط نفسه الذي تراقب به بقية الشاشات المفردات المشتركة (Recitation.shared).
     @StateObject private var preview = AthanPreview.shared
@@ -41,6 +42,8 @@ struct AthanSoundPicker: View {
         .toolbar { ToolbarItem(placement: .confirmationAction) { Button(loc("done")) { dismiss() } } }
         // مغادرة الشاشة توقف الاستماع: لا يبقى أذان يعمل خلف شاشة أخرى.
         .onDisappear { preview.stop() }
+        // الخلفية توقف الاستماع أيضًا — onDisappear لا يُطلق عند قفل الشاشة.
+        .onChange(of: scenePhase) { _, phase in if phase != .active { preview.stopIfBackgrounded() } }
     }
 
     // MARK: - صف صوت
@@ -60,7 +63,7 @@ struct AthanSoundPicker: View {
                     HStack(alignment: .top, spacing: 12) {
                         Image(systemName: selected ? "checkmark.circle.fill" : "circle")
                             .font(.system(size: 18))
-                            .foregroundStyle(selected ? Theme.accent : Theme.hairline)
+                            .foregroundStyle(selected ? Theme.accent : Theme.inkFaint)   // hairline يكاد يختفي (تباين ١٫٣:١)
                             .padding(.top, 1)
 
                         VStack(alignment: .leading, spacing: 3) {
@@ -91,7 +94,7 @@ struct AthanSoundPicker: View {
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
-                    .accessibilityLabel(isPlaying ? loc("إيقاف الاستماع") : loc("استمع"))
+                    .accessibilityLabel(isPlaying ? loc("إيقاف الاستماع إلى %1$@", sound.title) : loc("استمع إلى %1$@", sound.title))
                 }
             }
 

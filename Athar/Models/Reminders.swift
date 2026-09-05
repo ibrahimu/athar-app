@@ -53,10 +53,10 @@ enum Reminders {
         let calendar = Calendar.current
         let now = Date()
         let preMinutes = store.preAthanMinutes
-        // مع تنبيه ما قبل الأذان يتضاعف عدد الطلبات لكل يوم (١٠ بدل ٥)، فنقصر
-        // الأفق على خمسة أيام كي لا نتجاوز سقف iOS (٦٤) مع بقية التذكيرات؛
-        // والجدولة تتجدّد عند كل فتح للتطبيق على كل حال.
-        let days = preMinutes > 0 ? 5 : 7
+        // سقف iOS ٦٤ إشعارًا معلّقًا للتطبيق كله. الأذان ٥ في اليوم (١٠ مع تنبيه ما قبله)،
+        // ومعه حديث اليوم والقيام والاستغفار والسنن والأذكار والورد؛ فالأفق ٥ أيام
+        // بلا تنبيهٍ قبليّ و٣ معه، والجدولة تتجدّد عند كل فتح للتطبيق على كل حال.
+        let days = preMinutes > 0 ? 3 : 5
 
         for dayOffset in 0..<days {
             guard let day = calendar.date(byAdding: .day, value: dayOffset, to: now),
@@ -66,8 +66,11 @@ enum Reminders {
                 guard entry.date > now else { continue }
 
                 let content = UNMutableNotificationContent()
-                content.title = "حان وقت \(entry.prayer.title)"
-                content.body = "\(store.placeName) — أقم الصلاة، ولا تنسَ أذكار ما بعدها."
+                // العنوان اسم الصلاة وحده، والسطر الثاني نداؤها ومكانها ووقتها، والمتن آية
+                // أو حديث ثابت يتبدّل مع الأيام — بدل «الرياض — حان وقت الظهر» الجافّة.
+                content.title = entry.prayer.title
+                content.subtitle = "حيّ على الصلاة · \(store.placeName) · \(clockText(entry.date, store: store))"
+                content.body = athanBody(for: entry.prayer, dayOffset: dayOffset)
                 content.sound = athanSound(store)
                 // حسّاس للوقت: يخترق «عدم الإزعاج» وأوضاع التركيز، لأن
                 // تنبيهًا يصل بعد فوات الوقت لا فائدة منه.
@@ -90,7 +93,8 @@ enum Reminders {
 
                 let pre = UNMutableNotificationContent()
                 pre.title = "\(entry.prayer.title) \(minutesPhrase(preMinutes))"
-                pre.body = "استعدّ للصلاة — \(store.placeName)"
+                pre.subtitle = "\(store.placeName) · \(clockText(entry.date, store: store))"
+                pre.body = "توضّأ على مهلٍ واستعدّ — «الصلاة على وقتها» أحبّ الأعمال إلى الله."
                 pre.sound = .default
                 pre.interruptionLevel = .timeSensitive
                 let preComps = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: preDate)
@@ -127,7 +131,8 @@ enum Reminders {
         let now = Date()
         let minutes = store.hadithReminderMinutes
 
-        for dayOffset in 0..<7 {
+        // أربعة أيام تكفي: الجدولة تتجدّد مع كل فتح، والسقف ٦٤ مشترك مع الأذان.
+        for dayOffset in 0..<4 {
             guard let day = calendar.date(byAdding: .day, value: dayOffset, to: now),
                   let fire = calendar.date(bySettingHour: minutes / 60, minute: minutes % 60,
                                            second: 0, of: day),
@@ -136,7 +141,8 @@ enum Reminders {
 
             let content = UNMutableNotificationContent()
             content.title = "حديث اليوم"
-            content.body = "\(truncated(hadith.text, to: 180)) — \(hadith.citation)"
+            content.subtitle = hadith.citation
+            content.body = truncated(hadith.text, to: 180)
             content.sound = .default
 
             let comps = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: fire)
@@ -288,9 +294,45 @@ enum Reminders {
         await rescheduleHadith(store: store)
     }
 
+    /// وقت الأذان بأرقام لاتينية في منطقة المكان المختار.
+    private static func clockText(_ date: Date, store: AtharStore) -> String {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "ar_SA@numbers=latn")
+        f.timeZone = store.placeTimeZone
+        f.dateFormat = "h:mm a"
+        return f.string(from: date)
+    }
+
+    /// متن تنبيه الأذان: آيات وأحاديث ثابتة بلفظها من المصحف المضمَّن والصحيحين
+    /// (نُسخت من مصادرها لا من الذاكرة)، تتبدّل مع الأيام كي لا يُملّ التنبيه.
+    /// الفجر والعصر لهما نصّاهما الخاصّان.
+    private static func athanBody(for prayer: Prayer, dayOffset: Int) -> String {
+        let day = (Calendar.current.ordinality(of: .day, in: .era, for: Date()) ?? 0) + dayOffset
+        switch prayer {
+        case .fajr:
+            return day.isMultiple(of: 2)
+                ? "«رَكْعَتَا الْفَجْرِ خَيْرٌ مِنَ الدُّنْيَا وَمَا فِيهَا» — رواه مسلم"
+                : "«مَنْ صَلَّى الْبَرْدَيْنِ دَخَلَ الْجَنَّةَ» — رواه البخاري"
+        case .asr:
+            return day.isMultiple(of: 2)
+                ? "«مَنْ صَلَّى الْبَرْدَيْنِ دَخَلَ الْجَنَّةَ» — رواه البخاري"
+                : "﴿حَٰفِظُوا۟ عَلَى ٱلصَّلَوَٰتِ وَٱلصَّلَوٰةِ ٱلْوُسْطَىٰ﴾ — البقرة: ٢٣٨"
+        default:
+            let lines = [
+                "﴿وَأَقِمِ ٱلصَّلَوٰةَ لِذِكْرِىٓ﴾ — طه: ١٤",
+                "﴿إِنَّ ٱلصَّلَوٰةَ تَنْهَىٰ عَنِ ٱلْفَحْشَآءِ وَٱلْمُنكَرِ﴾ — العنكبوت: ٤٥",
+                "«مَثَلُ الصَّلَوَاتِ الْخَمْسِ كَمَثَلِ نَهَرٍ جَارٍ غَمْرٍ عَلَى بَابِ أَحَدِكُمْ يَغْتَسِلُ مِنْهُ كُلَّ يَوْمٍ خَمْسَ مَرَّاتٍ» — رواه مسلم",
+                "﴿حَٰفِظُوا۟ عَلَى ٱلصَّلَوَٰتِ وَٱلصَّلَوٰةِ ٱلْوُسْطَىٰ﴾ — البقرة: ٢٣٨",
+            ]
+            return lines[day % lines.count]
+        }
+    }
+
     /// صوت تنبيه الأذان الذي اختاره المستخدم — مقطع مضمَّن ≤ ٣٠ ث، أو نغمة النظام.
     private static func athanSound(_ store: AtharStore) -> UNNotificationSound {
-        guard let name = store.athanSound.fileName else { return .defaultCritical }
+        // «نغمة النظام» = النغمة الافتراضية؛ الصوت الحرج يحتاج استحقاقًا من Apple لا نملكه،
+        // ومن دونه لا يفعل شيئًا سوى إيهام القارئ بأنه يخترق الصامت.
+        guard let name = store.athanSound.fileName else { return .default }
         return UNNotificationSound(named: UNNotificationSoundName(name + ".caf"))
     }
 

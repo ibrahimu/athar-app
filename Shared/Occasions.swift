@@ -11,7 +11,8 @@ struct HijriOccasion: Identifiable, Hashable {
     /// الشهر الهجري (١ محرم … ١٢ ذو الحجة)، وصفر يعني «كل شهر».
     let month: Int
     let day: Int
-    /// عدد الأيام (١ ليوم واحد).
+    /// عدد أيام المناسبة (١ ليوم واحد). ورمضان يُكتب ٣٠ وقد يكون الشهر ٢٩،
+    /// فتُقصّ النافذة على آخر الشهر في `occasions(on:)` كي لا يقع العيد داخلها.
     let days: Int
     /// ما يُشرع فيها — بأسلوب التطبيق.
     let detail: String
@@ -106,9 +107,11 @@ enum Occasions {
         for o in all {
             var candidates: [Date] = []
             if o.isMonthly {
-                for offset in 0...2 {
+                for offset in 0...3 {
                     var mm = m + offset, yy = y
                     if mm > 12 { mm -= 12; yy += 1 }
+                    // تُتخطّى الأيام البيض في ذي الحجة (١٣ منه من أيام التشريق).
+                    if o.id == "whiteDays", mm == 12 { continue }
                     if let d = self.date(year: yy, month: mm, day: o.day) { candidates.append(d) }
                 }
             } else {
@@ -117,7 +120,8 @@ enum Occasions {
                 }
             }
             for start in candidates {
-                let end = hijri.date(byAdding: .day, value: o.days, to: start) ?? start
+                let (sy, sm, _) = hijriComponents(start)
+                let end = hijri.date(byAdding: .day, value: windowDays(o, year: sy, month: sm), to: start) ?? start
                 // جارية (اليوم داخل مداها) أو قادمة.
                 if end > today { out.append((o, start, end)); break }
             }
@@ -130,8 +134,18 @@ enum Occasions {
         let (y, m, d) = hijriComponents(date)
         return all.filter { o in
             guard o.isMonthly || o.month == m else { return false }
-            return d >= o.day && d < o.day + o.days
+            // ١٣ ذي الحجة من أيام التشريق ولا تُصام، فلا تُعرض فيها الأيام البيض.
+            if o.id == "whiteDays", m == 12 { return false }
+            return d >= o.day && d < o.day + windowDays(o, year: y, month: m)
         }
+    }
+
+    /// طول نافذة المناسبة في شهرٍ بعينه: لا تتجاوز آخر أيامه (رمضان قد يكون ٢٩ يومًا،
+    /// فلولا القصّ لظهر «شهر رمضان — جارية الآن» يوم عيد الفطر).
+    /// وأيام التشريق تُخرِج «الأيام البيض» من ذي الحجة لأنها أيام أكلٍ وشربٍ لا صيام.
+    static func windowDays(_ o: HijriOccasion, year: Int, month: Int) -> Int {
+        let monthLength = daysInMonth(year: year, month: o.isMonthly ? month : o.month)
+        return max(1, min(o.days, monthLength - o.day + 1))
     }
 
     /// عدد الأيام من اليوم حتى التاريخ (صفر لليوم).

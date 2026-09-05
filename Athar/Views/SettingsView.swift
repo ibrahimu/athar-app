@@ -2,6 +2,7 @@ import SwiftUI
 import WidgetKit
 
 struct SettingsView: View {
+    @State private var rescheduleTask: Task<Void, Never>?
     /// حين تُعرض داخل مكدّس تنقّل قائم، لا نغلّفها بمكدّس آخر.
     var embedded = false
 
@@ -29,7 +30,7 @@ struct SettingsView: View {
             get: { Self.date(fromMinutes: store.hadithReminderMinutes) },
             set: {
                 store.hadithReminderMinutes = Self.minutes(from: $0)
-                Task { await Reminders.rescheduleHadith(store: store) }
+                scheduleHadith()
             }
         )
     }
@@ -387,6 +388,8 @@ struct SettingsView: View {
                             in: 0.85...1.6, step: 0.05
                         )
                         .tint(Theme.accent)
+                        .accessibilityLabel(loc("حجم الخط"))
+                        .accessibilityValue(String(format: "%.0f٪", store.fontScale * 100))
                         Text("أ").font(.system(size: 21)).foregroundStyle(Theme.inkFaint)
                     }
 
@@ -599,10 +602,14 @@ struct SettingsView: View {
                     .frame(height: 1)
             }
             .frame(maxWidth: 240)
-            Text("﴿ وَمَا تُقَدِّمُوا لِأَنفُسِكُم مِّنْ خَيْرٍ تَجِدُوهُ عِندَ اللَّهِ ﴾")
+            // الآية برسم المصحف المضمَّن نفسه، وبلون النص الشرعي، ومعها مرجعها.
+            Text("وَمَا تُقَدِّمُوا۟ لِأَنفُسِكُم مِّنْ خَيْرٍ تَجِدُوهُ عِندَ ٱللَّهِ")
                 .font(Theme.dhikrFont(size: 15))
-                .foregroundStyle(Theme.inkSoft)
+                .foregroundStyle(Theme.ink)
                 .multilineTextAlignment(.center)
+            Text(loc("البقرة: ١١٠"))
+                .font(Theme.display(10))
+                .foregroundStyle(Theme.inkFaint)
             Text(loc("صدقة جارية عن كل من ساهم فيه أو دلَّ عليه"))
                 .font(Theme.display(11))
                 .foregroundStyle(Theme.inkFaint)
@@ -613,13 +620,30 @@ struct SettingsView: View {
 
     // MARK: Helpers
 
+    /// عجلة الوقت تُطلق التغيير مع كل درجة؛ فتُؤجَّل الجدولة نصف ثانية وتُلغى السابقة —
+    /// لا تُعاد جدولة كل إشعارات التطبيق عشرات المرات وأنت تدير العجلة.
     private func scheduleReminders() {
-        Task { await Reminders.reschedule(store: store) }
+        rescheduleTask?.cancel()
+        rescheduleTask = Task {
+            try? await Task.sleep(for: .milliseconds(500))
+            guard !Task.isCancelled else { return }
+            await Reminders.reschedule(store: store)
+        }
+    }
+
+    private func scheduleHadith() {
+        rescheduleTask?.cancel()
+        rescheduleTask = Task {
+            try? await Task.sleep(for: .milliseconds(500))
+            guard !Task.isCancelled else { return }
+            await Reminders.rescheduleHadith(store: store)
+        }
     }
 
     private func refreshPrayers() {
         WidgetCenter.shared.reloadAllTimelines()
-        Task { await Reminders.rescheduleAthan(store: store) }
+        // قيام الليل وتنبيهات الأذان كلاهما يتبعان المكان وطريقة الحساب، فتُعاد جدولتهما معًا.
+        Task { await Reminders.rescheduleAll(store: store) }
     }
 
     /// App Store page for أثر (Apple ID 6806411693).

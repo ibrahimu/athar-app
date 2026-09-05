@@ -413,7 +413,13 @@ private struct HadithRow: View {
 
     /// أربعة أسطر لا تحتاج أكثر من هذا؛ وبعض الأحاديث آلاف الحروف، فقصّها يبقي
     /// تخطيط الصفوف الطويلة خفيفًا.
-    private var preview: String { String(hadith.text.prefix(400)) }
+    /// معاينة تُقصّ عند آخر كلمة كاملة وتُختم بعلامة الحذف — لا تُبتر كلمةٌ من الحديث.
+    private var preview: String {
+        guard hadith.text.count > 400 else { return hadith.text }
+        let head = hadith.text.prefix(400)
+        if let cut = head.lastIndex(of: " ") { return String(head[..<cut]) + "…" }
+        return String(head) + "…"
+    }
 
     var body: some View {
         let fav = store.isHadithFavorite(hadith.id)

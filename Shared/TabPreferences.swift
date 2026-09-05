@@ -4,7 +4,7 @@ import Foundation
 /// وكل قسم في التطبيق تبويبٌ محتمل — فمن أراد «الختمة» أو «الحديث» أسفل الشاشة وضعه.
 enum AppTab: String, CaseIterable, Identifiable, Codable {
     case home, mushaf, adhkar, prayer, tasbih, hajj, qibla, hifz, recitation,
-         khatmah, wird, hadith, names, ahkam, prayerLog, calendar, zakat, settings
+         khatmah, wird, hadith, names, ahkam, prayerLog, calendar, zakat, sunan, settings
 
     var id: String { rawValue }
 
@@ -25,7 +25,7 @@ enum AppTab: String, CaseIterable, Identifiable, Codable {
     var group: Group {
         switch self {
         case .mushaf, .recitation, .khatmah, .wird, .hifz: return .quran
-        case .prayer, .qibla, .prayerLog, .hajj:            return .worship
+        case .prayer, .qibla, .prayerLog, .hajj, .sunan:    return .worship
         case .adhkar, .tasbih, .hadith, .names, .ahkam:     return .knowledge
         case .calendar, .zakat, .home, .settings:           return .tools
         }
@@ -50,6 +50,7 @@ enum AppTab: String, CaseIterable, Identifiable, Codable {
         case .prayerLog:  return loc("سجل الصلاة")
         case .calendar:   return loc("التقويم")
         case .zakat:      return loc("الزكاة")
+        case .sunan:      return loc("السنن الرواتب")
         case .settings:   return loc("settings")
         }
     }
@@ -73,6 +74,7 @@ enum AppTab: String, CaseIterable, Identifiable, Codable {
         case .prayerLog:  return "checkmark.circle.fill"
         case .calendar:   return "calendar"
         case .zakat:      return "banknote.fill"
+        case .sunan:      return "rays"
         case .settings:   return "gearshape.fill"
         }
     }
@@ -97,6 +99,7 @@ enum AppTab: String, CaseIterable, Identifiable, Codable {
         case .prayerLog:  return "night"
         case .calendar:   return "noon"
         case .zakat:      return "calm"
+        case .sunan:      return "dawn"
         case .settings:   return "green"
         }
     }
@@ -121,6 +124,7 @@ enum AppTab: String, CaseIterable, Identifiable, Codable {
         case .prayerLog:  return loc("تتبّع صلواتك وقضاء ما فات")
         case .calendar:   return loc("التقويم الهجري ومناسبات السنّة")
         case .zakat:      return loc("حاسبة زكاة المال بلا إنترنت")
+        case .sunan:      return loc("رواتب الصلاة والوتر والضحى بدليلها")
         case .settings:   return loc("تفضيلاتك وتنبيهاتك")
         }
     }

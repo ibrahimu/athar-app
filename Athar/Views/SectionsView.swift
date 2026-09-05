@@ -130,9 +130,9 @@ struct SectionTile: View {
 struct SectionDestination: View {
     let tab: AppTab
 
-    @ViewBuilder
     var body: some View {
-        switch tab {
+        Group {
+            switch tab {
         case .home:       HomeView(onOpenTab: { _ in }, embedded: true)
         case .mushaf:     MushafView(embedded: true)
         case .adhkar:     AdhkarIndexView(embedded: true)
@@ -150,8 +150,13 @@ struct SectionDestination: View {
         case .prayerLog:  PrayerLogView()
         case .calendar:   HijriCalendarView()
         case .zakat:      ZakatView()
+        case .sunan:      SunanView()
         case .settings:   SettingsView(embedded: true)
+            }
         }
+        // شاشة مدفوعة من «الأقسام» لا تحتاج شريط التبويبات فوقها — بعضها كان يبقيه
+        // لأنه لا يعرف isRootTab، فيظهر الشريط على المصحف المضمَّن والقبلة وغيرهما.
+        .toolbar(.hidden, for: .tabBar)
     }
 }
 

@@ -110,7 +110,8 @@ struct ZakatView: View {
 
     private var resultCard: some View {
         let r = result
-        let priceMissing = input.goldPricePerGram <= 0
+        // «لا نعرف النصاب» لا «لا زكاة عليك»: النصاب يُعرف بسعر الذهب أو الفضة، أيّهما أدخل.
+        let priceMissing = !r.nisabKnown
         return AtharCard(padding: 20, elevation: .e2, tint: tint, radius: Theme.Radius.xl) {
             VStack(spacing: 14) {
                 Text(loc("الزكاة الواجبة"))
@@ -134,7 +135,7 @@ struct ZakatView: View {
                 HStack(spacing: 0) {
                     figure(title: loc("مجموع المال الزكوي"), value: ZakatNumber.string(r.base))
                     Rectangle().fill(Theme.hairline.opacity(0.6)).frame(width: 0.7, height: 34)
-                    figure(title: loc("النصاب"),
+                    figure(title: r.nisabMetal == .silver ? loc("النصاب (بالفضة)") : loc("النصاب (بالذهب)"),
                            value: priceMissing ? "—" : ZakatNumber.string(r.nisab))
                 }
 
@@ -172,7 +173,7 @@ struct ZakatView: View {
 
     private func statusPill(reaches: Bool, priceMissing: Bool) -> some View {
         let (icon, text, color): (String, String, Color) = priceMissing
-            ? ("info.circle.fill", loc("أدخل سعر غرام الذهب لحساب النصاب"), Theme.inkFaint)
+            ? ("info.circle.fill", loc("أدخل سعر غرام الذهب أو الفضة ليُحسب النصاب"), Theme.inkFaint)
             : reaches
                 ? ("checkmark.seal.fill", loc("بلغ المال النصاب"), Theme.accent(for: "green"))
                 : ("minus.circle.fill", loc("لم يبلغ المال النصاب — لا زكاة عليه"), Theme.inkSoft)
@@ -251,6 +252,8 @@ struct ZakatView: View {
             TextField("0", text: text)
                 .keyboardType(.decimalPad)
                 .focused($focused, equals: field)
+                // بلا تسمية ينطق VoiceOver الحقول الثمانية كلها «٠» فلا يُعرف أيّها.
+                .accessibilityLabel(subtitle.map { loc("%1$@ — %2$@", title, $0) } ?? title)
                 .font(.system(size: 16, weight: .medium, design: .rounded))
                 .foregroundStyle(Theme.ink)
                 .multilineTextAlignment(.trailing)
@@ -374,15 +377,36 @@ private enum ZakatNumber {
     /// يقبل الأرقام العربية الهندية والفاصلة العشرية العربية «٫» لأن لوحة المفاتيح
     /// قد تُخرجها حسب لغة الجهاز، فلا يُهمل ما كتبه المستخدم.
     static func parse(_ s: String) -> Double {
-        var out = ""
+        var digits = ""
+        var separators: [Int] = []          // مواضع الفواصل داخل digits
+        var commaOnly = true
         for ch in s {
             if ch.isNumber, let v = ch.wholeNumberValue {
-                out.append(String(v))
+                digits.append(String(v))
             } else if ch == "." || ch == "٫" || ch == "," {
-                out.append(".")
+                separators.append(digits.count)
+                if ch != "," { commaOnly = false }
             }
         }
-        return max(0, Double(out) ?? 0)
+        guard !digits.isEmpty else { return 0 }
+        // «١٬٢٣٤٬٥٦٧» كان يُقرأ صفرًا لأن كل فاصلة صارت نقطة عشرية. القاعدة:
+        // الفاصلة الأخيرة وحدها عشرية، وما قبلها فواصل آلاف تُهمَل؛ وفاصلةٌ منفردة
+        // تتبعها ثلاثة أرقام بالضبط «١٬٢٣٤» فاصلةُ آلاف كما هو المألوف عربيًّا.
+        var decimalAt: Int? = separators.last
+        if separators.count == 1, commaOnly, digits.count - separators[0] == 3 { decimalAt = nil }
+        if separators.count >= 2 {
+            // كلّها فواصل آلاف حين تفصل مجموعاتٍ من ثلاثة أرقام إلى آخر الرقم.
+            let gaps = zip(separators.dropFirst(), separators).map { $0 - $1 }
+            if gaps.allSatisfy({ $0 == 3 }), digits.count - (separators.last ?? 0) == 3 { decimalAt = nil }
+        }
+        let text: String
+        if let at = decimalAt, at > 0, at < digits.count {
+            let i = digits.index(digits.startIndex, offsetBy: at)
+            text = String(digits[..<i]) + "." + String(digits[i...])
+        } else {
+            text = digits
+        }
+        return max(0, Double(text) ?? 0)
     }
 
     static func string(_ v: Double) -> String {

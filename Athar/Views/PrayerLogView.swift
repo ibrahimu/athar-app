@@ -8,12 +8,22 @@ struct PrayerLogView: View {
     var isRootTab = false
 
     @State private var selectedDay = Calendar.current.startOfDay(for: Date())
+    /// المواقيت تُحلّ فلكيًّا مرة عند تغيّر اليوم لا في كل رسمة (كانت تُحلّ ~١٥ مرة لكل رسمة).
+    @State private var times: PrayerTimes?
+    /// الأيام المسجَّلة تُقرأ من التفضيلات مرة، وتُجدَّد بعد كل تسجيل — لا مسحًا لكل المفاتيح في كل رسمة.
+    @State private var loggedKeys: Set<String> = []
+    /// «الآن» يتقدّم كل دقيقة حتى تنفتح رقاقة الصلاة حين يدخل وقتها والشاشة مفتوحة.
+    @State private var now = Date()
+    private let ticker = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
 
     private var tint: Color { Theme.accent(for: "night") }
     private var prayers: [Prayer] { Prayer.allCases.filter(\.isPrayer) }
     private var isToday: Bool { Calendar.current.isDateInToday(selectedDay) }
-    private var times: PrayerTimes? { store.prayerTimes(for: selectedDay) }
-    private var loggedKeys: Set<String> { Set(store.loggedDayKeys) }
+
+    private func reload() {
+        times = store.prayerTimes(for: selectedDay)
+        loggedKeys = Set(store.loggedDayKeys)
+    }
 
     var body: some View {
         ZStack {
@@ -33,6 +43,9 @@ struct PrayerLogView: View {
             }
             .scrollIndicators(.hidden)
         }
+        .onAppear(perform: reload)
+        .onChange(of: selectedDay) { _, _ in reload() }
+        .onReceive(ticker) { now = $0 }
         .navigationTitle(loc("سجل الصلاة"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(isRootTab ? .visible : .hidden, for: .tabBar)
@@ -170,14 +183,14 @@ struct PrayerLogView: View {
         }
         .pressable()
         .disabled(!enabled)
-        .accessibilityLabel(s.title)
-        .accessibilityHint(loc("انقر لتغيير الحالة"))
+        .accessibilityLabel(enabled ? s.title : loc("لم يحن وقتها"))
+        .accessibilityHint(enabled ? loc("انقر لتغيير الحالة") : "")
     }
 
     /// اليوم لا تُسجَّل صلاة لم يدخل وقتها بعد؛ والأيام الماضية كلها مفتوحة.
     private func isDue(_ p: Prayer) -> Bool {
         guard isToday, let t = times?[p] else { return true }
-        return t <= Date()
+        return t <= now
     }
 
     private func cycle(_ p: Prayer) {
@@ -202,6 +215,7 @@ struct PrayerLogView: View {
     private func apply(_ new: AtharStore.PrayerStatus, to p: Prayer, from old: AtharStore.PrayerStatus) {
         withAnimation(Motion.snappy) {
             store.setPrayerStatus(new, for: p, on: selectedDay)
+            loggedKeys = Set(store.loggedDayKeys)
             if new == .missed, old != .missed {
                 store.setQadaCount(store.qadaCount(p) + 1, for: p)
             } else if old == .missed, new != .missed {
@@ -313,6 +327,7 @@ struct PrayerLogView: View {
             Spacer(minLength: 8)
             HStack(spacing: 0) {
                 stepButton("minus", enabled: n > 0) { setQada(p, n - 1) }
+                    .accessibilityLabel(loc("إنقاص فوائت %1$@", p.title))
                 Text(n.counterText)
                     .font(.system(size: 16, weight: .semibold, design: .rounded))
                     .foregroundStyle(n > 0 ? Theme.ink : Theme.inkFaint)
@@ -321,7 +336,10 @@ struct PrayerLogView: View {
                     .contentTransition(.numericText())
                     .animation(Motion.snappy, value: n)
                 stepButton("plus", enabled: true) { setQada(p, n + 1) }
+                    .accessibilityLabel(loc("زيادة فوائت %1$@", p.title))
             }
+            .accessibilityElement(children: .contain)
+            .accessibilityValue(loc("%1$@ فائتة", n.counterText))
             .background(Capsule().fill(Theme.surfaceAlt))
             .overlay(Capsule().strokeBorder(Theme.hairline.opacity(0.5), lineWidth: 0.5))
         }

@@ -24,7 +24,11 @@ struct TafsirSheet: View {
     private var tint: Color { Theme.accent(for: "sea") }
     private var surahName: String { Quran.surah(current.surah)?.name ?? "" }
     private var ayahCount: Int { Quran.surah(current.surah)?.ayahCount ?? current.ayah }
-    private var entry: TafsirEntry? { Tafsir.entry(edition, for: current) }
+    /// تُحلّ مرة عند كل تغيّر للآية أو الكتاب لا في كل رسمة: قراءة ملف السورة (حتى نصف ميغا
+    /// للبقرة) وفكّ الإحالات لا يليقان بجسم العرض.
+    @State private var resolved: TafsirEntry?
+    private var entry: TafsirEntry? { resolved }
+    private func resolve() { resolved = Tafsir.entry(edition, for: current) }
     private var rangeTitle: String {
         entry?.rangeTitle ?? loc("الآية %1$@", current.ayah.counterText)
     }
@@ -52,7 +56,10 @@ struct TafsirSheet: View {
                     .readableWidth()
                 }
                 .scrollIndicators(.hidden)
+                .task { resolve() }
+                .onChange(of: edition) { _, _ in resolve() }
                 .onChange(of: current) { _, _ in
+                    resolve()
                     // آية جديدة تبدأ من أعلى الورقة لا من حيث توقّف تمرير السابقة.
                     withAnimation(Motion.smooth) { proxy.scrollTo("top", anchor: .top) }
                 }
@@ -224,12 +231,23 @@ struct TafsirSheet: View {
         return "\(entry.edition.title) — \(surahName):\(ayahs)"
     }
 
+    /// نصّ للنسخ والمشاركة: أقواس المصدر { } تُبدَّل بالقوسين المزخرفين ﴿ ﴾ المعهودين
+    /// في الاستشهاد بالآيات (الحاسوب يعرضهما بخطوطه، بخلاف خطّنا المضمَّن).
+    private func exportable(_ entry: TafsirEntry) -> String {
+        let m = entry.edition.quoteMarks
+        var out = ""
+        for ch in entry.text {
+            if ch == m.open { out.append("﴿ ") } else if ch == m.close { out.append(" ﴾") } else { out.append(ch) }
+        }
+        return out.replacingOccurrences(of: "﴿  ", with: "﴿ ").replacingOccurrences(of: "  ﴾", with: " ﴾")
+    }
+
     private func copyText(_ entry: TafsirEntry) -> String {
-        "\(entry.text)\n\n\(locator(entry))"
+        "\(exportable(entry))\n\n\(locator(entry))"
     }
 
     private func shareText(_ entry: TafsirEntry) -> String {
-        "\(Quran.text(current) ?? "")\n[\(surahName): \(current.ayah.counterText)]\n\n\(entry.text)\n\n\(locator(entry))\n\nمن تطبيق أثر"
+        "\(Quran.text(current) ?? "")\n[\(surahName): \(current.ayah.counterText)]\n\n\(exportable(entry))\n\n\(locator(entry))\n\nمن تطبيق أثر"
     }
 
     // MARK: الحالة الفارغة والعزو
@@ -338,20 +356,26 @@ enum TafsirMarkup {
                 buffer.append(ch)
             }
         }
-        // قوس فُتح ولم يُغلق: يُعرض ما بعده مستشهَدًا به كما هو، خيرٌ من إسقاطه.
-        if !buffer.isEmpty { segments.append((text: buffer, quoted: inQuote)) }
+        // قوس فُتح ولم يُغلق (سهو طباعي في المصدر): ما بعده كلامُ المفسّر لا آية،
+        // فيُعرض عاديًّا — لئلا يُلبَس كلام البشر لباس القرآن.
+        if !buffer.isEmpty { segments.append((text: buffer, quoted: false)) }
 
         var out = AttributedString()
         for seg in segments {
             if seg.quoted {
                 let inner = seg.text.trimmingCharacters(in: .whitespacesAndNewlines)
                 guard !inner.isEmpty else { continue }
-                var run = AttributedString("﴿" + inner + "﴾")
+                // بلا قوسين مزخرفين: خطّ Noto Naskh المضمَّن لا يحوي ﴿ ﴾ فتظهر نقاطًا صغيرة
+                // مشوّهة. اللون ووزن الخط كافيان لتمييز الآية، وبينها وبين ما حولها فراغ.
+                var run = AttributedString(inner)
                 run.foregroundColor = accent
                 run.font = Theme.naskhFont(size: size, scale: scale)
                 out.append(run)
             } else {
-                var run = AttributedString(seg.text)
+                // قوس إغلاق بلا فتح: علامة طباعية شاردة تُحذف من العرض لا من النص.
+                var plain = seg.text
+                plain.removeAll { $0 == marks.close || $0 == marks.open }
+                var run = AttributedString(plain)
                 run.foregroundColor = ink
                 run.font = Theme.dhikrFont(size: size, scale: scale)
                 out.append(run)

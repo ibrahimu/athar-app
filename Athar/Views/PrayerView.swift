@@ -300,11 +300,19 @@ struct PrayerView: View {
     // MARK: Extras
 
     private var qiblaLink: some View {
-        NavigationLink { QiblaView() } label: {
-            AtharLinkRow(icon: "location.north.line.fill", tint: Theme.gold,
-                         title: loc("اتجاه القبلة"), subtitle: qiblaSubtitle)
+        VStack(spacing: 10) {
+            NavigationLink { QiblaView() } label: {
+                AtharLinkRow(icon: "location.north.line.fill", tint: Theme.gold,
+                             title: loc("اتجاه القبلة"), subtitle: qiblaSubtitle)
+            }
+            .pressable()
+            NavigationLink { SunanView() } label: {
+                AtharLinkRow(icon: "rays", tint: Theme.accent(for: "dawn"),
+                             title: loc("السنن الرواتب"),
+                             subtitle: loc("ما قبل كل فريضة وما بعدها، والوتر والضحى — بدليلها"))
+            }
+            .pressable()
         }
-        .pressable()
     }
 
     /// «الرياض · 244° نحو الجنوب الغربي» — بصيغة رقاقة المسافة في شاشة القبلة نفسها،

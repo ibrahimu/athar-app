@@ -85,6 +85,7 @@ struct RootView: View {
         case .prayerLog: NavigationStack { PrayerLogView(isRootTab: true) }
         case .calendar: NavigationStack { HijriCalendarView(isRootTab: true) }
         case .zakat:    NavigationStack { ZakatView(isRootTab: true) }
+        case .sunan:    NavigationStack { SunanView(isRootTab: true) }
         case .settings: SettingsView()
         }
     }

@@ -68,8 +68,11 @@ enum HadithLibrary {
     static func chapter(of hadith: Hadith) -> HadithChapter? { chapterOf[hadith.id] }
 
     /// حديث اليوم: من الصحيحين فقط وقصير بما يناسب بطاقة، ثابت لليوم كله.
+    /// بِركة حديث اليوم تُبنى مرة واحدة — لا في كل رسمة لبطاقة الرئيسية.
+    private static let dailyPool: [Hadith] = all.filter { $0.isSahihayn && $0.text.count <= 420 }
+
     static func daily(for date: Date) -> Hadith? {
-        let pool = all.filter { $0.isSahihayn && $0.text.count <= 420 }
+        let pool = dailyPool
         guard !pool.isEmpty else { return nil }
         let day = Calendar.current.ordinality(of: .day, in: .era, for: date) ?? 0
         return pool[day % pool.count]

@@ -14,14 +14,20 @@ struct ZakatInput: Equatable {
     var silverPricePerGram: Double = 0
 }
 
+/// المعدن الذي حُسب به النصاب — يُذكر للمستخدم كي يعرف على أيّ أساس حُسب.
+enum NisabMetal { case gold, silver, none }
+
 struct ZakatResult: Equatable {
     /// مجموع المال الزكوي بعد خصم الديون الحالّة.
     let base: Double
-    /// النصاب بقيمة ٨٥ غرام ذهب.
+    /// قيمة النصاب المعتمَد (الأدنى من نصابَي الذهب والفضة مما أدخل المستخدم سعره).
     let nisab: Double
     let reachesNisab: Bool
     /// الواجب: ربع العشر.
     let due: Double
+    /// هل عُرف النصاب أصلًا؟ بلا سعرٍ لا يصحّ أن يُقال «لا زكاة عليك».
+    var nisabKnown: Bool = true
+    var nisabMetal: NisabMetal = .gold
 }
 
 enum Zakat {
@@ -34,9 +40,21 @@ enum Zakat {
         let assets = i.cash + i.goldGrams * i.goldPricePerGram + i.silverGrams * i.silverPricePerGram
                    + i.tradeGoods + i.receivables
         let base = max(0, assets - i.debtsDue)
-        let nisab = goldNisabGrams * i.goldPricePerGram
-        let reaches = i.goldPricePerGram > 0 && base >= nisab
-        return ZakatResult(base: base, nisab: nisab, reachesNisab: reaches, due: reaches ? base * rate : 0)
+        // نصابان لا واحد: نصاب الذهب (٨٥غ) ونصاب الفضة (٥٩٥غ). والفقهاء المعاصرون
+        // على تقدير نصاب النقد بالأحظّ للفقراء، وهو الأدنى قيمةً منهما — فمن بلغ ماله
+        // أحدهما وجبت عليه. فإن لم يُدخل المستخدم إلا سعرًا واحدًا حُسب به وحده.
+        let goldNisab = goldNisabGrams * i.goldPricePerGram
+        let silverNisab = silverNisabGrams * i.silverPricePerGram
+        let candidates = [goldNisab, silverNisab].filter { $0 > 0 }
+        guard let nisab = candidates.min() else {
+            // بلا سعرٍ لا يُعرف النصاب، فلا يُقال «لا زكاة عليك» — تُترك النتيجة معلّقة.
+            return ZakatResult(base: base, nisab: 0, reachesNisab: false, due: 0, nisabKnown: false,
+                               nisabMetal: .none)
+        }
+        let metal: NisabMetal = (silverNisab > 0 && silverNisab <= goldNisab) || goldNisab == 0 ? .silver : .gold
+        let reaches = base >= nisab
+        return ZakatResult(base: base, nisab: nisab, reachesNisab: reaches,
+                           due: reaches ? base * rate : 0, nisabKnown: true, nisabMetal: metal)
     }
 
     /// الأدلة المعروضة تحت الحاسبة.
@@ -48,8 +66,9 @@ enum Zakat {
 
     static let notes: [String] = [
         "تجب الزكاة إذا بلغ المال النصاب ومضى عليه حَوْلٌ هجري كامل.",
-        "النصاب هنا بقيمة ٨٥ غرامًا من الذهب، وهو المعمول به في أكثر الفتاوى المعاصرة.",
+        "النصاب: ٨٥ غرامًا ذهبًا أو ٥٩٥ غرامًا فضة. ويُحسب هنا بالأدنى قيمةً منهما مما أدخلتَ سعره، وهو الأحظّ للفقراء.",
         "الديون الحالّة عليك تُخصم، وديونك على الناس المرجوّة تُزكّى.",
-        "حُليّ المرأة المستعمَل فيه خلاف؛ والأحوط زكاته إن بلغ النصاب.",
+        "حُليّ المرأة المستعمَل فيه خلاف بين أهل العلم؛ والأحوط زكاته إن بلغ النصاب.",
+        "هذه الحاسبة تُعينك على التقدير، وليست فتوى؛ فإن أشكل عليك أمرٌ فاسأل أهل العلم.",
     ]
 }

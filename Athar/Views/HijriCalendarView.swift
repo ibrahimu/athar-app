@@ -11,9 +11,12 @@ struct HijriCalendarView: View {
     @State private var month = Occasions.hijriComponents(Date()).month
     @State private var selected = Calendar.current.startOfDay(for: Date())
     @State private var expanded: String?
+    /// تجدّد «اليوم» إن انقضى اليوم والشاشة مفتوحة (بعد منتصف الليل).
+    @State private var todayDate = Calendar.current.startOfDay(for: Date())
+    private let dayTicker = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
 
     private var tint: Color { Theme.accent(for: "noon") }
-    private var today: (year: Int, month: Int, day: Int) { Occasions.hijriComponents(Date()) }
+    private var today: (year: Int, month: Int, day: Int) { Occasions.hijriComponents(todayDate) }
     private var isCurrentMonth: Bool { today.year == year && today.month == month }
 
     /// تقويم أم القرى بمنطقة الجهاز — لأيام الأسبوع ومقارنة الأيام.
@@ -40,6 +43,10 @@ struct HijriCalendarView: View {
                 .readableWidth(560)
             }
             .scrollIndicators(.hidden)
+        }
+        .onReceive(dayTicker) { _ in
+            let t = Calendar.current.startOfDay(for: Date())
+            if t != todayDate { todayDate = t }
         }
         .navigationTitle(loc("التقويم"))
         .navigationBarTitleDisplayMode(.inline)
@@ -103,6 +110,8 @@ struct HijriCalendarView: View {
                 .frame(width: 34, height: 34)
                 .background(Circle().fill(tint.opacity(0.12)))
         }
+        // زرّ رمزٍ بلا عنوان: VoiceOver كان يقرأ اسم الرمز بالإنجليزية.
+        .accessibilityLabel(icon == "chevron.backward" ? loc("الشهر السابق") : loc("الشهر التالي"))
         .pressable()
     }
 

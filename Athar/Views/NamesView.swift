@@ -155,7 +155,7 @@ struct NamesView: View {
                 .font(Theme.dhikrFont(size: 18))
                 .foregroundStyle(Theme.ink)
                 .lineLimit(1)
-                .minimumScaleFactor(0.7)
+                .minimumScaleFactor(0.5)
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 14)
@@ -235,13 +235,15 @@ struct NameDetailView: View {
             : loc("شرح موجز من إعداد التطبيق")
     }
 
+    /// ترتيب النص المشارَك: الاسم، ثم الشرح وعزوه مباشرةً تحته، ثم الدليل وعزوه —
+    /// حتى لا يقع عزو السعدي تحت الآية فيُظنّ أنه قائلها.
     private var shareText: String {
-        var s = current.name + "\n\n" + current.meaning
+        var s = current.name + "\n\n" + current.meaning + "\n" + sourceLine
         if !current.evidence.isEmpty {
             s += "\n\n" + current.evidence
-            if !current.evidenceSource.isEmpty { s += "\n" + current.evidenceSource }
+            if !current.evidenceSource.isEmpty { s += "\n[" + current.evidenceSource + "]" }
         }
-        return s + "\n\n" + sourceLine + "\n\nمن تطبيق أثر"
+        return s + "\n\nمن تطبيق أثر"
     }
 
     var body: some View {
@@ -291,7 +293,7 @@ struct NameDetailView: View {
                     .foregroundStyle(Theme.ink)
                     .multilineTextAlignment(.center)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.6)
+                    .minimumScaleFactor(0.5)
                     .padding(.horizontal, 4)
                     .contentTransition(.opacity)
                 goldThread
