@@ -3,106 +3,141 @@ import WatchKit
 
 @main
 struct AtharWatchApp: App {
+    @StateObject private var store = AtharStore.shared
+    init() { WatchSyncReceiver.shared.activate() }
+
     var body: some Scene {
-        WindowGroup { WatchRootView() }
+        WindowGroup {
+            WatchRootView()
+                .environmentObject(store)
+                .environment(\.layoutDirection, .rightToLeft)
+        }
     }
 }
 
-private enum WatchStyle {
-    static let accent = Color(red: 0.31, green: 0.75, blue: 0.56)   // أخضر أثر
-    static let gold   = Color(red: 0.85, green: 0.71, blue: 0.37)
-    static let ink    = Color.white
-    static let inkSoft = Color.white.opacity(0.62)
-}
-
+/// ثلاث صفحات رأسية: الصلاة القادمة، المسبحة، ذكر اليوم — ولون الخلفية يتبع وقت اليوم.
 struct WatchRootView: View {
     var body: some View {
         TabView {
-            WatchPrayerView()
-            WatchTasbihView()
+            WatchPrayerPage()
+            WatchTasbihPage()
+            WatchDhikrPage()
         }
         .tabViewStyle(.verticalPage)
     }
 }
 
-// MARK: - أوقات الصلاة
+// MARK: - أدوات مشتركة
 
-struct WatchPrayerView: View {
-    private let store = AtharStore.shared
+private extension View {
+    /// أرقام لاتينية في العدّ التنازلي كبقية التطبيق.
+    func latinDigits() -> some View { environment(\.locale, Locale(identifier: "ar_SA@numbers=latn")) }
+}
+
+private func clock(_ d: Date, tz: TimeZone) -> String {
+    let f = DateFormatter()
+    f.locale = Locale(identifier: "ar_SA@numbers=latn")
+    f.timeZone = tz
+    f.dateFormat = "h:mm"
+    return f.string(from: d)
+}
+
+// MARK: - الصلاة القادمة
+
+struct WatchPrayerPage: View {
+    @EnvironmentObject private var store: AtharStore
     @State private var now = Date()
     private let ticker = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
 
     private var times: PrayerTimes? { store.prayerTimes(for: now) }
-    private var upcoming: (prayer: Prayer, date: Date)? {
-        if let n = times?.nextPrayer(after: now) { return n }
+    private var moment: AtharStyle.Moment { .at(now, times: times) }
+
+    /// الصلاة القادمة والتي قبلها — لحساب حلقة التقدّم بينهما.
+    private var window: (prev: Date, next: Date, prayer: Prayer)? {
+        guard let t = times else { return nil }
+        let ordered = t.ordered.filter { $0.prayer.isPrayer }
+        if let i = ordered.firstIndex(where: { $0.date > now }) {
+            let prev = i > 0 ? ordered[i - 1].date : (Calendar.current.date(byAdding: .day, value: -1, to: now).flatMap { store.prayerTimes(for: $0)?[.isha] } ?? ordered[i].date.addingTimeInterval(-5 * 3600))
+            return (prev, ordered[i].date, ordered[i].prayer)
+        }
         guard let tm = Calendar.current.date(byAdding: .day, value: 1, to: now),
-              let t = store.prayerTimes(for: tm), let f = t[.fajr] else { return nil }
-        return (.fajr, f)
+              let f = store.prayerTimes(for: tm)?[.fajr], let isha = t[.isha] else { return nil }
+        return (isha, f, .fajr)
     }
 
-    private func time(_ d: Date) -> String {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "ar_SA@numbers=latn")
-        f.dateFormat = "h:mm"
-        f.timeZone = store.placeTimeZone
-        return f.string(from: d)
+    private var progress: Double {
+        guard let w = window else { return 0 }
+        let total = w.next.timeIntervalSince(w.prev); guard total > 0 else { return 0 }
+        return min(1, max(0, now.timeIntervalSince(w.prev) / total))
     }
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 10) {
-                if let up = upcoming {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("الصلاة القادمة")
-                            .font(.system(size: 12)).foregroundStyle(WatchStyle.inkSoft)
-                        HStack {
-                            Image(systemName: up.prayer.icon).foregroundStyle(WatchStyle.gold)
-                            Text(up.prayer.title)
-                                .font(.system(size: 22, weight: .bold)).foregroundStyle(WatchStyle.ink)
-                            Spacer()
-                            Text(time(up.date))
-                                .font(.system(size: 20, weight: .semibold, design: .rounded))
-                                .foregroundStyle(WatchStyle.gold)
+            VStack(spacing: 10) {
+                if let w = window {
+                    ZStack {
+                        Circle().stroke(Color.white.opacity(0.12), lineWidth: 9)
+                        Circle().trim(from: 0, to: progress)
+                            .stroke(moment.tint, style: StrokeStyle(lineWidth: 9, lineCap: .round))
+                            .rotationEffect(.degrees(-90))
+                            .environment(\.layoutDirection, .leftToRight)
+                        VStack(spacing: 2) {
+                            Image(systemName: w.prayer.icon)
+                                .font(.system(size: 20, weight: .semibold))
+                                .foregroundStyle(moment.tint)
+                            Text(w.prayer.title)
+                                .font(.system(size: 22, weight: .bold, design: .rounded))
+                                .foregroundStyle(moment.ink)
+                            Text(timerInterval: now...w.next, countsDown: true)
+                                .font(.system(size: 17, weight: .semibold, design: .rounded))
+                                .monospacedDigit()
+                                .foregroundStyle(moment.ink.opacity(0.9))
+                                .latinDigits()
+                            Text(clock(w.next, tz: store.placeTimeZone))
+                                .font(.system(size: 12, weight: .medium, design: .rounded))
+                                .foregroundStyle(moment.inkSoft)
                         }
-                        Text(up.date, style: .relative)
-                            .font(.system(size: 12, design: .rounded)).foregroundStyle(WatchStyle.inkSoft)
                     }
-                    .padding(.bottom, 4)
+                    .frame(width: 150, height: 150)
+                    .padding(.top, 4)
+
+                    Text(store.placeName)
+                        .font(.system(size: 12)).foregroundStyle(moment.inkSoft)
                 }
 
                 if let t = times {
-                    ForEach(Prayer.allCases.filter { $0.isPrayer }, id: \.self) { p in
-                        if let d = t[p] {
-                            let isNext = upcoming?.prayer == p
-                            HStack {
+                    VStack(spacing: 0) {
+                        ForEach(Prayer.allCases.filter(\.isPrayer)) { p in
+                            let isNext = window?.prayer == p
+                            HStack(spacing: 8) {
                                 Image(systemName: p.icon)
-                                    .font(.system(size: 13))
-                                    .foregroundStyle(isNext ? WatchStyle.gold : WatchStyle.inkSoft)
-                                    .frame(width: 20)
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(isNext ? moment.tint : moment.inkSoft)
+                                    .frame(width: 18)
                                 Text(p.title)
                                     .font(.system(size: 15, weight: isNext ? .bold : .regular))
-                                    .foregroundStyle(isNext ? WatchStyle.ink : WatchStyle.inkSoft)
+                                    .foregroundStyle(isNext ? moment.ink : moment.inkSoft)
                                 Spacer()
-                                Text(time(d))
+                                Text(t[p].map { clock($0, tz: store.placeTimeZone) } ?? "—")
                                     .font(.system(size: 15, weight: isNext ? .bold : .regular, design: .rounded))
-                                    .foregroundStyle(isNext ? WatchStyle.gold : WatchStyle.inkSoft)
+                                    .monospacedDigit()
+                                    .foregroundStyle(isNext ? moment.tint : moment.inkSoft)
                             }
-                            .padding(.vertical, 3)
-                            Divider().overlay(Color.white.opacity(0.08))
+                            .padding(.vertical, 6).padding(.horizontal, 10)
+                            .background(RoundedRectangle(cornerRadius: 10, style: .continuous)
+                                .fill(isNext ? Color.white.opacity(0.10) : .clear))
                         }
                     }
-                    Text(store.placeName)
-                        .font(.system(size: 11)).foregroundStyle(WatchStyle.inkSoft)
-                        .frame(maxWidth: .infinity).padding(.top, 2)
+                    .padding(.top, 2)
                 } else {
-                    Text("افتح التطبيق في الآيفون لضبط موقعك")
-                        .font(.system(size: 13)).foregroundStyle(WatchStyle.inkSoft)
+                    Text("افتح «أثر» في الآيفون مرة ليصل موقعك إلى الساعة")
+                        .font(.system(size: 13)).foregroundStyle(moment.inkSoft)
                         .multilineTextAlignment(.center)
                 }
             }
-            .padding(.horizontal, 4)
-            .environment(\.layoutDirection, .rightToLeft)
+            .padding(.horizontal, 6)
         }
+        .containerBackground(LinearGradient(colors: moment.gradient, startPoint: .top, endPoint: .bottom), for: .navigation)
         .navigationTitle("الصلاة")
         .onReceive(ticker) { now = $0 }
     }
@@ -110,42 +145,129 @@ struct WatchPrayerView: View {
 
 // MARK: - المسبحة
 
-struct WatchTasbihView: View {
+struct WatchTasbihPage: View {
+    @EnvironmentObject private var store: AtharStore
     @State private var count = 0
-    private let phrase = "سُبْحَانَ اللهِ وَبِحَمْدِهِ"
+    @State private var phraseIndex = 0
+
+    private let phrases = ["سُبْحَانَ اللهِ", "الْحَمْدُ لِلهِ", "اللهُ أَكْبَرُ", "أَسْتَغْفِرُ اللهَ", "لَا إِلَهَ إِلَّا اللهُ", "سُبْحَانَ اللهِ وَبِحَمْدِهِ"]
+    private let target = 33
+
+    private var moment: AtharStyle.Moment { .at(Date(), times: store.prayerTimes()) }
 
     var body: some View {
-        VStack(spacing: 8) {
-            Text(phrase)
-                .font(.system(size: 15, weight: .medium))
-                .foregroundStyle(WatchStyle.ink)
-                .multilineTextAlignment(.center)
-            Text("\(count)")
-                .font(.system(size: 46, weight: .bold, design: .rounded))
-                .foregroundStyle(WatchStyle.accent)
-                .contentTransition(.numericText())
-            HStack(spacing: 8) {
-                Button {
-                    count = 0
-                    WKInterfaceDevice.current().play(.click)
-                } label: {
-                    Image(systemName: "arrow.counterclockwise")
-                }
-                .frame(width: 44)
-                .tint(.gray)
+        VStack(spacing: 6) {
+            Text(phrases[phraseIndex])
+                .font(.custom("NotoNaskhArabic-Bold", size: 17))
+                .foregroundStyle(moment.ink)
+                .lineLimit(1).minimumScaleFactor(0.7)
 
-                Button {
-                    count += 1
-                    WKInterfaceDevice.current().play(.click)
-                } label: {
-                    Text("سبّح").frame(maxWidth: .infinity)
+            // الحلقة كلّها زرّ: نقرة في أي موضع تعدّ، مع نبضة ملموسة.
+            Button {
+                count += 1
+                WKInterfaceDevice.current().play(count % target == 0 ? .success : .click)
+                store.tasbihCount += 1
+            } label: {
+                ZStack {
+                    Circle().stroke(Color.white.opacity(0.12), lineWidth: 10)
+                    Circle().trim(from: 0, to: Double(count % target) / Double(target))
+                        .stroke(moment.tint, style: StrokeStyle(lineWidth: 10, lineCap: .round))
+                        .rotationEffect(.degrees(-90))
+                        .environment(\.layoutDirection, .leftToRight)
+                        .animation(.snappy, value: count)
+                    VStack(spacing: 0) {
+                        Text("\(count)")
+                            .font(.system(size: 44, weight: .bold, design: .rounded))
+                            .foregroundStyle(moment.ink)
+                            .contentTransition(.numericText())
+                            .monospacedDigit()
+                        Text("من \(target) · جولة \(count / target + 1)")
+                            .font(.system(size: 11, design: .rounded))
+                            .foregroundStyle(moment.inkSoft)
+                    }
                 }
-                .tint(WatchStyle.accent)
+                .frame(width: 138, height: 138)
+                .contentShape(Circle())
             }
-            .buttonStyle(.borderedProminent)
+            .buttonStyle(.plain)
+            .simultaneousGesture(LongPressGesture(minimumDuration: 0.8).onEnded { _ in
+                count = 0
+                WKInterfaceDevice.current().play(.retry)
+            })
+            .accessibilityLabel("عدّ — الحالي \(count)")
+            .accessibilityHint("ضغطة مطوّلة للتصفير")
+
+            Button {
+                phraseIndex = (phraseIndex + 1) % phrases.count
+                count = 0
+                WKInterfaceDevice.current().play(.click)
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: "arrow.triangle.2.circlepath").font(.system(size: 10, weight: .semibold))
+                    Text("ذكر آخر").font(.system(size: 12, weight: .semibold))
+                }
+                .foregroundStyle(moment.tint)
+                .padding(.horizontal, 10).padding(.vertical, 5)
+                .background(Capsule().fill(Color.white.opacity(0.10)))
+            }
+            .buttonStyle(.plain)
         }
-        .padding(.horizontal, 6)
+        .padding(.horizontal, 4)
+        .containerBackground(LinearGradient(colors: moment.gradient, startPoint: .top, endPoint: .bottom), for: .navigation)
         .navigationTitle("المسبحة")
-        .environment(\.layoutDirection, .rightToLeft)
+    }
+}
+
+// MARK: - ذكر اليوم
+
+struct WatchDhikrPage: View {
+    @EnvironmentObject private var store: AtharStore
+    @State private var offset = 0
+
+    private var pool: [Dhikr] { AdhkarLibrary.shortItems.isEmpty ? AdhkarLibrary.allItems : AdhkarLibrary.shortItems }
+    private var dhikr: Dhikr? {
+        guard !pool.isEmpty else { return nil }
+        let slot = Int(Date().timeIntervalSince1970 / 1800) + offset
+        return pool[abs(slot) % pool.count]
+    }
+    private var moment: AtharStyle.Moment { .at(Date(), times: store.prayerTimes()) }
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 10) {
+                if let d = dhikr {
+                    Text(d.text)
+                        .font(.custom("NotoNaskhArabic-Regular", size: 17))
+                        .foregroundStyle(moment.ink)
+                        .multilineTextAlignment(.center)
+                        .lineSpacing(4)
+                        .padding(.horizontal, 6)
+                        .padding(.top, 6)
+                    if !d.reference.isEmpty {
+                        Text(d.reference)
+                            .font(.system(size: 11)).foregroundStyle(moment.inkSoft)
+                            .multilineTextAlignment(.center)
+                    }
+                    if d.count > 1 {
+                        Text("يُقال \(d.count) مرّات")
+                            .font(.system(size: 11, weight: .medium, design: .rounded))
+                            .foregroundStyle(moment.tint)
+                    }
+                    Button {
+                        offset += 1
+                        WKInterfaceDevice.current().play(.click)
+                    } label: {
+                        Text("ذكر آخر").font(.system(size: 12, weight: .semibold)).foregroundStyle(moment.tint)
+                            .padding(.horizontal, 12).padding(.vertical, 5)
+                            .background(Capsule().fill(Color.white.opacity(0.10)))
+                    }
+                    .buttonStyle(.plain)
+                } else {
+                    Text("لا أذكار محمّلة").foregroundStyle(moment.inkSoft)
+                }
+            }
+        }
+        .containerBackground(LinearGradient(colors: moment.gradient, startPoint: .top, endPoint: .bottom), for: .navigation)
+        .navigationTitle("ذكر")
     }
 }

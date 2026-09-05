@@ -79,8 +79,22 @@ targets:
           - "AyahAudio.swift"
           - "CloudKV.swift"
           - "CloudSync.swift"
-          - "*.json"
+          # الأذكار القصيرة فقط تلزم الساعة؛ المصحف والحديث والتفسير ثقيلة عليها.
+          - "quran.json"
+          - "quran_meta.json"
+          - "hadith.json"
+          - "ahkam.json"
+          - "names.json"
+          - "hajj.json"
+          - "sharh40.json"
           - "Resources/**"
+      # خطّ النسخ للأذكار والمسبحة على الساعة.
+      - path: Athar/Resources/Fonts
+        type: folder
+        buildPhase: resources
+    dependencies:
+      - target: AtharWatchWidget
+        embed: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.ibrahim.athar.watchkitapp
@@ -90,6 +104,32 @@ targets:
         TARGETED_DEVICE_FAMILY: "4"
         SKIP_INSTALL: YES
         SWIFT_EMIT_LOC_STRINGS: YES
+
+  AtharWatchWidget:
+    type: app-extension
+    platform: watchOS
+    deploymentTarget: "10.0"
+    sources:
+      - path: AtharWatchWidget
+        excludes:
+          - "Info.plist"
+          - "AtharWatchWidget.entitlements"
+      - path: Shared
+        excludes:
+          - "Recitation.swift"
+          - "AyahAudio.swift"
+          - "CloudKV.swift"
+          - "CloudSync.swift"
+          - "*.json"
+          - "Resources/**"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.ibrahim.athar.watchkitapp.widget
+        PRODUCT_NAME: AtharWatchWidget
+        INFOPLIST_FILE: AtharWatchWidget/Info.plist
+        CODE_SIGN_ENTITLEMENTS: AtharWatchWidget/AtharWatchWidget.entitlements
+        TARGETED_DEVICE_FAMILY: "4"
+        SKIP_INSTALL: YES
 
   AtharWidget:
     type: app-extension

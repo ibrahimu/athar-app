@@ -673,6 +673,7 @@ struct SettingsView: View {
         WidgetCenter.shared.reloadAllTimelines()
         // قيام الليل وتنبيهات الأذان كلاهما يتبعان المكان وطريقة الحساب، فتُعاد جدولتهما معًا.
         Task { await Reminders.rescheduleAll(store: store) }
+        WatchSync.shared.push(store: store)
     }
 
     /// App Store page for أثر (Apple ID 6806411693).

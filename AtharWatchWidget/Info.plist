@@ -4,35 +4,26 @@
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>ar</string>
+	<key>CFBundleDisplayName</key>
+	<string>أثر</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
 	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
-	<key>CFBundlePackageType</key>
-	<string>APPL</string>
-	<key>CFBundleDisplayName</key>
-	<string>أثر</string>
 	<key>CFBundleName</key>
-	<string>Athar</string>
+	<string>$(PRODUCT_NAME)</string>
+	<key>CFBundlePackageType</key>
+	<string>XPC!</string>
 	<key>CFBundleShortVersionString</key>
 	<string>$(MARKETING_VERSION)</string>
 	<key>CFBundleVersion</key>
 	<string>$(CURRENT_PROJECT_VERSION)</string>
-	<key>UIAppFonts</key>
-	<array>
-		<string>NotoNaskhArabic-Regular.ttf</string>
-		<string>NotoNaskhArabic-Medium.ttf</string>
-		<string>NotoNaskhArabic-Bold.ttf</string>
-	</array>
-	<key>WKApplication</key>
-	<true/>
-	<key>WKCompanionAppBundleIdentifier</key>
-	<string>com.ibrahim.athar</string>
-	<key>UISupportedInterfaceOrientations</key>
-	<array>
-		<string>UIInterfaceOrientationPortrait</string>
-	</array>
+	<key>NSExtension</key>
+	<dict>
+		<key>NSExtensionPointIdentifier</key>
+		<string>com.apple.widgetkit-extension</string>
+	</dict>
 </dict>
 </plist>

@@ -37,6 +37,8 @@ struct AtharApp: App {
             switch phase {
             case .active:
                 store.startCloudSync()            // لا يفعل شيئًا إن كانت المزامنة مطفأة
+                WatchSync.shared.activate()       // الساعة تأخذ مدينتك وطريقة حسابك من هنا
+                WatchSync.shared.push(store: store)
                 // Prayer alerts are only scheduled a week out; top them up on every launch.
                 Task { await Reminders.rescheduleAll(store: store) }
                 // النشاط الحيّ يُزامَن مع كل عودة: يُنهي ما انقضى ويطلب الصلاة القادمة —

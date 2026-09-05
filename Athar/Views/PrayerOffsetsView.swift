@@ -103,6 +103,7 @@ struct PrayerOffsetsView: View {
         Haptics.tap(enabled: store.hapticsEnabled)
         WidgetCenter.shared.reloadAllTimelines()
         Task { await Reminders.rescheduleAll(store: store) }
+        WatchSync.shared.push(store: store)
     }
 
     private func offsetText(_ m: Int) -> String {
