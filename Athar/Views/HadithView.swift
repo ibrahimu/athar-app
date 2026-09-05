@@ -575,7 +575,7 @@ struct HadithDetailView: View {
                     .fixedSize(horizontal: false, vertical: true)
                 // شرح ابن دقيق العيد للأربعين — تراث عام؛ يُطوى افتراضيًّا لئلا يزاحم المتن.
                 if let sharh = SharhLibrary.sharh(for: current.id) {
-                    SharhCard(sharh: sharh)
+                    SharhCard(sharh: sharh, hadithId: current.id)
                 }
             }
         }
@@ -702,6 +702,7 @@ struct HadithDetailView: View {
 /// شرح الحديث من كتابٍ تراثي: عنوان الباب، ثم النص مطويًّا يُفتح بنقرة، وذيلٌ يذكر الكتاب ومصدره.
 struct SharhCard: View {
     let sharh: HadithSharh
+    var hadithId: String = "n1"
     @EnvironmentObject private var store: AtharStore
     @State private var expanded = false
 
@@ -715,7 +716,7 @@ struct SharhCard: View {
                     HStack(spacing: 10) {
                         IconChip(icon: "text.book.closed.fill", tint: Theme.accent(for: "gold"), size: .sm)
                         VStack(alignment: .leading, spacing: 2) {
-                            Text(loc("الشرح — %1$@", SharhLibrary.author))
+                            Text(loc("الشرح — %1$@", SharhLibrary.attribution(for: hadithId).author))
                                 .font(Theme.display(15, weight: .semibold)).foregroundStyle(Theme.ink)
                             Text(sharh.title).font(Theme.display(12)).foregroundStyle(Theme.inkSoft)
                         }
@@ -737,7 +738,7 @@ struct SharhCard: View {
                         .lineSpacing(7)
                         .fixedSize(horizontal: false, vertical: true)
                         .textSelection(.enabled)
-                    Text("\(SharhLibrary.bookTitle) — \(SharhLibrary.sourceNote)")
+                    Text("\(SharhLibrary.attribution(for: hadithId).book) — \(SharhLibrary.attribution(for: hadithId).source)")
                         .font(Theme.display(10)).foregroundStyle(Theme.inkFaint)
                         .fixedSize(horizontal: false, vertical: true)
                 }

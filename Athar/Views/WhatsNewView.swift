@@ -4,7 +4,8 @@ import SwiftUI
 /// كاملة لن يكتشفها المستخدم وحده. تُحفظ نسخة العرض في التفضيلات فلا تعود.
 struct WhatsNewView: View {
     @EnvironmentObject private var store: AtharStore
-    @Environment(\.dismiss) private var dismiss
+    /// يُغلق من الأب (يُعرض تراكبًا لا ورقة: الأوراق المطلوبة لحظة الإقلاع كانت تُهدم فور ظهورها).
+    var onClose: () -> Void = {}
 
     /// يُرفع مع كل إصدار يستحق العرض.
     static let version = "1.2"
@@ -57,7 +58,7 @@ struct WhatsNewView: View {
                     SettingsCard {
                         ForEach(Array(items.enumerated()), id: \.element.id) { i, item in
                             Button {
-                                dismiss()
+                                onClose()
                                 if let tab = item.tab { onOpen?(tab) }
                             } label: {
                                 SettingsRow(icon: item.icon, tint: Theme.accent(for: item.accent),
@@ -74,7 +75,7 @@ struct WhatsNewView: View {
                     }
 
                     Button {
-                        dismiss()
+                        onClose()
                     } label: {
                         Text(loc("ابدأ"))
                             .font(Theme.display(16, weight: .semibold))

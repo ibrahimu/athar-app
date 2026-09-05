@@ -30,8 +30,43 @@ struct TafsirSheet: View {
     /// تُحلّ مرة عند كل تغيّر للآية أو الكتاب لا في كل رسمة: قراءة ملف السورة (حتى نصف ميغا
     /// للبقرة) وفكّ الإحالات لا يليقان بجسم العرض.
     @State private var resolved: TafsirEntry?
+    @ObservedObject private var ayahAudio = AyahAudio.shared
+    @ObservedObject private var speaker = TafsirSpeaker.shared
     private var entry: TafsirEntry? { resolved }
-    private func resolve() { resolved = Tafsir.entry(edition, for: current) }
+    private func resolve() {
+        resolved = Tafsir.entry(edition, for: current)
+        applySoundMode()
+    }
+
+    /// خيار المستخدم: تلاوة الآية عند فتحها، أو قراءة تفسيرها بصوت الجهاز، أو لا شيء.
+    private func applySoundMode() {
+        switch store.ayahSoundMode {
+        case .none:
+            break
+        case .recite:
+            speaker.stop()
+            ayahAudio.stopAt = current            // آية واحدة لا السورة كلها
+            ayahAudio.play(from: current)
+        case .tafsir:
+            ayahAudio.stop()
+            if let e = resolved { speaker.speak(e.text, marks: e.edition.quoteMarks) }
+        }
+    }
+
+    private var soundActive: Bool {
+        (ayahAudio.isActive && ayahAudio.current == current) || speaker.speaking
+    }
+
+    private func toggleSound() {
+        if soundActive { ayahAudio.stop(); speaker.stop(); return }
+        switch store.ayahSoundMode {
+        case .none, .recite:
+            ayahAudio.stopAt = current
+            ayahAudio.play(from: current)
+        case .tafsir:
+            if let e = resolved { speaker.speak(e.text, marks: e.edition.quoteMarks) }
+        }
+    }
     private var rangeTitle: String {
         entry?.rangeTitle ?? loc("الآية %1$@", current.ayah.counterText)
     }
@@ -60,6 +95,7 @@ struct TafsirSheet: View {
                 }
                 .scrollIndicators(.hidden)
                 .task { resolve() }
+                .onDisappear { ayahAudio.stop(); speaker.stop() }   // لا صوت يتيم بعد إغلاق الورقة
                 .onChange(of: edition) { _, _ in resolve() }
                 .onChange(of: current) { _, _ in
                     resolve()
@@ -85,6 +121,38 @@ struct TafsirSheet: View {
                     .foregroundStyle(Theme.inkSoft)
             }
             Spacer(minLength: 8)
+            // الصوت: زرّ تشغيل/إيقاف بحسب الخيار، وقائمة تختار الخيار (يُحفظ).
+            Button { toggleSound() } label: {
+                Image(systemName: soundActive ? "stop.fill" : (store.ayahSoundMode == .tafsir ? "text.bubble.fill" : "play.fill"))
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(soundActive ? Theme.onAccent : tint)
+                    .frame(width: 32, height: 32)
+                    .background(Circle().fill(soundActive ? tint : tint.opacity(0.12)))
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(Rectangle())
+            }
+            .pressable(scale: 0.9)
+            .accessibilityLabel(soundActive ? loc("إيقاف الصوت") : (store.ayahSoundMode == .tafsir ? loc("قراءة التفسير بالصوت") : loc("تلاوة الآية")))
+            Menu {
+                ForEach(AyahSoundMode.allCases) { m in
+                    Button {
+                        store.ayahSoundMode = m
+                        ayahAudio.stop(); speaker.stop()
+                        applySoundMode()
+                    } label: {
+                        if store.ayahSoundMode == m { Label(m.title, systemImage: "checkmark") } else { Label(m.title, systemImage: m.icon) }
+                    }
+                }
+            } label: {
+                Image(systemName: "speaker.wave.2")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(Theme.inkFaint)
+                    .frame(width: 32, height: 32)
+                    .background(Circle().fill(Theme.surfaceAlt))
+                    .frame(minWidth: 44, minHeight: 44)
+                    .contentShape(Rectangle())
+            }
+            .accessibilityLabel(loc("خيار الصوت عند فتح الآية: %1$@", store.ayahSoundMode.title))
             if !inline { Button { dismiss() } label: {
                 Image(systemName: "xmark")
                     .font(.system(size: 12, weight: .semibold))
@@ -388,3 +456,6 @@ enum TafsirMarkup {
         return out
     }
 }
+
+/// بروتوكول صفوف الاختيار يعيش في التطبيق لا في Shared (الودجة لا تعرفه).
+extension AyahSoundMode: SettingsChoice {}

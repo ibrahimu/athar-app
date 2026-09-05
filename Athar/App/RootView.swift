@@ -6,6 +6,8 @@ struct RootView: View {
     @State private var selection: AppTab = .home
     /// قسم طلبه «سيري» أو اختصار وليس في الشريط — يُعرض غطاءً كاملًا بزرّ إغلاق.
     @State private var coveredTab: AppTab?
+    /// «ما الجديد» تراكبٌ فوق التبويبات كلها: الأوراق المطلوبة لحظة الإقلاع كانت تُهدم فور ظهورها.
+    @State private var showWhatsNew = false
 
     @ViewBuilder
     private func icon(for tab: AppTab) -> some View {
@@ -30,6 +32,32 @@ struct RootView: View {
             Task { await Reminders.rescheduleAll(store: store) }
             WidgetCenter.shared.reloadAllTimelines()
             if store.liveActivityEnabled { LiveActivityManager.sync(store: store) }
+        }
+        .task {
+            guard store.didOnboard,
+                  CommandLine.arguments.contains("-whatsnew") || store.whatsNewShownVersion != WhatsNewView.version
+            else { return }
+            try? await Task.sleep(for: .milliseconds(900))
+            withAnimation(Motion.smooth) { showWhatsNew = true }
+        }
+        .overlay {
+            if showWhatsNew {
+                ZStack {
+                    Color.black.opacity(0.4).ignoresSafeArea()
+                        .onTapGesture { closeWhatsNew() }
+                    WhatsNewView(onClose: closeWhatsNew, onOpen: { tab in
+                        if store.visibleTabs.contains(tab) { selection = tab } else { store.pendingTab = tab }
+                    })
+                    .environmentObject(store)
+                    .clipShape(RoundedRectangle(cornerRadius: 28, style: .continuous))
+                    .padding(.horizontal, 10)
+                    .padding(.top, 58)
+                    .padding(.bottom, 24)
+                    .shadow(color: .black.opacity(0.25), radius: 30, y: 10)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+                .zIndex(10)
+            }
         }
         .onChange(of: store.visibleTabs) { _, tabs in
             // لو حُذف التبويب المختار، ارجع لليوم (موجود دائمًا) بدل شاشة فارغة.
@@ -57,6 +85,11 @@ struct RootView: View {
             .environment(\.layoutDirection, .rightToLeft)
             .tint(Theme.accent)
         }
+    }
+
+    private func closeWhatsNew() {
+        withAnimation(Motion.smooth) { showWhatsNew = false }
+        store.whatsNewShownVersion = WhatsNewView.version
     }
 
     /// يستهلك طلب «سيري»/الاختصار مرة واحدة: تبويبٌ في الشريط يُختار، وما سواه يُعرض غطاءً —

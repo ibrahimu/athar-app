@@ -17,6 +17,13 @@ extension AtharStore {
         static let iqamahMinutes         = "athar.iqamahMinutes"
         static let whatsNewVersion       = "athar.whatsNewVersion"
         static let secondaryCity         = "athar.secondaryCityId"
+        static let ayahSoundMode         = "athar.ayahSoundMode"
+    }
+
+    /// ما يحدث صوتيًّا عند فتح آية في ورقة التفسير: تلاوتها، أو قراءة تفسيرها بصوت الجهاز، أو لا شيء.
+    var ayahSoundMode: AyahSoundMode {
+        get { AyahSoundMode(rawValue: defaults.string(forKey: FKey.ayahSoundMode) ?? "") ?? .none }
+        set { defaults.set(newValue.rawValue, forKey: FKey.ayahSoundMode); objectWillChange.send() }
     }
 
     // MARK: مدينة ثانية (للمسافر أو لأهلٍ في بلد آخر)
@@ -191,6 +198,35 @@ extension AtharStore {
         for key in defaults.dictionaryRepresentation().keys
         where key.hasPrefix(FKey.prayerLogPrefix) || key.hasPrefix(FKey.qadaPrefix) {
             defaults.removeObject(forKey: key)
+        }
+    }
+}
+
+
+/// خيار الصوت عند فتح الآية — «بلا صوت» هو الأصل حتى لا يفاجأ القارئ بصوت.
+enum AyahSoundMode: String, CaseIterable, Identifiable {
+    case none, recite, tafsir
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .none:   return "بلا صوت"
+        case .recite: return "تلاوة الآية"
+        case .tafsir: return "قراءة التفسير"
+        }
+    }
+    var shortTitle: String { title }
+    var detail: String {
+        switch self {
+        case .none:   return "تفتح ورقة التفسير صامتة، وتشغّل ما تريد بيدك"
+        case .recite: return "تُتلى الآية بصوت القارئ المختار عند فتحها (من الإنترنت)"
+        case .tafsir: return "يُقرأ التفسير بصوت الجهاز العربي — بلا إنترنت"
+        }
+    }
+    var icon: String {
+        switch self {
+        case .none:   return "speaker.slash.fill"
+        case .recite: return "waveform.and.mic"
+        case .tafsir: return "text.bubble.fill"
         }
     }
 }

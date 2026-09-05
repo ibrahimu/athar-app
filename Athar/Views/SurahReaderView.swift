@@ -239,6 +239,9 @@ struct SurahReaderView: View {
         .onDisappear {
             ReaderWake.exit()
             store.readerScheme = .none
+            // تلاوة الآية بالآية تخصّ المصحف المفتوح: بلا هذا استمرّ الصوت بعد الخروج بلا زرّ يوقفه.
+            ayahAudio.stop()
+            TafsirSpeaker.shared.stop()
         }
         .onChange(of: store.readingTheme) { _, t in store.readerScheme = t == .night ? .dark : .light }
     }
