@@ -84,7 +84,13 @@ struct SurahReaderView: View {
         Quran.surah(visibleSurahId)?.name ?? ""
     }
 
-    var body: some View {
+    @Environment(\.horizontalSizeClass) private var sizeClass
+    /// لوحة التفسير الجانبية على الشاشات العريضة (iPad): تتبع الآية المختارة أو موضع القراءة.
+    @State private var sidePanel = false
+    private var panelRef: AyahRef { selected ?? currentRef ?? scrollTo ?? AyahRef(surah: surahId, ayah: 1) }
+
+    /// المصحف نفسه بأوضاعه الثلاثة.
+    private var readerCore: some View {
         ZStack {
             palette.paper.ignoresSafeArea()
                 .animation(Motion.smooth, value: store.readingTheme)
@@ -110,6 +116,24 @@ struct SurahReaderView: View {
             } else {
                 ayahModeBody
             }
+        }
+    }
+
+    /// لوحة التفسير الجانبية (iPad).
+    private var tafsirPanel: some View {
+        HStack(spacing: 0) {
+            Divider()
+            TafsirSheet(ref: panelRef, inline: true)
+                .id(panelRef)
+                .frame(width: 400)
+        }
+    }
+
+    var body: some View {
+        // مقسوم إلى أجزاء صغيرة: تعبير واحد كبير كان يُعجز المُحلِّل عن تحديد نوعه.
+        HStack(spacing: 0) {
+            readerCore
+            if sizeClass == .regular && sidePanel { tafsirPanel }
         }
         .overlay(alignment: .bottom) {
             VStack(spacing: 6) {
@@ -145,6 +169,15 @@ struct SurahReaderView: View {
                     Image(systemName: "textformat.size")
                 }
                 .accessibilityLabel(loc("ضوابط القراءة"))
+            }
+            if sizeClass == .regular {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { withAnimation(Motion.snappy) { sidePanel.toggle() } } label: {
+                        Image(systemName: sidePanel ? "sidebar.trailing" : "sidebar.trailing")
+                            .symbolVariant(sidePanel ? .fill : .none)
+                    }
+                    .accessibilityLabel(sidePanel ? loc("إخفاء لوحة التفسير") : loc("لوحة التفسير جانبًا"))
+                }
             }
             // تلاوة آية بآية مع تظليل الموضع — للتدبّر والحفظ (everyayah.com).
             ToolbarItem(placement: .topBarTrailing) {

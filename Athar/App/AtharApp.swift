@@ -36,6 +36,7 @@ struct AtharApp: App {
         .onChange(of: scenePhase) { _, phase in
             switch phase {
             case .active:
+                store.startCloudSync()            // لا يفعل شيئًا إن كانت المزامنة مطفأة
                 // Prayer alerts are only scheduled a week out; top them up on every launch.
                 Task { await Reminders.rescheduleAll(store: store) }
                 // النشاط الحيّ يُزامَن مع كل عودة: يُنهي ما انقضى ويطلب الصلاة القادمة —
@@ -46,6 +47,7 @@ struct AtharApp: App {
                     LiveActivityManager.endAll()
                 }
             case .background:
+                store.pushCloudSync()
                 WidgetCenter.shared.reloadAllTimelines()
             default:
                 break

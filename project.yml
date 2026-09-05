@@ -59,9 +59,35 @@ targets:
         TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Athar.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Athar"
         BUNDLE_LOADER: "$(TEST_HOST)"
 
-  # AtharWatch (تطبيق Apple Watch) — الكود جاهز في AtharWatch/، لكنه معطّل هنا
-  # لأن watchOS SDK غير مُثبَّت على جهاز البناء (يمنع الأرشفة). لتفعيله:
-  # ثبّت watchOS في Xcode ← Settings ← Components، ثم أعِد إدراج الهدف والـ embed.
+  # تطبيق Apple Watch: المواقيت والمسبحة. يشارك التطبيقَ ملفات Shared الخفيفة فقط
+  # (لا محرّكات الصوت ولا ملفات البيانات الكبيرة).
+  AtharWatch:
+    type: application
+    platform: watchOS
+    deploymentTarget: "10.0"
+    sources:
+      - path: AtharWatch
+        excludes:
+          - "Info.plist"
+          - "AtharWatch.entitlements"
+      - path: Shared
+        excludes:
+          - "Recitation.swift"
+          - "AyahAudio.swift"
+          - "CloudKV.swift"
+          - "CloudSync.swift"
+          - "*.json"
+          - "Resources/**"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.ibrahim.athar.watchkitapp
+        PRODUCT_NAME: AtharWatch
+        INFOPLIST_FILE: AtharWatch/Info.plist
+        CODE_SIGN_ENTITLEMENTS: AtharWatch/AtharWatch.entitlements
+        TARGETED_DEVICE_FAMILY: "4"
+        SKIP_INSTALL: YES
+        SWIFT_EMIT_LOC_STRINGS: YES
+
   AtharWidget:
     type: app-extension
     platform: iOS
@@ -87,6 +113,10 @@ targets:
         SKIP_INSTALL: YES
 
 schemes:
+  AtharWatch:
+    build:
+      targets:
+        AtharWatch: all
   Athar:
     build:
       targets:

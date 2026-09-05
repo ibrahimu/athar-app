@@ -437,6 +437,13 @@ struct SettingsView: View {
                         set: { store.countTapArea = $0 }))
 
                 SettingsDivider()
+                SettingsRow(icon: "icloud.fill", tint: Theme.accent(for: "sea"), title: loc("مزامنة iCloud"),
+                            subtitle: loc("التفضيلات والمفضّلة والعلامات فقط — لا العدّادات")) {
+                    Toggle("", isOn: Binding(get: { store.cloudSyncEnabled }, set: { store.cloudSyncEnabled = $0 }))
+                        .labelsHidden()
+                        .accessibilityLabel(loc("مزامنة iCloud"))
+                }
+                SettingsDivider()
                 SettingsRow(icon: "hand.tap.fill", tint: Theme.accent(for: "gold"), title: loc("rowHaptics")) {
                     Toggle("", isOn: Binding(
                         get: { store.hapticsEnabled },

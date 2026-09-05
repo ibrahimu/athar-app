@@ -6,6 +6,8 @@ import SwiftUI
 /// السعدي للمعنى العام الميسّر، والجلالين للبيان الموجز — وكلاهما تراث عام.
 /// تتنقّل بين آيات السورة بالسهمين دون إغلاق، فيقرأ المتدبّر السياق متّصلًا.
 struct TafsirSheet: View {
+    /// لوحة جانبية داخل القارئ (iPad): بلا زرّ إغلاق، وتتبع الآية الجارية.
+    var inline: Bool = false
     @EnvironmentObject private var store: AtharStore
     @Environment(\.dismiss) private var dismiss
 
@@ -17,7 +19,8 @@ struct TafsirSheet: View {
     /// تأكيد «نُسخ» يظهر لحظةً على الزرّ ثم يعود.
     @State private var copied = false
 
-    init(ref: AyahRef) {
+    init(ref: AyahRef, inline: Bool = false) {
+        self.inline = inline
         _current = State(initialValue: ref)
     }
 
@@ -82,7 +85,7 @@ struct TafsirSheet: View {
                     .foregroundStyle(Theme.inkSoft)
             }
             Spacer(minLength: 8)
-            Button { dismiss() } label: {
+            if !inline { Button { dismiss() } label: {
                 Image(systemName: "xmark")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(Theme.inkFaint)
@@ -93,6 +96,7 @@ struct TafsirSheet: View {
             }
             .pressable(scale: 0.9)
             .accessibilityLabel(loc("إغلاق"))
+            }
         }
     }
 
