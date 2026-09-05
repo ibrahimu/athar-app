@@ -80,7 +80,7 @@ struct DhikrSessionView: View {
         }
         .onAppear(perform: seed)
         // السحب يغيّر الصفحة دون عدّ، فنحفظ الموضع أيضًا ليعود المستخدم حيث ترك.
-        .onChange(of: index) { _, _ in saveSession() }
+        .onChange(of: index) { _, _ in saveSession(); speaker.stop() }   // لا يُكمل قراءة الذكر السابق على عدّ اللاحق
         .overlay { if showCompletion { completionOverlay } }
         .animation(Motion.smooth, value: showCompletion)
     }

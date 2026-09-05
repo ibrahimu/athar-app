@@ -35,6 +35,7 @@ final class WatchSync: NSObject, WCSessionDelegate {
             let store = AtharStore.shared
             store.tasbihCount += delta
             store.totalDhikrCount += delta
+            store.noteDhikr(delta)   // وإلا غاب تسبيح الساعة عن إحصاء الشهر
         }
     }
 }

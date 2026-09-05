@@ -694,7 +694,7 @@ struct SettingsView: View {
                 .font(Theme.dhikrFont(size: 15))
                 .foregroundStyle(Theme.ink)
                 .multilineTextAlignment(.center)
-            Text(loc("البقرة: ١١٠"))
+            Text(loc("البقرة: 110"))
                 .font(Theme.display(10))
                 .foregroundStyle(Theme.inkFaint)
             Text(loc("صدقة جارية عن كل من ساهم فيه أو دلَّ عليه"))

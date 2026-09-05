@@ -31,7 +31,8 @@ struct StatsView: View {
 
     private var header: some View {
         HStack {
-            nav("chevron.forward") { shift(1) }
+            // البادئ (يمين الواجهة العربية) هو السابق، والنهائي (يسار) هو التالي — كترتيب التقويم؛ كانا معكوسين فتشير الأسهم إلى الداخل.
+            nav("chevron.backward") { shift(-1) }
             Spacer()
             VStack(spacing: 2) {
                 Text("\(Occasions.monthName(month)) \(year.counterText)")
@@ -40,7 +41,7 @@ struct StatsView: View {
                     .font(Theme.display(12)).foregroundStyle(Theme.inkSoft)
             }
             Spacer()
-            nav("chevron.backward") { shift(-1) }
+            nav("chevron.forward") { shift(1) }
         }
     }
 

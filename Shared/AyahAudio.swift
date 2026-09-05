@@ -55,6 +55,22 @@ final class AyahAudio: NSObject, ObservableObject {
         let d = UserDefaults.standard
         if d.object(forKey: "athar.ayahAudio.repeat") != nil { repeatCount = max(1, d.integer(forKey: "athar.ayahAudio.repeat")) }
         if let r = d.string(forKey: "athar.ayahAudio.reciter") { reciterId = r }
+        // مكالمة أو سيري تقطع الصوت: يعكس الشريط التوقّف، ويستأنف إن أذن النظام.
+        NotificationCenter.default.addObserver(forName: AVAudioSession.interruptionNotification, object: nil, queue: .main) { [weak self] n in
+            Task { @MainActor in self?.handleInterruption(n) }
+        }
+    }
+
+    private func handleInterruption(_ n: Notification) {
+        guard player != nil, let raw = n.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
+              let type = AVAudioSession.InterruptionType(rawValue: raw) else { return }
+        switch type {
+        case .began: isPlaying = false
+        case .ended:
+            let opts = AVAudioSession.InterruptionOptions(rawValue: n.userInfo?[AVAudioSessionInterruptionOptionKey] as? UInt ?? 0)
+            if opts.contains(.shouldResume) { try? AVAudioSession.sharedInstance().setActive(true); player?.play(); isPlaying = true }
+        @unknown default: break
+        }
     }
 
     private func url(for ref: AyahRef) -> URL? {

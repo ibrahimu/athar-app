@@ -35,7 +35,8 @@ final class TasmiEngine: NSObject, ObservableObject {
         Recitation.shared.pause(); AyahAudio.shared.stop()
         let session = AVAudioSession.sharedInstance()
         do {
-            try session.setCategory(.record, mode: .measurement, options: .duckOthers)
+            // فئة التسجيل لا تقبل duckOthers (تخصّ فئات التشغيل) فكان الضبط يفشل على بعض الأجهزة.
+            try session.setCategory(.record, mode: .measurement, options: [])
             try session.setActive(true, options: .notifyOthersOnDeactivation)
         } catch { self.error = "تعذّر فتح الميكروفون."; return }
 
@@ -50,7 +51,12 @@ final class TasmiEngine: NSObject, ObservableObject {
         input.removeTap(onBus: 0)
         input.installTap(onBus: 0, bufferSize: 2048, format: format) { [weak self] buffer, _ in self?.request?.append(buffer) }
         engine.prepare()
-        do { try engine.start() } catch { self.error = "تعذّر تشغيل الصوت."; return }
+        do { try engine.start() } catch {
+            // لا نترك اللاقط مثبَّتًا والجلسة مفتوحة إن فشل التشغيل.
+            input.removeTap(onBus: 0); request = nil
+            try? session.setActive(false, options: .notifyOthersOnDeactivation)
+            self.error = "تعذّر تشغيل الصوت."; return
+        }
         listening = true
         task = recognizer.recognitionTask(with: req) { [weak self] result, err in
             Task { @MainActor in
@@ -59,6 +65,12 @@ final class TasmiEngine: NSObject, ObservableObject {
                 if err != nil || (result?.isFinal ?? false) { self.stop() }
             }
         }
+    }
+
+    /// يمسح النصّ والخطأ قبل آية جديدة، وإلا حُوسبت الآية التالية على ما نُطق في السابقة.
+    func reset() {
+        stop()
+        transcript = ""; error = nil
     }
 
     func stop() {

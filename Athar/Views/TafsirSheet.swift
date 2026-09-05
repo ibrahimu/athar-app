@@ -35,7 +35,8 @@ struct TafsirSheet: View {
     private var entry: TafsirEntry? { resolved }
     private func resolve() {
         resolved = Tafsir.entry(edition, for: current)
-        applySoundMode()
+        // اللوحة الجانبية تتبع موضع القراءة؛ صوتٌ تلقائي مع كل تقليب صفحة إزعاج.
+        if !inline { applySoundMode() }
     }
 
     /// خيار المستخدم: تلاوة الآية عند فتحها، أو قراءة تفسيرها بصوت الجهاز، أو لا شيء.

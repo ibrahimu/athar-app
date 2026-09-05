@@ -34,7 +34,7 @@ struct TasmiView: View {
         .navigationTitle(loc("التسميع"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.hidden, for: .tabBar)
-        .task { _ = await engine.requestAuthorization() }
+        .task { engine.reset(); _ = await engine.requestAuthorization() }
         .onDisappear { engine.stop() }
     }
 
@@ -50,8 +50,12 @@ struct TasmiView: View {
                         .font(Theme.display(12)).foregroundStyle(Theme.inkSoft)
                 }
                 Spacer()
-                Toggle("", isOn: $hideText).labelsHidden().tint(tint)
-                    .accessibilityLabel(loc("إخفاء نصّ الآية"))
+                // المفتاح بلا اسم مرئي كان لغزًا: تسمية صغيرة فوقه تقول ما يفعله.
+                VStack(spacing: 2) {
+                    Text(loc("إخفاء النص")).font(Theme.display(10)).foregroundStyle(Theme.inkFaint)
+                    Toggle("", isOn: $hideText).labelsHidden().tint(tint)
+                        .accessibilityLabel(loc("إخفاء نصّ الآية"))
+                }
             }
         }
     }
@@ -125,7 +129,7 @@ struct TasmiView: View {
                     .fixedSize(horizontal: false, vertical: true)
                 if refs.count > 1 && index < refs.count - 1 {
                     Button {
-                        index += 1; engine.stop(); Haptics.done(enabled: store.hapticsEnabled)
+                        index += 1; engine.reset(); Haptics.done(enabled: store.hapticsEnabled)
                     } label: {
                         Text(loc("الآية التالية")).font(Theme.display(14, weight: .semibold)).frame(maxWidth: .infinity).softButton(tint)
                     }

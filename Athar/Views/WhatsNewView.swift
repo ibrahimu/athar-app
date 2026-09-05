@@ -34,6 +34,14 @@ struct WhatsNewView: View {
               detail: "الزكاة، التقويم الهجري، سجل الصلاة، وتنبيه قبل الأذان والإقامة.", tab: .calendar),
         .init(id: "custom", icon: "slider.horizontal.3", accent: "gold", title: "رتّبه على كيفك",
               detail: "أي قسم يصلح تبويبًا في الشريط، وبطاقات «اليوم» تُرتَّب وتُخفى.", tab: .settings),
+        .init(id: "ayah-audio", icon: "waveform.and.mic", accent: "dusk", title: "تلاوة آية بآية والتسميع",
+              detail: "ثمانية قرّاء مع تظليل الموضع وتكرار للحفظ، وسمّع بصوتك فيُظلَّل ما صحّ وما فاتك.", tab: .hifz),
+        .init(id: "prayer-alerts", icon: "bell.badge.fill", accent: "noon", title: "تنبيهات على مقاسك",
+              detail: "لكل صلاة صوتها وتنبيهها القبلي، وضبط المواقيت بالدقائق، والإقامة، والأذكار بوقت الصلاة.", tab: .settings),
+        .init(id: "watch", icon: "applewatch", accent: "green", title: "Apple Watch والودجات",
+              detail: "الصلاة القادمة والمسبحة وذكر اليوم على الساعة، وودجات الحديث والاسم والراتبة.", tab: nil),
+        .init(id: "group", icon: "person.3.fill", accent: "gold", title: "ختمة جماعية وإحصاء شهري",
+              detail: "ختمة برمز للعائلة، وتقرير هجري لأذكارك وصفحاتك وصلواتك، وتصدير بياناتك ملفًا.", tab: .khatmah),
     ]
 
     var onOpen: ((AppTab) -> Void)? = nil
@@ -48,7 +56,7 @@ struct WhatsNewView: View {
                         Text(loc("جديد أثر %1$@", Self.version))
                             .font(Theme.display(24, weight: .bold))
                             .foregroundStyle(Theme.ink)
-                        Text(loc("سبعة أقسام جديدة، وكلها من مصادر أهل السنّة وبلا إنترنت."))
+                        Text(loc("أقسام وأدوات جديدة، وكلها من مصادر أهل السنّة وتعمل بلا إنترنت."))
                             .font(Theme.display(13))
                             .foregroundStyle(Theme.inkSoft)
                             .multilineTextAlignment(.center)

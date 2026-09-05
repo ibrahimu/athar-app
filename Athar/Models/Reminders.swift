@@ -78,7 +78,9 @@ enum Reminders {
         // ومعه حديث اليوم والقيام والاستغفار والسنن والأذكار والورد؛ فالأفق 5 أيام
         // بلا تنبيهٍ قبليّ و3 معه، والجدولة تتجدّد عند كل فتح للتطبيق على كل حال.
         let iqamah = store.iqamahMinutes
-        let extras = (preMinutes > 0 ? 1 : 0) + (iqamah > 0 ? 1 : 0)
+        // تنبيه قبلي خاص بصلاةٍ ما يُحتسب في الأفق أيضًا، وإلا تجاوزنا سقف الـ64 وأُسقطت أبعدُ التنبيهات بصمت.
+        let anyPre = preMinutes > 0 || Prayer.allCases.contains { $0.isPrayer && (store.prayerPrefs($0).preMinutes ?? 0) > 0 }
+        let extras = (anyPre ? 1 : 0) + (iqamah > 0 ? 1 : 0)
         let days = extras == 0 ? 5 : (extras == 1 ? 3 : 2)
 
         for dayOffset in 0..<days {
@@ -141,7 +143,7 @@ enum Reminders {
                 guard preDate > now else { continue }
 
                 let pre = UNMutableNotificationContent()
-                pre.title = "\(entry.prayer.title) \(minutesPhrase(preMinutes))"
+                pre.title = "\(entry.prayer.title) \(minutesPhrase(effectivePre))"
                 pre.subtitle = "\(store.placeName) · \(clockText(entry.date, store: store))"
                 pre.body = "توضّأ على مهلٍ واستعدّ — «الصلاة على وقتها» أحبّ الأعمال إلى الله."
                 pre.sound = .default

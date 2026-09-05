@@ -37,6 +37,15 @@ private extension View {
     func latinDigits() -> some View { environment(\.locale, Locale(identifier: "ar_SA@numbers=latn")) }
 }
 
+/// تمييز العدد لـ«مرة»: مرتين، 3–10 مرات، وما فوقها «مرة».
+private func timesText(_ n: Int) -> String {
+    switch n {
+    case 2: return "مرتين"
+    case 3...10: return "\(n) مرات"
+    default: return "\(n) مرة"
+    }
+}
+
 private func clock(_ d: Date, tz: TimeZone) -> String {
     let f = DateFormatter()
     f.locale = Locale(identifier: "ar_SA@numbers=latn")
@@ -256,7 +265,7 @@ struct WatchDhikrPage: View {
                             .multilineTextAlignment(.center)
                     }
                     if d.count > 1 {
-                        Text("يُقال \(String(d.count)) مرّات")
+                        Text("يُقال \(timesText(d.count))")
                             .font(.custom("NotoNaskhArabic-Medium", size: 12))
                             .foregroundStyle(moment.tint)
                     }

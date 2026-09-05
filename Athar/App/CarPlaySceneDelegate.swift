@@ -33,7 +33,7 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
 
     private func surahsTemplate(for reciter: Reciter) -> CPListTemplate {
         let items: [CPListItem] = Quran.surahs.map { s in
-            let item = CPListItem(text: s.name, detailText: "\(s.ayahCount) آية")
+            let item = CPListItem(text: s.name, detailText: s.ayahCount.ayahCountText)
             item.handler = { _, done in
                 Task { @MainActor in Recitation.shared.play(surah: s.id) }
                 done()

@@ -115,7 +115,8 @@ struct SurahReaderView: View {
                         store.lastRead = ref
                         store.noteReaderPage(page)          // الختمة تتقدّم بالقراءة
                         if lastCountedPage != page { lastCountedPage = page; store.notePageRead() }
-                        if (293...304).contains(page), Calendar.current.component(.weekday, from: Date()) == 6 { store.noteKahfRead() }
+                        // تُحتسب الكهف عند بلوغ آخر صفحتها لا عند فتح أولها.
+                        if page == 304, Calendar.current.component(.weekday, from: Date()) == 6 { store.noteKahfRead() }
                         currentRef = ref
                     })
             } else {
@@ -275,6 +276,7 @@ struct SurahReaderView: View {
                                  onTapAyah: { selected = $0 },
                                  onVisible: {
                                      store.lastRead = $0
+                                     if $0 == AyahRef(surah: 18, ayah: 110), Calendar.current.component(.weekday, from: Date()) == 6 { store.noteKahfRead() }
                                      store.noteReaderPage(Quran.page(of: $0))   // الختمة تتقدّم بالقراءة
                                      currentRef = $0
                                  })
@@ -885,6 +887,7 @@ struct AyahActions: View {
     @EnvironmentObject private var store: AtharStore
     @Environment(\.dismiss) private var dismiss
     @State private var showTafsir = false
+    @State private var showTasmi = false
     @State private var shareImage: UIImage?
 
     private var text: String { Quran.text(ref) ?? "" }
@@ -998,7 +1001,8 @@ struct AyahActions: View {
                     .pressable()
 
                     // التسميع: اقرأ الآية بصوتك ويُظلَّل الصواب والخطأ.
-                    NavigationLink { TasmiView(refs: [ref]) } label: {
+                    // ورقة لا رابط تنقّل: الورقة هذه بلا NavigationStack فكان الرابط يظهر باهتًا ولا يستجيب.
+                    Button { showTasmi = true } label: {
                         HStack(spacing: 12) {
                             IconChip(icon: "mic.fill", tint: Theme.accent(for: "hifz"), size: .md)
                             VStack(alignment: .leading, spacing: 2) {
@@ -1127,7 +1131,8 @@ struct AyahActions: View {
                         } else {
                             Button {
                                 let snippet = Tafsir.entry(.saadi, for: ref).map { e -> String in
-                                    let clean = e.text.replacingOccurrences(of: "{", with: "﴿").replacingOccurrences(of: "}", with: "﴾")
+                                    // «» لا ﴿﴾: القوسان المزخرفان غير موجودين في خطّ Noto فيُرسمان مربّعين.
+                                    let clean = e.text.replacingOccurrences(of: "{", with: "«").replacingOccurrences(of: "}", with: "»")
                                     return clean.count > 220 ? String(clean.prefix(220)).trimmingCharacters(in: .whitespaces) + "…" : clean
                                 }
                                 shareImage = AyahShareCard.render(ref: ref, tafsir: snippet, scheme: actionScheme)
@@ -1154,6 +1159,17 @@ struct AyahActions: View {
                 .presentationDetents([.large])
                 .presentationDragIndicator(.visible)
                 .environment(\.layoutDirection, AppConfig.arabicOnly ? .rightToLeft : store.appLanguage.layoutDirection)
+        }
+        .sheet(isPresented: $showTasmi) {
+            NavigationStack {
+                TasmiView(refs: [ref])
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button(loc("إغلاق")) { showTasmi = false }
+                        }
+                    }
+            }
+            .environment(\.layoutDirection, AppConfig.arabicOnly ? .rightToLeft : store.appLanguage.layoutDirection)
         }
     }
 }

@@ -125,6 +125,7 @@ struct PrayerWidgetView: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .environment(\.layoutDirection, .rightToLeft)
+            .environment(\.locale, Locale(identifier: "ar_SA@numbers=latn"))   // عدّادات الوقت بأرقام لاتينية
 
         case .systemSmall:
             ZStack {
@@ -165,6 +166,7 @@ struct PrayerWidgetView: View {
                 }
             }
             .environment(\.layoutDirection, .rightToLeft)
+            .environment(\.locale, Locale(identifier: "ar_SA@numbers=latn"))   // عدّادات الوقت بأرقام لاتينية
 
         default: // systemMedium
             VStack(spacing: 9) {
@@ -216,6 +218,7 @@ struct PrayerWidgetView: View {
                 }
             }
             .environment(\.layoutDirection, .rightToLeft)
+            .environment(\.locale, Locale(identifier: "ar_SA@numbers=latn"))   // عدّادات الوقت بأرقام لاتينية
         }
     }
 }

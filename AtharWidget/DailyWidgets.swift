@@ -263,6 +263,7 @@ struct SunnahWidgetView: View {
             }
         }
         .environment(\.layoutDirection, .rightToLeft)
+        .environment(\.locale, Locale(identifier: "ar_SA@numbers=latn"))   // أرقام لاتينية في الوقت كبقية التطبيق
         .widgetURL(URL(string: "athar://open/sunan"))
     }
 

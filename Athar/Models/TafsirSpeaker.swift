@@ -8,7 +8,8 @@ final class TafsirSpeaker: NSObject, ObservableObject, AVSpeechSynthesizerDelega
 
     @Published private(set) var speaking = false
     private let synth = AVSpeechSynthesizer()
-    private var token = 0
+    /// النطق الجاري: إلغاء السابق يصل بعد بدء الجديد فلا يجوز أن يطفئه.
+    private var currentUtterance: AVSpeechUtterance?
 
     private override init() {
         super.init()
@@ -34,7 +35,7 @@ final class TafsirSpeaker: NSObject, ObservableObject, AVSpeechSynthesizerDelega
         u.voice = voice
         u.rate = AVSpeechUtteranceDefaultSpeechRate * 0.92
         u.postUtteranceDelay = 0.2
-        token &+= 1
+        currentUtterance = u
         synth.speak(u)
         speaking = true
     }
@@ -53,9 +54,9 @@ final class TafsirSpeaker: NSObject, ObservableObject, AVSpeechSynthesizerDelega
     }
 
     nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
-        Task { @MainActor in self.speaking = false }
+        Task { @MainActor in if utterance === self.currentUtterance { self.speaking = false } }
     }
     nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didCancel utterance: AVSpeechUtterance) {
-        Task { @MainActor in self.speaking = false }
+        Task { @MainActor in if utterance === self.currentUtterance { self.speaking = false } }
     }
 }

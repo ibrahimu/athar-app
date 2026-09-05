@@ -67,7 +67,7 @@ struct RootView: View {
             if !tabs.contains(selection) { selection = .home }
         }
         // طلب «سيري» قد يسبق رسم الجذر (إقلاع بارد) أو يأتي والتطبيق حيّ — نستهلكه في الحالين.
-        .onAppear(perform: consumePendingTab)
+        .onAppear { consumePendingTab(); consumePendingRoute() }   // اختصار الأيقونة عند الإقلاع البارد يسبق الجذر أيضًا
         .onChange(of: store.pendingTab) { _, _ in consumePendingTab() }
         .onChange(of: store.pendingRoute) { _, _ in consumePendingRoute() }
         .fullScreenCover(item: $coveredRoute) { route in
@@ -82,7 +82,7 @@ struct RootView: View {
         .onChange(of: store.didOnboard) { _, done in
             // غطاء الترحيب يُطوى بحركة أولًا؛ عرضٌ فوريّ فوقه يُرفض لأن الجذر ما زال يعرض شيئًا.
             guard done else { return }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) { consumePendingTab() }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) { consumePendingTab(); consumePendingRoute() }
         }
         .fullScreenCover(item: $coveredTab) { tab in
             NavigationStack {

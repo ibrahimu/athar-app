@@ -12,6 +12,8 @@ final class DhikrSpeaker: NSObject, ObservableObject, AVSpeechSynthesizerDelegat
     private var text = ""
     private var onEach: (() -> Void)?
     private var onDone: (() -> Void)?
+    /// النطق الجاري: إلغاءُ نطقٍ سابق يصل متأخرًا بعد بدء جلسة جديدة فلا يُطفئها.
+    private var currentUtterance: AVSpeechUtterance?
 
     private override init() { super.init(); synth.delegate = self }
 
@@ -38,6 +40,7 @@ final class DhikrSpeaker: NSObject, ObservableObject, AVSpeechSynthesizerDelegat
         u.voice = voice
         u.rate = AVSpeechUtteranceDefaultSpeechRate * 0.9
         u.postUtteranceDelay = 0.6
+        currentUtterance = u
         synth.speak(u)
     }
 
@@ -52,13 +55,13 @@ final class DhikrSpeaker: NSObject, ObservableObject, AVSpeechSynthesizerDelegat
 
     nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
         Task { @MainActor in
-            guard self.speaking else { return }
+            guard self.speaking, utterance === self.currentUtterance else { return }
             self.onEach?()
             self.remaining -= 1
             if self.remaining > 0 { self.speakOnce() } else { self.speaking = false; self.onDone?() }
         }
     }
     nonisolated func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didCancel utterance: AVSpeechUtterance) {
-        Task { @MainActor in self.speaking = false }
+        Task { @MainActor in if utterance === self.currentUtterance { self.speaking = false } }
     }
 }

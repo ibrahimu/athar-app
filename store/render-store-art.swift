@@ -59,6 +59,11 @@ let specs: [Spec] = [
           features: [.init(icon: "applewatch", text: "Apple Watch تتزامن مع الهاتف"), .init(icon: "timer", text: "Dynamic Island للصلاة القادمة"),
                      .init(icon: "mic.fill", text: "اختصارات Siri: «كم باقي للصلاة»"), .init(icon: "car.fill", text: "التلاوة في CarPlay")],
           c1: Color(red: 0.05, green: 0.25, blue: 0.20), c2: Color(red: 0.10, green: 0.42, blue: 0.33), watch: true),
+    .init(file: "09", shots: ["15-tasmi.png", "16-prayer-alerts.png"], title: "سمّع حفظك، وتنبيهات على مقاسك",
+          subtitle: "اقرأ الآية بصوتك فيُظلَّل ما صحّ وما فاتك، ولكل صلاة صوتها وتنبيهها",
+          features: [.init(icon: "mic.fill", text: "التسميع الصوتي على الجهاز بلا إنترنت"), .init(icon: "bell.badge.fill", text: "أذان أو نغمة أو صامت لكل فريضة"),
+                     .init(icon: "magnifyingglass", text: "بحث iOS: «الكهف» أو «الوضوء» يفتح مباشرة"), .init(icon: "square.and.arrow.up.on.square.fill", text: "تصدير بياناتك ملفًا واحدًا")],
+          c1: Color(red: 0.24, green: 0.16, blue: 0.36), c2: Color(red: 0.38, green: 0.26, blue: 0.54)),
 ]
 
 let W: CGFloat = 1290, H: CGFloat = 2796

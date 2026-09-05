@@ -19,7 +19,8 @@ struct AyahShareCard: View {
             HStack(spacing: 10) {
                 Circle().stroke(gold, lineWidth: 1.4).frame(width: 10, height: 10)
                 Rectangle().fill(gold.opacity(0.6)).frame(height: 1)
-                Text("﴿ \(surahName) · \(ref.ayah) ﴾")
+                // بلا القوسين المزخرفين: خطّ Noto Naskh لا يرسمهما فيظهران مربّعين في الصورة.
+                Text("\(surahName) · الآية \(ref.ayah)")
                     .font(.custom("NotoNaskhArabic-Medium", size: 20))
                     .foregroundStyle(accent)
                     .fixedSize()

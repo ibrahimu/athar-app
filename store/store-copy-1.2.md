@@ -1,7 +1,6 @@
 # أثر — نصوص المتجر للإصدار 1.2
 
-> مسوّدة جاهزة للّصق في App Store Connect. البناء ٦ (التلاوة والأذان والأقسام) لم يُرفع بعد؛
-> إن شُحن كل شيء معًا فهذا هو النص. غيّر `MARKETING_VERSION` إلى 1.2 قبل الأرشفة.
+> مسوّدة جاهزة للّصق في App Store Connect للإصدار 1.2 (البناء 7).
 
 ## ما الجديد (عربي)
 
@@ -26,6 +25,11 @@
 - **الأذكار بالصوت** مع العدّ التلقائي، و**إحصاء شهري** هجري لأذكارك وصفحاتك وصلواتك.
 - **الختمة الجماعية** برمز للعائلة والأصدقاء، و**سبب النزول** (الواحدي) و**فضل السورة** (الصحيحان) في ورقة التفسير.
 - **المسافر**: عند تغيّر المنطقة الزمنية يسألك التطبيق قبل تبديل موقعك.
+- **التسميع الصوتي**: اقرأ الآية بصوتك فيُظلَّل ما صحّ وما فاتك مع نسبة — على الجهاز بلا إنترنت حين يدعمه.
+- **تنبيهات على مقاسك**: لكل صلاة صوتها (أذان أو نغمة أو صامت) وتنبيهها القبلي، وأذكار الصباح والمساء بوقت الفجر والعصر الحقيقيين.
+- **بحث iOS واختصارات الأيقونة**: اكتب «الكهف» أو «الوضوء» في بحث الجهاز، أو اضغط مطوّلًا على الأيقونة للمصحف والمسبحة والقبلة والحديث.
+- **تصدير بياناتك** ملفًا واحدًا واستيرادها، و**الوضع الليلي التلقائي** للمصحف بين العشاء والفجر.
+- **Apple Watch**: الصلاة القادمة بحلقة العدّ، ومسبحة تتزامن مع الهاتف، وذكر اليوم، ومضاعفة للواجهة.
 - **مصحف مؤطَّر**، وخطّ يتبع حجم خطّ النظام، وتسميات صوتية لكل الأزرار، وعشرات الإصلاحات.
 
 ## What's New (English)
@@ -51,10 +55,16 @@
 - **Spoken adhkar** with automatic counting, and a **monthly Hijri report** of your dhikr, pages and prayers.
 - **Group khatmah** by code for family and friends, plus **reasons of revelation** (al-Wahidi) and **surah virtues** (the two Sahihs) in the tafsir sheet.
 - **Travelling**: when the time zone changes, the app asks before switching your location.
+- **Recitation check**: read an ayah aloud and see each word marked right or missed, with a score — on-device when supported.
+- **Alerts your way**: per-prayer sound (adhan, tone or silent) and pre-alert, plus morning/evening adhkar reminders tied to real Fajr and Asr times.
+- **iOS search and icon shortcuts**: type a surah or ruling into device search, or long-press the icon for the Mushaf, tasbih, qibla and hadith.
+- **Export your data** to a single file and import it back, and **auto night mode** for the Mushaf between Isha and Fajr.
+- **Apple Watch**: next prayer with a countdown ring, a tasbih that syncs with the phone, dhikr of the day, and a complication.
 - Framed Mushaf, Dynamic Type, VoiceOver labels, and dozens of fixes.
 
 ## ملاحظات للرفع
 
 - كل المحتوى الجديد مضمَّن في التطبيق (بلا شبكة)؛ روابط الفتاوى تفتح Safari. التلاوة تتصل بـ MP3Quran.net والتلاوة آيةً آية بـ everyayah.com بفعل المستخدم — سياسة الخصوصية (docs/privacy.html) حُدِّثت محليًّا لذلك و**يجب نشرها** (`git push`) قبل الإرسال.
-- App Privacy في المتجر: لا تغيير — لا جمع بيانات.
+- App Privacy في المتجر: لا تغيير — لا جمع بيانات. التسميع يستخدم الميكروفون والتعرّف على الكلام (على الجهاز حين يدعمه، وإلا عبر خدمة Apple) — وصف الاستخدام في Info.plist، ولا يُحفظ صوت.
+- الختمة الجماعية تحتاج نشر مخطط CloudKit (Khatmah وMember) إلى بيئة Production من CloudKit Console قبل الإصدار، وإلا فشل الإنشاء في نسخة المتجر.
 - لقطات المتجر: ثماني صور مصمَّمة جاهزة في `store_final/1.2/art/` (1290×2796)، واللقطات الخام في `store_final/1.2/`. لإعادة التوليد بعد لقطات جديدة: `swift store/render-store-art.swift` من جذر المستودع.
