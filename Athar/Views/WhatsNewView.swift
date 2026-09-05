@@ -89,6 +89,5 @@ struct WhatsNewView: View {
                 .readableWidth(560)
             }
         }
-        .onAppear { store.whatsNewShownVersion = Self.version }
     }
 }

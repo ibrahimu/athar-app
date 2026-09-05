@@ -16,9 +16,6 @@ struct RootView: View {
         }
     }
 
-    /// «ما الجديد» تُعرض بعد الإعداد الأول فقط (لا فوق شاشة الترحيب) ومرة لكل إصدار.
-    @State private var showWhatsNew = false
-
     var body: some View {
         TabView(selection: $selection) {
             ForEach(store.visibleTabs) { tab in
@@ -26,18 +23,6 @@ struct RootView: View {
                     .tabItem { Label { Text(tab.title) } icon: { icon(for: tab) } }
                     .tag(tab)
             }
-        }
-        .onAppear {
-            if store.didOnboard, store.whatsNewShownVersion != WhatsNewView.version { showWhatsNew = true }
-        }
-        .sheet(isPresented: $showWhatsNew) {
-            WhatsNewView(onOpen: { tab in
-                if store.visibleTabs.contains(tab) { selection = tab } else { store.pendingTab = tab }
-            })
-            .environmentObject(store)
-            .environment(\.layoutDirection, AppConfig.arabicOnly ? .rightToLeft : store.appLanguage.layoutDirection)
-            .presentationDetents([.large])
-            .presentationDragIndicator(.visible)
         }
         // تغيّر المنطقة الزمنية (سفر): تُعاد جدولة التنبيهات وتُحدَّث الودجات فورًا،
         // وإلا بقيت تنبيهات الأذان على توقيت البلد السابق حتى الفتح التالي.

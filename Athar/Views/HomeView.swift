@@ -8,6 +8,7 @@ struct HomeView: View {
     var embedded = false
 
     @State private var now = Date()
+    @State private var showWhatsNew = false
     private let ticker = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
 
     private var suggested: DhikrCategory? {
@@ -61,6 +62,23 @@ struct HomeView: View {
         }
         .onReceive(ticker) { now = $0 }
         .onAppear { WidgetCenter.shared.reloadAllTimelines() }
+        // «ما الجديد» تُعرض من داخل مكدّس «اليوم» لا من جذر التبويبات: هناك سُجِّل عرضها
+        // ولم تُرَ قط (الجذر يحمل غطاءً كاملًا آخر). تُؤجَّل لحظة، ويُثبَّت أنها عُرضت عند إغلاقها.
+        .task {
+            guard !embedded, store.didOnboard,
+                  CommandLine.arguments.contains("-whatsnew") || store.whatsNewShownVersion != WhatsNewView.version
+            else { return }
+            try? await Task.sleep(for: .milliseconds(800))
+            showWhatsNew = true
+        }
+        .sheet(isPresented: $showWhatsNew, onDismiss: { store.whatsNewShownVersion = WhatsNewView.version }) {
+            WhatsNewView(onOpen: { tab in
+                if store.visibleTabs.contains(tab) { onOpenTab(tab) } else { store.pendingTab = tab }
+            })
+            .environment(\.layoutDirection, AppConfig.arabicOnly ? .rightToLeft : store.appLanguage.layoutDirection)
+            .presentationDetents([.large])
+            .presentationDragIndicator(.visible)
+        }
     }
 
     // MARK: بطاقات اليوم
