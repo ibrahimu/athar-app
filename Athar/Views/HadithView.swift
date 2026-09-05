@@ -573,6 +573,10 @@ struct HadithDetailView: View {
                     .font(Theme.display(12))
                     .foregroundStyle(Theme.inkSoft)
                     .fixedSize(horizontal: false, vertical: true)
+                // شرح ابن دقيق العيد للأربعين — تراث عام؛ يُطوى افتراضيًّا لئلا يزاحم المتن.
+                if let sharh = SharhLibrary.sharh(for: current.id) {
+                    SharhCard(sharh: sharh)
+                }
             }
         }
         .animation(Motion.smooth, value: current.id)
@@ -689,5 +693,56 @@ struct HadithDetailView: View {
         .foregroundStyle(Theme.inkFaint)
         .multilineTextAlignment(.center)
         .padding(.top, 4)
+    }
+}
+
+
+// MARK: - بطاقة الشرح
+
+/// شرح الحديث من كتابٍ تراثي: عنوان الباب، ثم النص مطويًّا يُفتح بنقرة، وذيلٌ يذكر الكتاب ومصدره.
+struct SharhCard: View {
+    let sharh: HadithSharh
+    @EnvironmentObject private var store: AtharStore
+    @State private var expanded = false
+
+    var body: some View {
+        AtharCard(padding: 16, tint: Theme.accent(for: "gold")) {
+            VStack(alignment: .leading, spacing: 10) {
+                Button {
+                    withAnimation(Motion.snappy) { expanded.toggle() }
+                    Haptics.tap(enabled: store.hapticsEnabled)
+                } label: {
+                    HStack(spacing: 10) {
+                        IconChip(icon: "text.book.closed.fill", tint: Theme.accent(for: "gold"), size: .sm)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(loc("الشرح — %1$@", SharhLibrary.author))
+                                .font(Theme.display(15, weight: .semibold)).foregroundStyle(Theme.ink)
+                            Text(sharh.title).font(Theme.display(12)).foregroundStyle(Theme.inkSoft)
+                        }
+                        Spacer(minLength: 6)
+                        Image(systemName: "chevron.down")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(Theme.inkFaint)
+                            .rotationEffect(.degrees(expanded ? 180 : 0))
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(expanded ? loc("طيّ الشرح") : loc("عرض الشرح"))
+
+                if expanded {
+                    Text(sharh.text)
+                        .font(Theme.dhikrFont(size: 16, scale: store.fontScale))
+                        .foregroundStyle(Theme.ink)
+                        .lineSpacing(7)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .textSelection(.enabled)
+                    Text("\(SharhLibrary.bookTitle) — \(SharhLibrary.sourceNote)")
+                        .font(Theme.display(10)).foregroundStyle(Theme.inkFaint)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
     }
 }

@@ -1,4 +1,5 @@
 import Foundation
+import CoreLocation
 
 // MARK: - مفضّلة الحديث وتذكيره، تنبيه ما قبل الأذان، سجل الصلاة، الزكاة
 
@@ -15,6 +16,30 @@ extension AtharStore {
         static let offsetPrefix          = "athar.prayerOffset."
         static let iqamahMinutes         = "athar.iqamahMinutes"
         static let whatsNewVersion       = "athar.whatsNewVersion"
+        static let secondaryCity         = "athar.secondaryCityId"
+    }
+
+    // MARK: مدينة ثانية (للمسافر أو لأهلٍ في بلد آخر)
+
+    var secondaryCity: City? {
+        get {
+            guard let id = defaults.string(forKey: FKey.secondaryCity) else { return nil }
+            return City.all.first { $0.id == id }
+        }
+        set {
+            if let c = newValue { defaults.set(c.id, forKey: FKey.secondaryCity) }
+            else { defaults.removeObject(forKey: FKey.secondaryCity) }
+            objectWillChange.send()
+        }
+    }
+
+    /// مواقيت المدينة الثانية بتوقيتها هي — بلا تعديل يدوي (التعديل خاص بمسجد المستخدم).
+    func secondaryPrayerTimes(for date: Date = Date()) -> PrayerTimes? {
+        guard let c = secondaryCity else { return nil }
+        return PrayerTimes(date: date,
+                           coordinate: CLLocationCoordinate2D(latitude: c.latitude, longitude: c.longitude),
+                           timeZone: TimeZone(identifier: c.tz) ?? .current,
+                           method: calculationMethod, asr: asrMethod)
     }
 
     /// آخر إصدار عُرضت له ورقة «ما الجديد».

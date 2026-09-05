@@ -1,4 +1,5 @@
 import SwiftUI
+import WidgetKit
 
 struct RootView: View {
     @EnvironmentObject private var store: AtharStore
@@ -37,6 +38,13 @@ struct RootView: View {
             .environment(\.layoutDirection, AppConfig.arabicOnly ? .rightToLeft : store.appLanguage.layoutDirection)
             .presentationDetents([.large])
             .presentationDragIndicator(.visible)
+        }
+        // تغيّر المنطقة الزمنية (سفر): تُعاد جدولة التنبيهات وتُحدَّث الودجات فورًا،
+        // وإلا بقيت تنبيهات الأذان على توقيت البلد السابق حتى الفتح التالي.
+        .onReceive(NotificationCenter.default.publisher(for: .NSSystemTimeZoneDidChange)) { _ in
+            Task { await Reminders.rescheduleAll(store: store) }
+            WidgetCenter.shared.reloadAllTimelines()
+            if store.liveActivityEnabled { LiveActivityManager.sync(store: store) }
         }
         .onChange(of: store.visibleTabs) { _, tabs in
             // لو حُذف التبويب المختار، ارجع لليوم (موجود دائمًا) بدل شاشة فارغة.

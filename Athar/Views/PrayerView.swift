@@ -43,6 +43,7 @@ struct PrayerView: View {
                         dayArc.appearStagger(1)
                         timesList.appearStagger(2)
                         qiyamCard.appearStagger(3)
+                        secondCityCard.appearStagger(4)
                         highLatitudeNote.appearStagger(4)
                         qiblaLink.appearStagger(5)
                         afterPrayerLink.appearStagger(6)
@@ -297,6 +298,68 @@ struct PrayerView: View {
             .padding(.vertical, 4)
     }
 
+    // MARK: مدينة ثانية
+
+    @State private var showSecondPicker = false
+
+    /// مواقيت مدينة أخرى للمسافر أو لأهلٍ في بلد آخر — بتوقيت تلك المدينة.
+    private var secondCityCard: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            if let city = store.secondaryCity, let t = store.secondaryPrayerTimes(for: now) {
+                SectionHeader(title: loc("مدينة أخرى"), tint: Theme.accent(for: "sea"),
+                              action: { showSecondPicker = true }, actionTitle: loc("تغيير"))
+                AtharCard(padding: 14, tint: Theme.accent(for: "sea")) {
+                    VStack(alignment: .leading, spacing: 10) {
+                        HStack(spacing: 8) {
+                            IconChip(icon: "globe.asia.australia.fill", tint: Theme.accent(for: "sea"), size: .sm)
+                            VStack(alignment: .leading, spacing: 1) {
+                                Text(city.name).font(Theme.display(15, weight: .semibold)).foregroundStyle(Theme.ink)
+                                Text("\(city.country) · \(secondClock(now, tz: city.tz))")
+                                    .font(Theme.display(11)).foregroundStyle(Theme.inkFaint).monospacedDigit()
+                            }
+                            Spacer()
+                            Button { withAnimation(Motion.snappy) { store.secondaryCity = nil } } label: {
+                                Image(systemName: "xmark.circle.fill").font(.system(size: 18)).foregroundStyle(Theme.inkFaint)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel(loc("إزالة المدينة الثانية"))
+                        }
+                        HStack(spacing: 0) {
+                            ForEach(Prayer.allCases.filter(\.isPrayer)) { p in
+                                VStack(spacing: 3) {
+                                    Text(p.title).font(Theme.display(11)).foregroundStyle(Theme.inkSoft)
+                                    Text(t[p].map { secondClock($0, tz: city.tz) } ?? "—")
+                                        .font(.system(size: 13, weight: .semibold, design: .rounded))
+                                        .foregroundStyle(Theme.ink).monospacedDigit()
+                                }
+                                .frame(maxWidth: .infinity)
+                            }
+                        }
+                    }
+                }
+            } else {
+                Button { showSecondPicker = true } label: {
+                    AtharLinkRow(icon: "globe.asia.australia.fill", tint: Theme.accent(for: "sea"),
+                                 title: loc("مدينة أخرى"),
+                                 subtitle: loc("مواقيت بلدٍ ثانٍ لمسافر أو لأهلك — بتوقيته"))
+                }
+                .pressable()
+            }
+        }
+        .sheet(isPresented: $showSecondPicker) {
+            LocationPickerView(location: location, secondary: true, onPick: { store.secondaryCity = $0 })
+                .environment(\.layoutDirection, layoutDirection)
+        }
+    }
+
+    private func secondClock(_ d: Date, tz: String) -> String {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "ar_SA@numbers=latn")
+        f.timeZone = TimeZone(identifier: tz) ?? .current
+        f.dateFormat = "h:mm"
+        return f.string(from: d)
+    }
+
     // MARK: Extras
 
     private var qiblaLink: some View {
@@ -459,6 +522,9 @@ struct LocationPickerView: View {
     @ObservedObject var location: LocationProvider
     @Environment(\.dismiss) private var dismiss
     @State private var query = ""
+    /// حين يكون الاختيار للمدينة الثانية لا لمكان المستخدم: بلا بطاقة الموقع، والتحديد يعود عبر onPick.
+    var secondary: Bool = false
+    var onPick: ((City) -> Void)? = nil
 
     private var cities: [City] {
         let needle = query.trimmingCharacters(in: .whitespaces).normalizedArabic
@@ -494,7 +560,7 @@ struct LocationPickerView: View {
                 AtharBackground()
                 ScrollView {
                     VStack(spacing: 14) {
-                        deviceLocationCard
+                        if !secondary { deviceLocationCard }
                         Text(loc("موقعك يُستخدم على جهازك فقط لحساب أوقات الصلاة، ولا يُرسل إلى أي جهة."))
                             .font(Theme.display(12))
                             .foregroundStyle(Theme.inkFaint)
@@ -590,10 +656,14 @@ struct LocationPickerView: View {
 
     /// صفّ مدينة كصفّ القارئ: دائرة تحديد بادئة والاسم وحده — البلد عنوان مجموعته.
     private func cityRow(_ city: City) -> some View {
-        let on = !store.usesDeviceLocation && store.cityId == city.id
+        let on = secondary ? store.secondaryCity?.id == city.id : (!store.usesDeviceLocation && store.cityId == city.id)
         return Button {
-            store.setCity(city)
-            WidgetCenter.shared.reloadAllTimelines()
+            if secondary {
+                onPick?(city)
+            } else {
+                store.setCity(city)
+                WidgetCenter.shared.reloadAllTimelines()
+            }
             dismiss()
         } label: {
             HStack(spacing: 12) {

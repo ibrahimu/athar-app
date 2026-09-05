@@ -74,8 +74,9 @@ targets:
       - path: Shared
         excludes:
           - ahkam.json
-          # محرّك التلاوة للتطبيق وحده — لا داعي لحمله في الودجة.
+          # محرّكا التلاوة للتطبيق وحده — لا داعي لحملهما في الودجة.
           - "Recitation.swift"
+          - "AyahAudio.swift"
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.ibrahim.athar.widget

@@ -56,6 +56,7 @@ struct SurahReaderView: View {
 
     @EnvironmentObject private var store: AtharStore
     @StateObject private var audio = Recitation.shared
+    @StateObject private var ayahAudio = AyahAudio.shared
     @State private var showControls = false
     @State private var selected: AyahRef? = nil
     @State private var currentRef: AyahRef?
@@ -71,7 +72,7 @@ struct SurahReaderView: View {
     /// حجزُ ارتفاع المشغّل المصغّر أسفل كل أوضاع القراءة: الشريط السفلي صار
     /// «مشغّل + شريط موضع»، وبطاقة المشغّل معتمة تغطّي آخر سطرٍ من الصفحة
     /// ورقمَها وزرَّ «سورة التالية». صفرٌ حين لا تلاوة، فلا تتغيّر الصفحة.
-    private var bottomReserve: CGFloat { audio.surah == nil ? 0 : 86 }
+    private var bottomReserve: CGFloat { (audio.surah == nil && !ayahAudio.isActive) ? 0 : 86 }
 
     /// رقم السورة الظاهرة الآن — يتغيّر أثناء تقليب الصفحات عبر حدود السور.
     private var visibleSurahId: Int {
@@ -95,6 +96,7 @@ struct SurahReaderView: View {
                     scale: store.mushafFontScale,
                     bookmarks: Set(store.bookmarks),
                     highlights: store.highlights,
+                    playing: ayahAudio.current,
                     isDark: store.readingTheme == .night,
                     framed: store.readingMode == .framed,
                     bottomInset: bottomReserve,
@@ -111,11 +113,12 @@ struct SurahReaderView: View {
         }
         .overlay(alignment: .bottom) {
             VStack(spacing: 6) {
+                if ayahAudio.isActive { AyahPlayerBar(audio: ayahAudio, palette: palette) }
                 MiniPlayer()
                 // سطحٌ واحد يطفو أثناء التلاوة: كانت الكبسولة تحت المشغّل بفجوة ٦ نقاط
                 // يظهر فيها نصّ الآية مقطوعًا ويلتفّ حولها. الجزء والصفحة يبقيان في
                 // وضع «صفحة» برقم الصفحة، وفي المشغّل الكامل.
-                if audio.surah == nil { positionBar }
+                if audio.surah == nil && !ayahAudio.isActive { positionBar }
             }
             .background(alignment: .bottom) {
                 // شريط التبويب مخفيّ هنا، فلا شيء يغطّي شريط مؤشّر الرئيسية: كانت
@@ -142,6 +145,33 @@ struct SurahReaderView: View {
                     Image(systemName: "textformat.size")
                 }
                 .accessibilityLabel(loc("ضوابط القراءة"))
+            }
+            // تلاوة آية بآية مع تظليل الموضع — للتدبّر والحفظ (everyayah.com).
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu {
+                    Button {
+                        let start = currentRef ?? AyahRef(surah: surahId, ayah: 1)
+                        ayahAudio.play(from: start)
+                    } label: { Label(loc("استماع آية بآية من هنا"), systemImage: "text.line.first.and.arrowtriangle.forward") }
+                    Menu {
+                        ForEach(AyahReciters.all) { r in
+                            Button { ayahAudio.reciterId = r.id } label: {
+                                if ayahAudio.reciterId == r.id { Label(r.name, systemImage: "checkmark") } else { Text(r.name) }
+                            }
+                        }
+                    } label: { Label(loc("القارئ: %1$@", ayahAudio.reciter.name), systemImage: "person.wave.2") }
+                    Menu {
+                        ForEach([1, 3, 5, 10], id: \.self) { n in
+                            Button { ayahAudio.repeatCount = n } label: {
+                                let t = n == 1 ? loc("مرة واحدة") : loc("%1$@ مرات", n.counterText)
+                                if ayahAudio.repeatCount == n { Label(t, systemImage: "checkmark") } else { Text(t) }
+                            }
+                        }
+                    } label: { Label(loc("تكرار كل آية"), systemImage: "repeat") }
+                } label: {
+                    Image(systemName: "waveform.and.mic")
+                }
+                .accessibilityLabel(loc("تلاوة آية بآية"))
             }
             // استماعٌ للسورة المفتوحة — بثًّا أو من التنزيل إن كانت محمَّلة.
             ToolbarItem(placement: .topBarTrailing) {
@@ -199,6 +229,7 @@ struct SurahReaderView: View {
                                  scale: store.mushafFontScale,
                                  bookmarks: Set(store.bookmarks),
                                  highlights: store.highlights,
+                                 playing: ayahAudio.current,
                                  isDark: store.readingTheme == .night,
                                  onTapAyah: { selected = $0 },
                                  onVisible: {
@@ -352,6 +383,8 @@ struct MushafPager: View {
     let scale: Double
     let bookmarks: Set<AyahRef>
     let highlights: [String: String]
+    /// الآية الجارية في التلاوة آيةً آية — تُظلَّل بلون الطابع.
+    var playing: AyahRef? = nil
     let isDark: Bool
     var framed: Bool = false
     /// مساحةٌ إضافية أسفل الصفحة يحجزها المشغّل المصغّر حين تجري التلاوة.
@@ -368,6 +401,7 @@ struct MushafPager: View {
                     ForEach(1...Quran.pageCount, id: \.self) { page in
                         MushafPageContent(page: page, palette: palette, scale: scale,
                                           bookmarks: bookmarks, highlights: highlights,
+                                          playing: playing,
                                           isDark: isDark, framed: framed,
                                           bottomInset: bottomInset, onTapAyah: onTapAyah)
                             .containerRelativeFrame(.horizontal)
@@ -398,6 +432,7 @@ private struct MushafPageContent: View {
     let scale: Double
     let bookmarks: Set<AyahRef>
     let highlights: [String: String]
+    var playing: AyahRef? = nil
     let isDark: Bool
     var framed: Bool = false
     var bottomInset: CGFloat = 0
@@ -569,7 +604,7 @@ private struct MushafPageContent: View {
         .padding(.vertical, 3)
         .background(
             RoundedRectangle(cornerRadius: 5, style: .continuous)
-                .fill(hl?.color(dark: isDark) ?? .clear)
+                .fill(t.ref == playing ? palette.accent.opacity(0.18) : (hl?.color(dark: isDark) ?? .clear))
         )
         .overlay(alignment: .topLeading) {
             if t.isMarker, bookmarks.contains(t.ref) {
@@ -826,6 +861,26 @@ struct AyahActions: View {
                     }
                     .pressable()
 
+                    // استماع من هذه الآية آيةً آية — للحفظ بالتكرار.
+                    Button {
+                        AyahAudio.shared.play(from: ref)
+                        dismiss()
+                    } label: {
+                        HStack(spacing: 12) {
+                            IconChip(icon: "waveform.and.mic", tint: Theme.accent(for: "dusk"), size: .md)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(loc("استمع من هذه الآية")).font(Theme.display(16, weight: .semibold)).foregroundStyle(Theme.ink)
+                                Text(loc("آيةً آية مع تظليل الموضع — والتكرار للحفظ")).font(Theme.display(12)).foregroundStyle(Theme.inkFaint)
+                            }
+                            Spacer(minLength: 6)
+                            Image(systemName: "play.fill").font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.accent(for: "dusk"))
+                        }
+                        .padding(14)
+                        .background(CardSurface(radius: Theme.Radius.lg))
+                        .contentShape(Rectangle())
+                    }
+                    .pressable()
+
                     // ألوان التظليل — كما يُظلّل القارئ في مصحفه الورقي
                     VStack(alignment: .leading, spacing: 8) {
                         Text(loc("تظليل الآية"))
@@ -961,6 +1016,7 @@ struct AyahListPage: View {
     let scale: Double
     let bookmarks: Set<AyahRef>
     let highlights: [String: String]
+    var playing: AyahRef? = nil
     let isDark: Bool
     let onTapAyah: (AyahRef) -> Void
     let onVisible: (AyahRef) -> Void
@@ -1001,7 +1057,7 @@ struct AyahListPage: View {
                 .padding(14)
                 .background(
                     RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous)
-                        .fill(hl?.color(dark: isDark) ?? palette.ink.opacity(0.03))
+                        .fill(ref == playing ? palette.accent.opacity(0.16) : (hl?.color(dark: isDark) ?? palette.ink.opacity(0.03)))
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous)
