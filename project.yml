@@ -44,6 +44,21 @@ targets:
         SUPPORTS_MACCATALYST: NO
         SWIFT_EMIT_LOC_STRINGS: YES
 
+  AtharTests:
+    type: bundle.unit-test
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: AtharTests
+    dependencies:
+      - target: Athar
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.ibrahim.athar.tests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Athar.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Athar"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+
   # AtharWatch (تطبيق Apple Watch) — الكود جاهز في AtharWatch/، لكنه معطّل هنا
   # لأن watchOS SDK غير مُثبَّت على جهاز البناء (يمنع الأرشفة). لتفعيله:
   # ثبّت watchOS في Xcode ← Settings ← Components، ثم أعِد إدراج الهدف والـ embed.
@@ -58,9 +73,7 @@ targets:
           - "AtharWidget.entitlements"
       - path: Shared
         excludes:
-          - hadith.json
           - ahkam.json
-          - names.json
           # محرّك التلاوة للتطبيق وحده — لا داعي لحمله في الودجة.
           - "Recitation.swift"
     settings:
@@ -71,3 +84,19 @@ targets:
         CODE_SIGN_ENTITLEMENTS: AtharWidget/AtharWidget.entitlements
         TARGETED_DEVICE_FAMILY: "1,2"
         SKIP_INSTALL: YES
+
+schemes:
+  Athar:
+    build:
+      targets:
+        Athar: all
+        AtharWidget: all
+        AtharTests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - AtharTests
+    archive:
+      config: Release

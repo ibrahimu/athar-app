@@ -124,6 +124,21 @@ struct PrayerTimes {
     /// required depression angle at this latitude on this date.
     let usedHighLatitudeRule: Bool
 
+    private init(date: Date, times: [Prayer: Date], usedHighLatitudeRule: Bool) {
+        self.date = date; self.times = times; self.usedHighLatitudeRule = usedHighLatitudeRule
+    }
+
+    /// نسخة مزاحة بدقائق لكل صلاة — تعديل المستخدم اليدوي ليطابق تقويم مسجد حيّه.
+    /// الشروق لا يُزاح (ليس صلاة ولا يُدرج في التقاويم المحلية).
+    func shifted(by offsets: [Prayer: Int]) -> PrayerTimes {
+        guard offsets.contains(where: { $0.value != 0 }) else { return self }
+        var t = times
+        for (prayer, minutes) in offsets where minutes != 0 && prayer != .sunrise {
+            if let d = t[prayer] { t[prayer] = d.addingTimeInterval(Double(minutes) * 60) }
+        }
+        return PrayerTimes(date: date, times: t, usedHighLatitudeRule: usedHighLatitudeRule)
+    }
+
     init?(date: Date,
           coordinate: CLLocationCoordinate2D,
           timeZone: TimeZone = .current,

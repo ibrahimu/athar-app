@@ -12,6 +12,51 @@ extension AtharStore {
         static let qadaPrefix            = "athar.qada."
         static let zakatGoldPrice        = "athar.zakat.goldPrice"
         static let zakatSilverPrice      = "athar.zakat.silverPrice"
+        static let offsetPrefix          = "athar.prayerOffset."
+        static let iqamahMinutes         = "athar.iqamahMinutes"
+        static let whatsNewVersion       = "athar.whatsNewVersion"
+    }
+
+    /// آخر إصدار عُرضت له ورقة «ما الجديد».
+    var whatsNewShownVersion: String {
+        get { defaults.string(forKey: FKey.whatsNewVersion) ?? "" }
+        set { defaults.set(newValue, forKey: FKey.whatsNewVersion); objectWillChange.send() }
+    }
+
+    // MARK: ضبط المواقيت يدويًّا وتنبيه الإقامة
+
+    /// تعديل بالدقائق لصلاة بعينها (−٣٠ … +٣٠) ليطابق تقويم مسجد الحيّ.
+    func prayerOffset(_ prayer: Prayer) -> Int {
+        defaults.integer(forKey: FKey.offsetPrefix + prayer.rawValue)
+    }
+
+    func setPrayerOffset(_ minutes: Int, for prayer: Prayer) {
+        let clamped = max(-30, min(30, minutes))
+        if clamped == 0 { defaults.removeObject(forKey: FKey.offsetPrefix + prayer.rawValue) }
+        else { defaults.set(clamped, forKey: FKey.offsetPrefix + prayer.rawValue) }
+        objectWillChange.send()
+    }
+
+    var prayerOffsets: [Prayer: Int] {
+        var d: [Prayer: Int] = [:]
+        for p in Prayer.allCases where p.isPrayer {
+            let v = prayerOffset(p)
+            if v != 0 { d[p] = v }
+        }
+        return d
+    }
+
+    var hasPrayerOffsets: Bool { !prayerOffsets.isEmpty }
+
+    func resetPrayerOffsets() {
+        for p in Prayer.allCases { defaults.removeObject(forKey: FKey.offsetPrefix + p.rawValue) }
+        objectWillChange.send()
+    }
+
+    /// تنبيه الإقامة بعد الأذان بهذه الدقائق — صفر يعني لا تنبيه.
+    var iqamahMinutes: Int {
+        get { defaults.integer(forKey: FKey.iqamahMinutes) }
+        set { defaults.set(max(0, newValue), forKey: FKey.iqamahMinutes); objectWillChange.send() }
     }
 
     // MARK: الحديث

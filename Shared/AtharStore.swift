@@ -336,7 +336,10 @@ final class AtharStore: ObservableObject {
                     coordinate: coordinate,
                     timeZone: placeTimeZone,
                     method: calculationMethod,
-                    asr: asrMethod)
+                    asr: asrMethod)?
+            // تعديل المستخدم اليدوي بالدقائق يُطبَّق هنا مرة واحدة، فيراه كل من يقرأ
+            // المواقيت: الشاشات والودجات والتنبيهات والنشاط الحيّ.
+            .shifted(by: prayerOffsets)
     }
 
     // MARK: - Helpers

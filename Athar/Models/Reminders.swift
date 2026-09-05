@@ -56,7 +56,9 @@ enum Reminders {
         // سقف iOS ٦٤ إشعارًا معلّقًا للتطبيق كله. الأذان ٥ في اليوم (١٠ مع تنبيه ما قبله)،
         // ومعه حديث اليوم والقيام والاستغفار والسنن والأذكار والورد؛ فالأفق ٥ أيام
         // بلا تنبيهٍ قبليّ و٣ معه، والجدولة تتجدّد عند كل فتح للتطبيق على كل حال.
-        let days = preMinutes > 0 ? 3 : 5
+        let iqamah = store.iqamahMinutes
+        let extras = (preMinutes > 0 ? 1 : 0) + (iqamah > 0 ? 1 : 0)
+        let days = extras == 0 ? 5 : (extras == 1 ? 3 : 2)
 
         for dayOffset in 0..<days {
             guard let day = calendar.date(byAdding: .day, value: dayOffset, to: now),
@@ -84,6 +86,24 @@ enum Reminders {
                     trigger: UNCalendarNotificationTrigger(dateMatching: comps, repeats: false)
                 )
                 try? await center.add(request)
+
+                // تنبيه الإقامة: بعد الأذان بدقائق يختارها المستخدم — نغمة النظام، وبادئة الأذان نفسها.
+                if iqamah > 0 {
+                    let iqDate = entry.date.addingTimeInterval(Double(iqamah) * 60)
+                    if iqDate > now {
+                        let iq = UNMutableNotificationContent()
+                        iq.title = "إقامة \(entry.prayer.title)"
+                        iq.subtitle = "\(store.placeName) · \(clockText(iqDate, store: store))"
+                        iq.body = "قد قامت الصلاة — دع ما بيدك وقم إليها."
+                        iq.sound = .default
+                        iq.interruptionLevel = .timeSensitive
+                        let iqComps = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: iqDate)
+                        try? await center.add(UNNotificationRequest(
+                            identifier: "\(athanPrefix)iq.\(dayOffset).\(entry.prayer.rawValue)",
+                            content: iq,
+                            trigger: UNCalendarNotificationTrigger(dateMatching: iqComps, repeats: false)))
+                    }
+                }
 
                 // تنبيه الاستعداد قبل الأذان: بنغمة النظام لا بالأذان، حتى لا يظنّه
                 // المستخدم دخولَ الوقت. يحمل بادئة الأذان نفسها فيُمحى معه.
@@ -359,6 +379,26 @@ enum Reminders {
 
 /// كم دقيقة يسبق تنبيهُ الاستعداد الأذانَ — صفر يعني لا تنبيه. القيمة الخام
 /// هي الدقائق نفسها فتُخزَّن في المتجر مباشرةً بلا جدول تحويل.
+/// تنبيه الإقامة بعد الأذان — خيارات بالدقائق.
+enum IqamahChoice: Int, CaseIterable, Identifiable, SettingsChoice {
+    case off = 0, m5 = 5, m10 = 10, m15 = 15, m20 = 20, m25 = 25, m30 = 30
+    var id: Int { rawValue }
+    var title: String {
+        switch self {
+        case .off: return "بدون"
+        case .m5:  return "بعد ٥ دقائق"
+        case .m10: return "بعد ١٠ دقائق"
+        case .m15: return "بعد ١٥ دقيقة"
+        case .m20: return "بعد ٢٠ دقيقة"
+        case .m25: return "بعد ٢٥ دقيقة"
+        case .m30: return "بعد ٣٠ دقيقة"
+        }
+    }
+    var shortTitle: String { title }
+    var detail: String { self == .off ? "لا تنبيه للإقامة" : "تنبيه بنغمة النظام بعد الأذان بهذه المدة — اضبطه على عادة مسجدك" }
+    static func from(minutes: Int) -> IqamahChoice { allCases.min { abs($0.rawValue - minutes) < abs($1.rawValue - minutes) } ?? .off }
+}
+
 enum PreAthanChoice: Int, CaseIterable, SettingsChoice {
     case off = 0
     case m5 = 5

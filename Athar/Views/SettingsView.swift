@@ -310,7 +310,29 @@ struct SettingsView: View {
                                 store.preAthanMinutes = choice.rawValue
                                 Task { await Reminders.rescheduleAthan(store: store) }
                             }))
+                    SettingsDivider()
+                    SettingsPickerRow(
+                        icon: "bell.badge.fill", tint: Theme.accent(for: "green"),
+                        title: loc("تنبيه الإقامة"), options: IqamahChoice.allCases,
+                        selection: Binding(
+                            get: { IqamahChoice.from(minutes: store.iqamahMinutes) },
+                            set: { choice in
+                                store.iqamahMinutes = choice.rawValue
+                                Task { await Reminders.rescheduleAthan(store: store) }
+                            }))
                 }
+
+                SettingsDivider()
+                NavigationLink { PrayerOffsetsView() } label: {
+                    SettingsRow(icon: "plusminus.circle.fill", tint: Theme.accent(for: "noon"),
+                                title: loc("ضبط المواقيت يدويًّا"),
+                                subtitle: store.hasPrayerOffsets ? loc("معدَّلة — اضغط للمراجعة") : loc("دقائق زيادةً أو نقصًا لتطابق مسجدك")) {
+                        Image(systemName: "chevron.forward")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(Theme.inkFaint)
+                    }
+                }
+                .buttonStyle(.plain)
 
                 SettingsDivider()
                 SettingsPickerRow(
