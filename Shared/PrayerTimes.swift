@@ -207,7 +207,8 @@ struct PrayerTimes {
             estimated = true
         }
 
-        let dhuhrT = Self.midDay(jDate + 0.5) + 1.0 / 60  // +1 min so Dhuhr clears true noon
+        // الظهر: لحظة الزوال نفسها؛ التقريب إلى الدقيقة التالية أدناه يضمن أن الوقت المعروض بعد الزوال.
+        let dhuhrT = Self.midDay(jDate + 0.5)
         let ishaT: Double
         if method.ishaAngle == nil {
             ishaT = maghribT + method.ishaInterval / 60
@@ -226,14 +227,28 @@ struct PrayerTimes {
 
         self.usedHighLatitudeRule = estimated
         self.date = midnight
-        self.times = [
-            .fajr:    stamp(fajrT),
-            .sunrise: stamp(sunriseT),
-            .dhuhr:   stamp(dhuhrT),
-            .asr:     stamp(asrT),
-            .maghrib: stamp(maghribT),
-            .isha:    stamp(ishaT)
-        ]
+
+        // التقريب إلى الدقيقة كما تفعل التقاويم الرسمية: الصلوات إلى الدقيقة التالية (احتياطًا لدخول
+        // الوقت) والشروق إلى الدقيقة السابقة (احتياطًا لخروج وقت الفجر). كان العرض يقصّ الثواني
+        // فيسبق الأذانُ التقويمَ بدقيقة. وفجر أم القرى الرسمي يتأخّر عن حساب 18.5° بنحو نصف دقيقة
+        // (قورن بتقويم أم القرى لثلاث عشرة مدينة في 5 سبتمبر 2026: 12 من 13 مطابقة بعد هذا الضبط)،
+        // والعشاء فيه 90 دقيقة بعد المغرب المقرَّب لا الخام.
+        let fajrLead: TimeInterval = method == .ummAlQura ? 30 : 0
+        let fajr = Self.rounded(stamp(fajrT).addingTimeInterval(fajrLead), up: true)
+        let sunrise = Self.rounded(stamp(sunriseT), up: false)
+        let dhuhr = Self.rounded(stamp(dhuhrT), up: true)
+        let asr = Self.rounded(stamp(asrT), up: true)
+        let maghrib = Self.rounded(stamp(maghribT), up: true)
+        let isha = method.ishaAngle == nil ? maghrib.addingTimeInterval(method.ishaInterval * 60)
+                                           : Self.rounded(stamp(ishaT), up: true)
+        self.times = [.fajr: fajr, .sunrise: sunrise, .dhuhr: dhuhr, .asr: asr, .maghrib: maghrib, .isha: isha]
+    }
+
+    /// إلى الدقيقة التالية (`up`) أو السابقة؛ ما كان على رأس الدقيقة يبقى.
+    private static func rounded(_ date: Date, up: Bool) -> Date {
+        let t = date.timeIntervalSinceReferenceDate
+        let m = up ? ceil(t / 60) : floor(t / 60)
+        return Date(timeIntervalSinceReferenceDate: m * 60)
     }
 
     subscript(prayer: Prayer) -> Date? { times[prayer] }
