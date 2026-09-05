@@ -57,7 +57,7 @@ let specs: [Spec] = [
     .init(file: "08", shots: ["13-watch-prayer.png"], title: "على معصمك أيضًا",
           subtitle: "الصلاة القادمة بحلقة وعدّ تنازلي، ومسبحة بنبضة، ومضاعفة على واجهة الساعة",
           features: [.init(icon: "applewatch", text: "Apple Watch تتزامن مع الهاتف"), .init(icon: "timer", text: "Dynamic Island للصلاة القادمة"),
-                     .init(icon: "mic.fill", text: "اختصارات Siri: «كم باقي للصلاة»"), .init(icon: "car.fill", text: "التلاوة في CarPlay")],
+                     .init(icon: "mic.fill", text: "اختصارات Siri: «كم باقي للصلاة»"), .init(icon: "lock.rectangle.stack.fill", text: "ودجات شاشة القفل والرئيسية")],
           c1: Color(red: 0.05, green: 0.25, blue: 0.20), c2: Color(red: 0.10, green: 0.42, blue: 0.33), watch: true),
     .init(file: "09", shots: ["15-tasmi.png", "16-prayer-alerts.png"], title: "سمّع حفظك، وتنبيهات على مقاسك",
           subtitle: "اقرأ الآية بصوتك فيُظلَّل ما صحّ وما فاتك، ولكل صلاة صوتها وتنبيهها",
