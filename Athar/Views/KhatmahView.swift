@@ -26,6 +26,12 @@ struct KhatmahView: View {
         }
         .navigationTitle(loc("الختمة"))
         .toolbar(isRootTab ? .visible : .hidden, for: .tabBar)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                NavigationLink { GroupKhatmahView() } label: { Image(systemName: "person.3.fill") }
+                    .accessibilityLabel(loc("ختمة جماعية"))
+            }
+        }
         .navigationBarTitleDisplayMode(.inline)
         // تثبيت أساس «ورد اليوم» هنا لا في جسم الواجهة: الكتابة في التخزين
         // أثناء الرسم أثر جانبي يعيد الرسم بلا نهاية.

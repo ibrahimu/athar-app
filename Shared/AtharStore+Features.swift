@@ -158,8 +158,11 @@ extension AtharStore {
     func setPrayerStatus(_ status: PrayerStatus, for prayer: Prayer, on day: Date) {
         let key = FKey.prayerLogPrefix + Self.dayKey(day)
         var dict = defaults.dictionary(forKey: key) as? [String: String] ?? [:]
+        let was = PrayerStatus(rawValue: dict[prayer.rawValue] ?? "") ?? .none
         if status == .none { dict.removeValue(forKey: prayer.rawValue) } else { dict[prayer.rawValue] = status.rawValue }
         if dict.isEmpty { defaults.removeObject(forKey: key) } else { defaults.set(dict, forKey: key) }
+        if status == .onTime, was != .onTime { updateLedger(for: day) { $0.prayersOnTime += 1 } }
+        else if was == .onTime, status != .onTime { updateLedger(for: day) { $0.prayersOnTime = max(0, $0.prayersOnTime - 1) } }
         objectWillChange.send()
     }
 
@@ -199,6 +202,7 @@ extension AtharStore {
         where key.hasPrefix(FKey.prayerLogPrefix) || key.hasPrefix(FKey.qadaPrefix) {
             defaults.removeObject(forKey: key)
         }
+        resetLedger()
     }
 }
 

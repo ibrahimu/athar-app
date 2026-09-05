@@ -79,6 +79,7 @@ targets:
           - "AyahAudio.swift"
           - "CloudKV.swift"
           - "CloudSync.swift"
+          - "GroupKhatmah.swift"
           # الأذكار القصيرة فقط تلزم الساعة؛ المصحف والحديث والتفسير ثقيلة عليها.
           - "quran.json"
           - "quran_meta.json"
@@ -120,6 +121,7 @@ targets:
           - "AyahAudio.swift"
           - "CloudKV.swift"
           - "CloudSync.swift"
+          - "GroupKhatmah.swift"
           - "*.json"
           - "Resources/**"
     settings:
@@ -146,6 +148,7 @@ targets:
           # محرّكا التلاوة للتطبيق وحده — لا داعي لحملهما في الودجة.
           - "Recitation.swift"
           - "AyahAudio.swift"
+          - "GroupKhatmah.swift"
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.ibrahim.athar.widget

@@ -146,7 +146,7 @@ enum AppTab: String, CaseIterable, Identifiable, Codable {
 
 /// ما يظهر في شاشة «اليوم» وبأي ترتيب — «اليوم على كيفي».
 enum HomeCard: String, CaseIterable, Identifiable, Codable {
-    case prayer, stats, suggestion, dailyDhikr, dailyHadith, occasion, quickGrid, sections, sadaqah
+    case prayer, stats, suggestion, dailyDhikr, dailyHadith, occasion, friday, ramadan, quickGrid, sections, sadaqah
 
     var id: String { rawValue }
 
@@ -158,6 +158,8 @@ enum HomeCard: String, CaseIterable, Identifiable, Codable {
         case .dailyDhikr:  return loc("ذكر اليوم")
         case .dailyHadith: return loc("حديث اليوم")
         case .occasion:    return loc("المناسبة القادمة")
+        case .friday:      return loc("الجمعة (تظهر يوم الجمعة)")
+        case .ramadan:     return loc("رمضان (يظهر في الشهر)")
         case .quickGrid:   return loc("ابدأ الآن")
         case .sections:    return loc("أقسام أخرى")
         case .sadaqah:     return loc("الصدقة")
@@ -172,13 +174,15 @@ enum HomeCard: String, CaseIterable, Identifiable, Codable {
         case .dailyDhikr:  return "text.quote"
         case .dailyHadith: return "quote.opening"
         case .occasion:    return "calendar.badge.clock"
+        case .friday:      return "sun.max.fill"
+        case .ramadan:     return "moon.stars.fill"
         case .quickGrid:   return "square.grid.2x2.fill"
         case .sections:    return "rectangle.grid.2x2.fill"
         case .sadaqah:     return "heart.fill"
         }
     }
 
-    static let defaultOrder: [HomeCard] = [.prayer, .stats, .suggestion, .dailyDhikr, .dailyHadith,
+    static let defaultOrder: [HomeCard] = [.prayer, .ramadan, .friday, .stats, .suggestion, .dailyDhikr, .dailyHadith,
                                            .occasion, .quickGrid, .sections, .sadaqah]
 }
 

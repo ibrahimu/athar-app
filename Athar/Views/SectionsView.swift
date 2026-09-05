@@ -5,6 +5,7 @@ import SwiftUI
 /// شاشة تجمع أقسام التطبيق كلها في أربع عائلات — القرآن، الصلاة والعبادة، الذكر والعلم، الأدوات —
 /// فما لا يسعه الشريط السفلي (خمسة فقط) يبقى في متناول اليد هنا، والحاضر في الشريط يُميَّز بعلامة.
 struct SectionsView: View {
+    @Environment(\.horizontalSizeClass) private var sizeClass
     @EnvironmentObject private var store: AtharStore
     @Environment(\.dismiss) private var dismiss
     /// تبديل التبويب الحيّ — تمرّره «اليوم» كي لا تُدفع نسخة ثانية من قسم قائم في الشريط.
@@ -57,8 +58,9 @@ struct SectionsView: View {
             SettingsGroupTitle(text: title)
             // محاذاة علوية: تحجز البلاطة سطرَي الوصف فتتساوى، وإن اختلفت بقيت رؤوسها
             // على خطّ واحد بدل أن يتوسّط الأقصر جارَه الأطول.
-            LazyVGrid(columns: [GridItem(.flexible(), spacing: 12, alignment: .top),
-                                GridItem(.flexible(), spacing: 12, alignment: .top)], spacing: 12) {
+            // ثلاثة أعمدة على الشاشات العريضة (iPad) بدل اثنين.
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12, alignment: .top),
+                                     count: sizeClass == .regular ? 3 : 2), spacing: 12) {
                 ForEach(tabs) { tab in
                     let inBar = store.visibleTabs.contains(tab)
                     let tile = SectionTile(tab: tab, tint: Theme.accent(for: tab.accentKey), inBar: inBar)

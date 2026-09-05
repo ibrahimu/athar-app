@@ -8,6 +8,7 @@ struct DhikrSessionView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var index = 0
+    @ObservedObject private var speaker = DhikrSpeaker.shared
     @State private var remaining: [String: Int] = [:]
     @State private var showCompletion = false
     /// ورقة الإتمام لم تكن «حاجزة» لقارئ الشاشة: التركيز يبقى على زرّ العدّ خلفها.
@@ -56,7 +57,16 @@ struct DhikrSessionView: View {
         .navigationTitle(category.title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.hidden, for: .tabBar)
+        .onDisappear { speaker.stop() }
         .toolbar {
+            // قراءة الذكر بصوت الجهاز وعدّه تلقائيًّا — لمن يداه مشغولتان.
+            ToolbarItem(placement: .topBarLeading) {
+                Button {
+                    if speaker.speaking { speaker.stop() }
+                    else { speaker.start(current.text, times: max(1, left), onEach: { step() }, onDone: {}) }
+                } label: { Image(systemName: speaker.speaking ? "speaker.slash.fill" : "speaker.wave.2.fill") }
+                .accessibilityLabel(speaker.speaking ? loc("إيقاف القراءة") : loc("قراءة الذكر بالصوت مع العدّ"))
+            }
             // أزرار الشاشات المدفوعة تأتي في الطرف الأخير، بعيدًا عن سهم الرجوع.
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
@@ -273,6 +283,7 @@ struct DhikrSessionView: View {
         }
         remaining[current.id] = left - 1
         store.totalDhikrCount += 1
+        store.noteDhikr()
         store.touchStreak()
         saveSession()
 

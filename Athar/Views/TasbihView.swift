@@ -207,7 +207,7 @@ struct TasbihView: View {
     }
 
     private func increment() {
-        store.tasbihCount += 1
+        store.tasbihCount += 1; store.noteDhikr()
         store.totalDhikrCount += 1
         store.touchStreak()
 

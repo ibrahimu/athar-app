@@ -60,6 +60,7 @@ struct SurahReaderView: View {
     @State private var showControls = false
     @State private var selected: AyahRef? = nil
     @State private var currentRef: AyahRef?
+    @State private var lastCountedPage: Int?
 
     /// السورة الفاعلة الآن — تتبع موضع القراءة الحيّ لا السورة التي فُتح بها
     /// القارئ، وإلا ارتدّ التبديل بين «صفحة» و«آية آية» إلى أول سورةٍ فُتحت
@@ -111,6 +112,8 @@ struct SurahReaderView: View {
                         let ref = Quran.firstAyah(ofPage: page)
                         store.lastRead = ref
                         store.noteReaderPage(page)          // الختمة تتقدّم بالقراءة
+                        if lastCountedPage != page { lastCountedPage = page; store.notePageRead() }
+                        if (293...304).contains(page), Calendar.current.component(.weekday, from: Date()) == 6 { store.noteKahfRead() }
                         currentRef = ref
                     })
             } else {
@@ -605,14 +608,32 @@ private struct MushafPageContent: View {
         let isMarker: Bool
         let isSajdah: Bool
         var number: Int = 0
+        /// ترتيب الكلمة في آيتها وعددها — لوضع الحفظ.
+        var wordIndex: Int = 0
+        var wordCount: Int = 0
+    }
+
+    @EnvironmentObject private var store: AtharStore
+    /// الآيات التي كشفها القارئ بالنقر في وضع الحفظ (تُنسى مع الصفحة).
+    @State private var revealed: Set<String> = []
+
+    /// هل تُخفى هذه الكلمة؟ ثابتٌ للآية نفسها كي لا يتغيّر بين الرسمات.
+    private func isHidden(_ t: Token) -> Bool {
+        guard !t.isMarker, !t.isSajdah, !revealed.contains(t.ref.id) else { return false }
+        switch store.hifzHide {
+        case .off:   return false
+        case .words: return t.wordCount >= 3 && (t.wordIndex + t.ref.ayah) % 3 == 2
+        case .ends:  return t.wordCount >= 3 && t.wordIndex >= Int(Double(t.wordCount) * 0.6)
+        }
     }
 
     private func tokens(of run: [AyahRef]) -> [Token] {
         var out: [Token] = []
         for ref in run {
-            for (i, w) in (Quran.text(ref) ?? "").ayahWords.enumerated() {
+            let words = (Quran.text(ref) ?? "").ayahWords
+            for (i, w) in words.enumerated() {
                 out.append(Token(id: "\(ref.id)-w\(i)", text: w, ref: ref,
-                                 isMarker: false, isSajdah: false))
+                                 isMarker: false, isSajdah: false, wordIndex: i, wordCount: words.count))
             }
             if Quran.isSajdah(ref) {
                 out.append(Token(id: "\(ref.id)-sj", text: "۩", ref: ref,
@@ -627,6 +648,7 @@ private struct MushafPageContent: View {
     @ViewBuilder
     private func tokenView(_ t: Token) -> some View {
         let hl = highlights[t.ref.id].flatMap(HighlightColor.init(rawValue:))
+        let hidden = isHidden(t)
         Group {
             if t.isMarker {
                 AyahMedallion(number: t.number, size: 26 * scale, tint: palette.accent)
@@ -634,6 +656,16 @@ private struct MushafPageContent: View {
                 Text(t.text)
                     .font(Theme.dhikrFont(size: 23, scale: scale))
                     .foregroundStyle(t.isSajdah ? palette.accent : palette.ink)
+                    // الكلمة المخفيّة تبقى بحجمها (فلا يتغيّر رصّ السطر) وتُغطّى بلوحٍ ناعم.
+                    .opacity(hidden ? 0 : 1)
+                    .overlay {
+                        if hidden {
+                            RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                .fill(palette.accent.opacity(0.14))
+                                .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous)
+                                    .strokeBorder(palette.accent.opacity(0.35), style: StrokeStyle(lineWidth: 1, dash: [3, 3])))
+                        }
+                    }
             }
         }
         .padding(.horizontal, 2)
@@ -651,7 +683,14 @@ private struct MushafPageContent: View {
             }
         }
         .contentShape(Rectangle())
-        .onTapGesture { onTapAyah(t.ref) }
+        .onTapGesture {
+            // في وضع الحفظ: النقرة الأولى تكشف الآية، والثانية تفتح خياراتها.
+            if store.hifzHide != .off, !revealed.contains(t.ref.id) {
+                withAnimation(Motion.snappy) { _ = revealed.insert(t.ref.id) }
+            } else {
+                onTapAyah(t.ref)
+            }
+        }
     }
 }
 
@@ -720,6 +759,34 @@ struct ReaderControls: View {
                                 .accessibilityAddTraits(on ? .isSelected : [])
                             }
                         }
+                    }
+
+                    // وضع الحفظ: يخفي بعض الكلمات فيُسمّع القارئ نفسه، والنقر على الآية يكشفها.
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text(loc("وضع الحفظ")).font(Theme.display(15, weight: .semibold)).foregroundStyle(Theme.ink)
+                        HStack(spacing: 10) {
+                            ForEach(HifzHide.allCases) { h in
+                                let on = store.hifzHide == h
+                                Button {
+                                    store.hifzHide = h
+                                    Haptics.tap(enabled: store.hapticsEnabled)
+                                } label: {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: h.icon).font(.system(size: 13))
+                                        Text(h.title).font(Theme.display(13, weight: on ? .semibold : .regular))
+                                    }
+                                    .foregroundStyle(on ? Theme.onAccent : Theme.inkSoft)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 11)
+                                    .background(RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                        .fill(on ? Theme.accent : Theme.surfaceAlt))
+                                }
+                                .pressable()
+                                .accessibilityAddTraits(on ? .isSelected : [])
+                            }
+                        }
+                        Text(loc("المخفيّ يظهر بالنقر على آيته — ومع التكرار الصوتي يصير الحفظ تدريبًا."))
+                            .font(Theme.display(11)).foregroundStyle(Theme.inkFaint)
                     }
 
                     VStack(alignment: .leading, spacing: 10) {
@@ -806,6 +873,7 @@ struct AyahActions: View {
     @EnvironmentObject private var store: AtharStore
     @Environment(\.dismiss) private var dismiss
     @State private var showTafsir = false
+    @State private var shareImage: UIImage?
 
     private var text: String { Quran.text(ref) ?? "" }
     private var surahName: String { Quran.surah(ref.surah)?.name ?? "" }
@@ -1021,6 +1089,24 @@ struct AyahActions: View {
                         }
 
                         SettingsDivider()
+                        // مشاركة صورة: بطاقة بخطّ المصحف وسطر من تفسير السعدي — تُصيَّر عند الطلب لا في كل رسمة.
+                        if let img = shareImage {
+                            ShareLink(item: Image(uiImage: img), preview: SharePreview(loc("آية %1$@ من %2$@", ref.ayah.counterText, surahName), image: Image(uiImage: img))) {
+                                SettingsRow(icon: "photo.on.rectangle.angled", tint: Theme.accent(for: "sea"), title: loc("مشاركة كصورة"), subtitle: loc("جاهزة — اضغط للمشاركة"))
+                            }
+                            .buttonStyle(.plain)
+                        } else {
+                            Button {
+                                let snippet = Tafsir.entry(.saadi, for: ref).map { e -> String in
+                                    let clean = e.text.replacingOccurrences(of: "{", with: "﴿").replacingOccurrences(of: "}", with: "﴾")
+                                    return clean.count > 220 ? String(clean.prefix(220)).trimmingCharacters(in: .whitespaces) + "…" : clean
+                                }
+                                shareImage = AyahShareCard.render(ref: ref, tafsir: snippet, scheme: actionScheme)
+                            } label: {
+                                SettingsRow(icon: "photo.on.rectangle.angled", tint: Theme.accent(for: "sea"), title: loc("مشاركة كصورة"), subtitle: loc("بطاقة بخط المصحف مع سطر من التفسير"))
+                            }
+                            .buttonStyle(.plain)
+                        }
                         ShareLink(item: "\(text)\n\n[\(surahName): \(ref.ayah)]\n\nمن تطبيق أثر") {
                             SettingsRow(icon: "square.and.arrow.up.fill", tint: Theme.accent, title: loc("مشاركة الآية"))
                         }

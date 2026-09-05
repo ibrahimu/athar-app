@@ -470,6 +470,14 @@ struct SettingsView: View {
                     statPill("infinity", Theme.accent, store.totalDhikrCount.counterText, loc("statTotal"))
                 }
                 .padding(.vertical, 16)
+                SettingsDivider(inset: 0)
+                NavigationLink { StatsView() } label: {
+                    SettingsRow(icon: "chart.bar.xaxis", tint: Theme.accent(for: "dawn"),
+                                title: loc("إحصاء الشهر"), subtitle: loc("أذكارك وصفحاتك وصلواتك في كل شهر هجري")) {
+                        Image(systemName: "chevron.forward").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.inkFaint)
+                    }
+                }
+                .buttonStyle(.plain)
 
                 SettingsDivider()
                 Button { showResetConfirm = true } label: {

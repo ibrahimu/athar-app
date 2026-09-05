@@ -29,6 +29,7 @@ struct RootView: View {
         // تغيّر المنطقة الزمنية (سفر): تُعاد جدولة التنبيهات وتُحدَّث الودجات فورًا،
         // وإلا بقيت تنبيهات الأذان على توقيت البلد السابق حتى الفتح التالي.
         .onReceive(NotificationCenter.default.publisher(for: .NSSystemTimeZoneDidChange)) { _ in
+            store.timeZoneChangePending = true      // «الصلاة» تسأل: أنحدّث موقعك؟
             Task { await Reminders.rescheduleAll(store: store) }
             WidgetCenter.shared.reloadAllTimelines()
             if store.liveActivityEnabled { LiveActivityManager.sync(store: store) }

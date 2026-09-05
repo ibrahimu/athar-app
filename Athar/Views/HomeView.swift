@@ -2,6 +2,7 @@ import SwiftUI
 import WidgetKit
 
 struct HomeView: View {
+    @Environment(\.horizontalSizeClass) private var sizeClass
     @EnvironmentObject private var store: AtharStore
     var onOpenTab: (AppTab) -> Void
     /// حين تُفتح من شاشة «الأقسام» تكون داخل مكدّس قائم، فلا تصنع مكدّسًا آخر.
@@ -74,6 +75,8 @@ struct HomeView: View {
         case .dailyDhikr:  if let dailyDhikr { dailyCard(dailyDhikr) }
         case .dailyHadith: if let h = HadithLibrary.daily(for: now) { hadithCard(h) }
         case .occasion:    if let next = Occasions.upcoming(from: now, limit: 1).first { occasionCard(next) }
+        case .friday:      if Calendar.current.component(.weekday, from: now) == 6 { fridayCard }
+        case .ramadan:     if Occasions.hijriComponents(now).month == 9 { ramadanCard }
         case .quickGrid:   quickGrid
         case .sections:    moreSections
         case .sadaqah:     sadaqahCard
@@ -140,6 +143,109 @@ struct HomeView: View {
             }
         }
         .pressable()
+    }
+
+    // MARK: الجمعة ورمضان
+
+    /// يوم الجمعة: الكهف والصلاة على النبي ﷺ والغسل — وحالة الكهف من الدفتر اليومي.
+    private var fridayCard: some View {
+        let color = Theme.accent(for: "gold")
+        let read = store.ledger(for: now).kahf
+        return VStack(alignment: .leading, spacing: 10) {
+            SectionHeader(title: loc("جمعة مباركة"), tint: color)
+            AtharCard(padding: 16, elevation: .e2, tint: color) {
+                VStack(alignment: .leading, spacing: 12) {
+                    NavigationLink { SurahReaderView(surahId: 18) } label: {
+                        HStack(spacing: 12) {
+                            IconChip(icon: read ? "checkmark.seal.fill" : "book.closed.fill", tint: color, size: .lg)
+                            VStack(alignment: .leading, spacing: 3) {
+                                Text(read ? loc("قرأت الكهف اليوم") : loc("سورة الكهف")).font(Theme.display(16, weight: .semibold)).foregroundStyle(Theme.ink)
+                                Text(read ? loc("تقبّل الله — نورٌ لك إلى الجمعة القادمة") : loc("افتحها الآن — يُسجَّل تمامها في إحصائك"))
+                                    .font(Theme.display(12)).foregroundStyle(Theme.inkSoft)
+                            }
+                            Spacer(minLength: 6)
+                            Image(systemName: "chevron.forward").font(.system(size: 12, weight: .semibold)).foregroundStyle(color)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                    SettingsDivider(inset: 0)
+                    VStack(alignment: .leading, spacing: 6) {
+                        Label(loc("الغسل والتطيّب والتبكير"), systemImage: "drop.fill")
+                        Label(loc("أكثِر من الصلاة على النبي ﷺ"), systemImage: "heart.fill")
+                        Label(loc("ساعة الإجابة آخر النهار"), systemImage: "hands.sparkles.fill")
+                    }
+                    .font(Theme.display(13)).foregroundStyle(Theme.inkSoft)
+                    Text("«غُسْلُ يَوْمَ الْجُمُعَةِ وَاجِبٌ عَلَى كُلِّ مُحْتَلِمٍ» — رواه البخاري")
+                        .font(Theme.display(11)).foregroundStyle(Theme.inkFaint)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+    }
+
+    /// رمضان: الإمساك والإفطار بعدّ تنازلي، ودعاء الإفطار، وخطة الختمة.
+    private var ramadanCard: some View {
+        let color = Theme.accent(for: "dusk")
+        let t = store.prayerTimes(for: now)
+        let fajr = t?[.fajr], maghrib = t?[.maghrib]
+        let target: (label: String, date: Date)? = {
+            if let m = maghrib, m > now { return (loc("الإفطار"), m) }
+            if let f = fajr, f > now { return (loc("الإمساك"), f) }
+            return nil
+        }()
+        return VStack(alignment: .leading, spacing: 10) {
+            SectionHeader(title: loc("رمضان كريم"), tint: color)
+            AtharCard(padding: 16, elevation: .e2, tint: color) {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(spacing: 0) {
+                        VStack(spacing: 3) {
+                            Text(loc("الإمساك")).font(Theme.display(12)).foregroundStyle(Theme.inkSoft)
+                            Text(fajr.map(clockText) ?? "—").font(.system(size: 20, weight: .bold, design: .rounded)).foregroundStyle(Theme.ink).monospacedDigit()
+                        }.frame(maxWidth: .infinity)
+                        Rectangle().fill(Theme.hairline).frame(width: 1, height: 36)
+                        VStack(spacing: 3) {
+                            Text(loc("الإفطار")).font(Theme.display(12)).foregroundStyle(Theme.inkSoft)
+                            Text(maghrib.map(clockText) ?? "—").font(.system(size: 20, weight: .bold, design: .rounded)).foregroundStyle(color).monospacedDigit()
+                        }.frame(maxWidth: .infinity)
+                    }
+                    if let target {
+                        HStack(spacing: 6) {
+                            Image(systemName: "timer").font(.system(size: 12, weight: .semibold)).foregroundStyle(color)
+                            Text(loc("%1$@ بعد", target.label)).font(Theme.display(12)).foregroundStyle(Theme.inkSoft)
+                            Text(timerInterval: now...target.date, countsDown: true)
+                                .font(.system(size: 13, weight: .semibold, design: .rounded)).monospacedDigit().foregroundStyle(Theme.ink)
+                                .environment(\.locale, Locale(identifier: "ar_SA@numbers=latn"))
+                        }
+                    }
+                    SettingsDivider(inset: 0)
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(loc("دعاء الإفطار")).font(Theme.display(12, weight: .semibold)).foregroundStyle(color)
+                        Text("ذَهَبَ الظَّمَأُ وَابْتَلَّتِ الْعُرُوقُ وَثَبَتَ الأَجْرُ إِنْ شَاءَ اللَّهُ")
+                            .font(Theme.dhikrFont(size: 17)).foregroundStyle(Theme.ink).lineSpacing(6)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Text(loc("رواه أبو داود")).font(Theme.display(11)).foregroundStyle(Theme.inkFaint)
+                    }
+                    NavigationLink { KhatmahView() } label: {
+                        HStack(spacing: 10) {
+                            IconChip(icon: "books.vertical.fill", tint: color, size: .sm)
+                            Text(store.khatmahActive ? loc("ختمتك جارية — تابع") : loc("ابدأ ختمة رمضان: جزء كل يوم"))
+                                .font(Theme.display(14, weight: .semibold)).foregroundStyle(Theme.ink)
+                            Spacer(minLength: 6)
+                            Image(systemName: "chevron.forward").font(.system(size: 12, weight: .semibold)).foregroundStyle(color)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
+    }
+
+    private func clockText(_ d: Date) -> String {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "ar_SA@numbers=latn")
+        f.timeZone = store.placeTimeZone
+        f.dateFormat = "h:mm"
+        return f.string(from: d)
     }
 
     // MARK: Header
@@ -461,7 +567,7 @@ struct HomeView: View {
                 }
                 .buttonStyle(.plain)
             }
-            LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: sizeClass == .regular ? 3 : 2), spacing: 12) {
                 ForEach(AdhkarLibrary.categories.prefix(6)) { category in
                     NavigationLink {
                         DhikrSessionView(category: category)

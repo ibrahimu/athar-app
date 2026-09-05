@@ -82,6 +82,7 @@ struct TafsirSheet: View {
                         editionPicker
                         if let entry {
                             TafsirTextCard(entry: entry, scale: store.fontScale)
+                            extras
                             actionRow(for: entry)
                         } else {
                             emptyState
@@ -399,6 +400,51 @@ private struct TafsirTextCard: View {
                     .multilineTextAlignment(.leading)
                     .fixedSize(horizontal: false, vertical: true)
                     .textSelection(.enabled)
+            }
+        }
+    }
+}
+
+
+// MARK: - سبب النزول وفضل السورة
+
+private extension TafsirSheet {
+    /// ما تحت التفسير: سبب نزول الآية (الواحدي) وفضل السورة (الصحيحان) حين يوجدان.
+    @ViewBuilder
+    var extras: some View {
+        if let a = SurahExtras.asbab(for: current) {
+            AtharCard(padding: 16, tint: Theme.gold) {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 8) {
+                        IconChip(icon: "text.quote", tint: Theme.gold, size: .sm)
+                        Text(loc("سبب النزول")).font(Theme.display(15, weight: .semibold)).foregroundStyle(Theme.ink)
+                    }
+                    Text(a.text)
+                        .font(Theme.dhikrFont(size: 16, scale: store.fontScale)).foregroundStyle(Theme.ink).lineSpacing(6)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text(SurahExtras.asbabSource).font(Theme.display(10)).foregroundStyle(Theme.inkFaint)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        let virtues = SurahExtras.virtues(of: current.surah)
+        if !virtues.isEmpty {
+            AtharCard(padding: 16, tint: Theme.accent(for: "sea")) {
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack(spacing: 8) {
+                        IconChip(icon: "star.fill", tint: Theme.accent(for: "sea"), size: .sm)
+                        Text(loc("من فضل السورة")).font(Theme.display(15, weight: .semibold)).foregroundStyle(Theme.ink)
+                    }
+                    ForEach(virtues, id: \.self) { v in
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("«\(v.text)»").font(Theme.dhikrFont(size: 16, scale: store.fontScale)).foregroundStyle(Theme.ink).lineSpacing(6)
+                                .fixedSize(horizontal: false, vertical: true)
+                            Text(v.source).font(Theme.display(11)).foregroundStyle(Theme.inkFaint)
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
     }

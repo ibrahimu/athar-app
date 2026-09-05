@@ -41,6 +41,7 @@ private func ahkamShareText(_ item: AhkamItem) -> String {
 /// أحكام عملية بدليلها: بطاقة تعريف، ثم بلاطات المواضيع (الطهارة، الصلاة، الصيام…).
 /// البيانات من ahkam.json، وقد يكون فارغًا أثناء البناء فتُعرض الشاشة هادئةً بلا عطل.
 struct AhkamView: View {
+    @Environment(\.horizontalSizeClass) private var sizeClass
     /// حين يكون تبويبًا في الشريط السفلي يبقى الشريط ظاهرًا.
     var isRootTab = false
     /// الشاشة تقرأ ألوان الطابع ساكنةً؛ مراقبة المخزن تُعيد رسمها فور تبديل الطابع.
@@ -111,8 +112,8 @@ struct AhkamView: View {
 
     /// بلاطات المواضيع في عمودين — كشاشة «الأقسام».
     private var grid: some View {
-        LazyVGrid(columns: [GridItem(.flexible(), spacing: 12, alignment: .top),
-                            GridItem(.flexible(), spacing: 12, alignment: .top)], spacing: 12) {
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12, alignment: .top),
+                                 count: sizeClass == .regular ? 3 : 2), spacing: 12) {
             ForEach(Array(topics.enumerated()), id: \.element.id) { i, topic in
                 let color = Theme.accent(for: topic.accent)
                 NavigationLink {

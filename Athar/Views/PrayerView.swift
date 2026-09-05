@@ -39,6 +39,7 @@ struct PrayerView: View {
                     .animation(Motion.gentle, value: upcoming?.prayer)
                 ScrollView {
                     VStack(spacing: 20) {
+                        if store.timeZoneChangePending { travelBanner }
                         countdownCard.appearStagger(0)
                         dayArc.appearStagger(1)
                         timesList.appearStagger(2)
@@ -296,6 +297,43 @@ struct PrayerView: View {
             .clipShape(shape)
             .padding(.horizontal, 10)
             .padding(.vertical, 4)
+    }
+
+    // MARK: المسافر
+
+    /// تغيّرت منطقة الجهاز الزمنية: نسأل قبل أن نبدّل المواقيت بصمت.
+    private var travelBanner: some View {
+        AtharCard(padding: 14, tint: Theme.accent(for: "gold")) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 10) {
+                    IconChip(icon: "airplane", tint: Theme.accent(for: "gold"), size: .sm)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(loc("يبدو أنك في بلدٍ آخر")).font(Theme.display(15, weight: .semibold)).foregroundStyle(Theme.ink)
+                        Text(loc("تغيّرت المنطقة الزمنية. أنحدّث موقعك لتُضبط المواقيت؟")).font(Theme.display(12)).foregroundStyle(Theme.inkSoft)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                HStack(spacing: 8) {
+                    Button {
+                        store.timeZoneChangePending = false
+                        location.request()
+                        Haptics.tap(enabled: store.hapticsEnabled)
+                    } label: {
+                        Text(loc("حدّث موقعي")).font(Theme.display(13, weight: .semibold)).frame(maxWidth: .infinity)
+                            .softButton(Theme.accent(for: "gold"))
+                    }
+                    .pressable()
+                    Button {
+                        store.timeZoneChangePending = false
+                    } label: {
+                        Text(loc("لاحقًا")).font(Theme.display(13, weight: .semibold)).foregroundStyle(Theme.inkSoft)
+                            .padding(.horizontal, 14).padding(.vertical, 10)
+                            .background(Capsule().fill(Theme.surfaceAlt))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
+        }
     }
 
     // MARK: مدينة ثانية

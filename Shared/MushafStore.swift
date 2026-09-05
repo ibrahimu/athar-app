@@ -485,3 +485,32 @@ enum KhatmahMode: String, CaseIterable, Identifiable {
         }
     }
 }
+
+
+/// وضع الحفظ في المصحف: إخفاء بعض الكلمات أو أواخر الآيات، ويُظهرها النقر على الآية.
+enum HifzHide: String, CaseIterable, Identifiable {
+    case off, words, ends
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .off:   return "بلا إخفاء"
+        case .words: return "كلمات متفرقة"
+        case .ends:  return "أواخر الآيات"
+        }
+    }
+    var icon: String {
+        switch self {
+        case .off:   return "eye"
+        case .words: return "eye.slash"
+        case .ends:  return "text.append"
+        }
+    }
+}
+
+extension AtharStore {
+    private static let hifzHideKey = "athar.hifzHide"
+    var hifzHide: HifzHide {
+        get { HifzHide(rawValue: defaults.string(forKey: Self.hifzHideKey) ?? "") ?? .off }
+        set { defaults.set(newValue.rawValue, forKey: Self.hifzHideKey); objectWillChange.send() }
+    }
+}

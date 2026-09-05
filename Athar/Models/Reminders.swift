@@ -256,18 +256,31 @@ enum Reminders {
         let pending = await center.pendingNotificationRequests()
         center.removePendingNotificationRequests(withIdentifiers:
             pending.map(\.identifier).filter {
-                $0 == jumuahId || $0.hasPrefix(fastingPrefix) || $0.hasPrefix(whitePrefix)
+                $0 == jumuahId || $0.hasPrefix(jumuahId + ".") || $0.hasPrefix(fastingPrefix) || $0.hasPrefix(whitePrefix)
             })
 
-        // الجمعة 9 صباحًا: الكهف والصلاة على النبي (weekday 6 = الجمعة)
+        // الجمعة: قبل الظهر بساعة — الغسل والكهف والصلاة على النبي ﷺ. تُجدول للجُمَع الأربع
+        // القادمة بوقت ظهر كل جمعة (لا ساعة ثابتة)، وتتجدّد مع كل فتح.
         if store.jumuahAlert {
-            let c = UNMutableNotificationContent()
-            c.title = "جمعة مباركة"
-            c.body = "سورة الكهف نورٌ بين الجمعتين، وأكثِر من الصلاة على النبي ﷺ."
-            c.sound = .default
-            var dc = DateComponents(); dc.weekday = 6; dc.hour = 9
-            try? await center.add(UNNotificationRequest(identifier: jumuahId, content: c,
-                trigger: UNCalendarNotificationTrigger(dateMatching: dc, repeats: true)))
+            let cal = Calendar.current
+            var scheduled = 0
+            var day = Date()
+            while scheduled < 4, let next = cal.date(byAdding: .day, value: 1, to: day) {
+                day = next
+                guard cal.component(.weekday, from: day) == 6,
+                      let dhuhr = store.prayerTimes(for: day)?[.dhuhr] else { continue }
+                let fire = dhuhr.addingTimeInterval(-3600)
+                guard fire > Date() else { continue }
+                let c = UNMutableNotificationContent()
+                c.title = "جمعة مباركة"
+                c.subtitle = "بعد ساعة تُقام الجمعة"
+                c.body = "اغتسل وتطيّب، واقرأ سورة الكهف، وأكثِر من الصلاة على النبي ﷺ."
+                c.sound = .default
+                let comps = cal.dateComponents([.year, .month, .day, .hour, .minute], from: fire)
+                try? await center.add(UNNotificationRequest(identifier: "\(jumuahId).\(scheduled)", content: c,
+                    trigger: UNCalendarNotificationTrigger(dateMatching: comps, repeats: false)))
+                scheduled += 1
+            }
         }
 
         // ليلة الاثنين والخميس 9 مساءً (الأحد 1 والأربعاء 4)
