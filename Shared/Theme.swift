@@ -236,7 +236,7 @@ extension Color {
 
     /// Resolves per colour-scheme without needing an asset catalog entry.
     static func adaptive(light: Color, dark: Color) -> Color {
-        #if canImport(UIKit)
+        #if canImport(UIKit) && !os(watchOS)   // الساعة بلا أنماط واجهة ديناميكية؛ تكتفي بلون الوضع الفاتح
         return Color(UIColor { trait in
             trait.userInterfaceStyle == .dark ? UIColor(dark) : UIColor(light)
         })

@@ -32,6 +32,9 @@ targets:
     dependencies:
       - target: AtharWidget
         embed: true
+      # تطبيق الساعة يُضمَّن في التطبيق (Embed Watch Content).
+      - target: AtharWatch
+        embed: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.ibrahim.athar
