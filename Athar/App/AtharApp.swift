@@ -1,8 +1,10 @@
 import SwiftUI
+import CoreSpotlight
 import WidgetKit
 
 @main
 struct AtharApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var store = AtharStore.shared
     @Environment(\.scenePhase) private var scenePhase
 
@@ -24,6 +26,11 @@ struct AtharApp: App {
                 .id(AppConfig.arabicOnly ? AppLanguage.ar : store.appLanguage)
                 .tint(Theme.accent)
                 // القارئ الظاهر يفرض سِمة ورقه على شريط الحالة أيضًا.
+                // بحث iOS واختصارات الودجات: كلاهما يصبّ في وجهة معلّقة يعرضها الجذر.
+                .onContinueUserActivity("com.apple.corespotlightitem") { activity in
+                    if let id = activity.userInfo?["kCSSearchableItemActivityIdentifier"] as? String, let r = AppRoute(spotlightId: id) { store.pendingRoute = r }
+                }
+                .onOpenURL { url in if let r = AppRoute(url: url) { store.pendingRoute = r } }
                 .preferredColorScheme({
                     switch store.readerScheme {
                     case .light: return .light
@@ -36,6 +43,7 @@ struct AtharApp: App {
         .onChange(of: scenePhase) { _, phase in
             switch phase {
             case .active:
+                SpotlightIndexer.indexIfNeeded()  // مرة لكل إصدار من الفهرس
                 store.startCloudSync()            // لا يفعل شيئًا إن كانت المزامنة مطفأة
                 WatchSync.shared.activate()       // الساعة تأخذ مدينتك وطريقة حسابك من هنا
                 WatchSync.shared.push(store: store)

@@ -68,7 +68,9 @@ struct SurahReaderView: View {
     private var activeSurahId: Int { (currentRef ?? scrollTo)?.surah ?? surahId }
 
     private var surah: Surah? { Quran.surah(activeSurahId) }
-    private var palette: ReadingPalette { .of(store.readingTheme) }
+    /// بين العشاء والفجر يُقرأ على ورق الليل إن فعّل المستخدم الوضع الليلي التلقائي.
+    private var effectiveTheme: ReadingTheme { store.readingThemeAuto && store.isNightNow() ? .night : store.readingTheme }
+    private var palette: ReadingPalette { .of(effectiveTheme) }
 
     /// حجزُ ارتفاع المشغّل المصغّر أسفل كل أوضاع القراءة: الشريط السفلي صار
     /// «مشغّل + شريط موضع»، وبطاقة المشغّل معتمة تغطّي آخر سطرٍ من الصفحة
@@ -104,7 +106,7 @@ struct SurahReaderView: View {
                     bookmarks: Set(store.bookmarks),
                     highlights: store.highlights,
                     playing: ayahAudio.current,
-                    isDark: store.readingTheme == .night,
+                    isDark: effectiveTheme == .night,
                     framed: store.readingMode == .framed,
                     bottomInset: bottomReserve,
                     onTapAyah: { selected = $0 },
@@ -162,7 +164,7 @@ struct SurahReaderView: View {
         // المصغّر «المتكيّفة» كانت تُحَلّ على سِمة التطبيق لا على الورق (بطاقة سوداء
         // فوق ورقٍ كريمي). المحتوى والشريط السفلي يتبعان سِمة القراءة؛ الأوراق
         // المنبثقة خارج هذا النطاق فتبقى على سِمة التطبيق.
-        .environment(\.colorScheme, store.readingTheme == .night ? .dark : .light)
+        .environment(\.colorScheme, effectiveTheme == .night ? .dark : .light)
         .navigationTitle(loc("سورة %1$@", visibleSurahName))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.hidden, for: .tabBar)
@@ -233,11 +235,11 @@ struct SurahReaderView: View {
         // التطبيق داكنًا. الشكل لا يتغيّر، وشريط الحالة يتبع سِمة القراءة.
         .toolbarBackground(palette.paper, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
-        .toolbarColorScheme(store.readingTheme == .night ? .dark : .light, for: .navigationBar)
+        .toolbarColorScheme(effectiveTheme == .night ? .dark : .light, for: .navigationBar)
         // القارئ يُمسك المصحف دقائق دون لمس — لا تنطفئ الشاشة عليه.
         .onAppear {
             ReaderWake.enter()
-            store.readerScheme = store.readingTheme == .night ? .dark : .light
+            store.readerScheme = effectiveTheme == .night ? .dark : .light
         }
         .onDisappear {
             ReaderWake.exit()
@@ -269,7 +271,7 @@ struct SurahReaderView: View {
                                  bookmarks: Set(store.bookmarks),
                                  highlights: store.highlights,
                                  playing: ayahAudio.current,
-                                 isDark: store.readingTheme == .night,
+                                 isDark: effectiveTheme == .night,
                                  onTapAyah: { selected = $0 },
                                  onVisible: {
                                      store.lastRead = $0
@@ -791,6 +793,16 @@ struct ReaderControls: View {
 
                     VStack(alignment: .leading, spacing: 10) {
                         Text(loc("pageTheme")).font(Theme.display(15, weight: .semibold)).foregroundStyle(Theme.ink)
+                        // الوضع الليلي التلقائي: بين العشاء والفجر يُقرأ على ورق الليل مهما كانت السِمة.
+                        Toggle(isOn: Binding(get: { store.readingThemeAuto }, set: { store.readingThemeAuto = $0 })) {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(loc("ليلي تلقائيًّا")).font(Theme.display(14, weight: .medium)).foregroundStyle(Theme.ink)
+                                Text(loc("بين العشاء والفجر بحساب مواقيتك")).font(Theme.display(11)).foregroundStyle(Theme.inkFaint)
+                            }
+                        }
+                        .tint(Theme.accent)
+                        .padding(.horizontal, 12).padding(.vertical, 8)
+                        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Theme.surfaceAlt))
                         HStack(spacing: 10) {
                             ForEach(ReadingTheme.allCases) { theme in
                                 themeChip(theme)
@@ -984,6 +996,23 @@ struct AyahActions: View {
                         .contentShape(Rectangle())
                     }
                     .pressable()
+
+                    // التسميع: اقرأ الآية بصوتك ويُظلَّل الصواب والخطأ.
+                    NavigationLink { TasmiView(refs: [ref]) } label: {
+                        HStack(spacing: 12) {
+                            IconChip(icon: "mic.fill", tint: Theme.accent(for: "hifz"), size: .md)
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(loc("سمّع هذه الآية")).font(Theme.display(16, weight: .semibold)).foregroundStyle(Theme.ink)
+                                Text(loc("اقرأها بصوتك ويُظلَّل ما صحّ وما فاتك")).font(Theme.display(12)).foregroundStyle(Theme.inkFaint)
+                            }
+                            Spacer(minLength: 6)
+                            Image(systemName: "chevron.forward").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.accent(for: "hifz"))
+                        }
+                        .padding(14)
+                        .background(CardSurface(radius: Theme.Radius.lg))
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
 
                     // ألوان التظليل — كما يُظلّل القارئ في مصحفه الورقي
                     VStack(alignment: .leading, spacing: 8) {

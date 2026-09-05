@@ -6,6 +6,7 @@ struct RootView: View {
     @State private var selection: AppTab = .home
     /// قسم طلبه «سيري» أو اختصار وليس في الشريط — يُعرض غطاءً كاملًا بزرّ إغلاق.
     @State private var coveredTab: AppTab?
+    @State private var coveredRoute: AppRoute?
     /// «ما الجديد» تراكبٌ فوق التبويبات كلها: الأوراق المطلوبة لحظة الإقلاع كانت تُهدم فور ظهورها.
     @State private var showWhatsNew = false
 
@@ -68,6 +69,16 @@ struct RootView: View {
         // طلب «سيري» قد يسبق رسم الجذر (إقلاع بارد) أو يأتي والتطبيق حيّ — نستهلكه في الحالين.
         .onAppear(perform: consumePendingTab)
         .onChange(of: store.pendingTab) { _, _ in consumePendingTab() }
+        .onChange(of: store.pendingRoute) { _, _ in consumePendingRoute() }
+        .fullScreenCover(item: $coveredRoute) { route in
+            NavigationStack {
+                RouteDestination(route: route)
+                    .toolbar { ToolbarItem(placement: .cancellationAction) { Button(loc("إغلاق")) { coveredRoute = nil } } }
+            }
+            .environmentObject(store)
+            .environment(\.layoutDirection, .rightToLeft)
+            .tint(Theme.accent)
+        }
         .onChange(of: store.didOnboard) { _, done in
             // غطاء الترحيب يُطوى بحركة أولًا؛ عرضٌ فوريّ فوقه يُرفض لأن الجذر ما زال يعرض شيئًا.
             guard done else { return }
@@ -92,6 +103,15 @@ struct RootView: View {
     private func closeWhatsNew() {
         withAnimation(Motion.smooth) { showWhatsNew = false }
         store.whatsNewShownVersion = WhatsNewView.version
+    }
+
+    /// وجهة من بحث iOS أو اختصار الأيقونة أو رابط ودجة: تبويبٌ في الشريط يُختار، وما سواه يُعرض غطاءً.
+    private func consumePendingRoute() {
+        guard let route = store.pendingRoute, store.didOnboard else { return }
+        store.pendingRoute = nil
+        if case .tab(let t) = route, store.visibleTabs.contains(t) { coveredTab = nil; coveredRoute = nil; selection = t; return }
+        coveredTab = nil
+        coveredRoute = route
     }
 
     /// يستهلك طلب «سيري»/الاختصار مرة واحدة: تبويبٌ في الشريط يُختار، وما سواه يُعرض غطاءً —

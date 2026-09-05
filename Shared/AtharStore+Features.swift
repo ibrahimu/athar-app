@@ -18,6 +18,66 @@ extension AtharStore {
         static let whatsNewVersion       = "athar.whatsNewVersion"
         static let secondaryCity         = "athar.secondaryCityId"
         static let ayahSoundMode         = "athar.ayahSoundMode"
+        static let adhkarByPrayer        = "athar.adhkarReminderByPrayer"
+        static let prayerPrefsPrefix     = "athar.prayerPref."
+        static let readingThemeAuto      = "athar.readingThemeAuto"
+    }
+
+    // MARK: تذكير الأذكار بوقت الصلاة
+
+    /// حين يكون مفعّلًا: تذكير الصباح بعد الفجر بعشرين دقيقة، والمساء بعد العصر بعشرين دقيقة — بدل ساعة ثابتة.
+    var adhkarReminderByPrayer: Bool {
+        get { defaults.bool(forKey: FKey.adhkarByPrayer) }
+        set { defaults.set(newValue, forKey: FKey.adhkarByPrayer); objectWillChange.send() }
+    }
+
+    // MARK: تخصيص كل صلاة
+
+    enum PrayerSoundMode: String, CaseIterable, Identifiable {
+        case athan, system, silent
+        var id: String { rawValue }
+        var title: String {
+            switch self { case .athan: return "الأذان"; case .system: return "نغمة النظام"; case .silent: return "صامت" }
+        }
+    }
+
+    struct PrayerAlertPrefs: Codable, Equatable {
+        var enabled: Bool = true
+        var sound: String = "athan"          // PrayerSoundMode.rawValue
+        /// nil = اتّبع الإعداد العام؛ 0 = بلا تنبيه قبلي لهذه الصلاة.
+        var preMinutes: Int? = nil
+        var soundMode: PrayerSoundMode { PrayerSoundMode(rawValue: sound) ?? .athan }
+    }
+
+    func prayerPrefs(_ p: Prayer) -> PrayerAlertPrefs {
+        guard let data = defaults.data(forKey: FKey.prayerPrefsPrefix + p.rawValue),
+              let v = try? JSONDecoder().decode(PrayerAlertPrefs.self, from: data) else { return PrayerAlertPrefs() }
+        return v
+    }
+
+    func setPrayerPrefs(_ v: PrayerAlertPrefs, for p: Prayer) {
+        if let data = try? JSONEncoder().encode(v) { defaults.set(data, forKey: FKey.prayerPrefsPrefix + p.rawValue) }
+        objectWillChange.send()
+    }
+
+    var hasCustomPrayerPrefs: Bool {
+        Prayer.allCases.filter(\.isPrayer).contains { prayerPrefs($0) != PrayerAlertPrefs() }
+    }
+
+    // MARK: الوضع الليلي التلقائي للمصحف
+
+    /// بين العشاء والفجر يُقرأ على ورق الليل تلقائيًّا مهما كانت سِمة الصفحة المختارة.
+    var readingThemeAuto: Bool {
+        get { defaults.bool(forKey: FKey.readingThemeAuto) }
+        set { defaults.set(newValue, forKey: FKey.readingThemeAuto); objectWillChange.send() }
+    }
+
+    /// هل الآن ليلٌ بحساب المواقيت (بعد العشاء وقبل الفجر)؟
+    func isNightNow(_ date: Date = Date()) -> Bool {
+        guard let t = prayerTimes(for: date), let fajr = t[.fajr], let isha = t[.isha] else {
+            let h = Calendar.current.component(.hour, from: date); return h >= 21 || h < 5
+        }
+        return date >= isha || date < fajr
     }
 
     /// ما يحدث صوتيًّا عند فتح آية في ورقة التفسير: تلاوتها، أو قراءة تفسيرها بصوت الجهاز، أو لا شيء.

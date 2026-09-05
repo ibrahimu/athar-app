@@ -3,6 +3,9 @@ import WidgetKit
 
 struct SettingsView: View {
     @State private var rescheduleTask: Task<Void, Never>?
+    @State private var exportURL: URL?
+    @State private var showImporter = false
+    @State private var importMessage: String?
     /// حين تُعرض داخل مكدّس تنقّل قائم، لا نغلّفها بمكدّس آخر.
     var embedded = false
 
@@ -87,6 +90,21 @@ struct SettingsView: View {
             } message: {
                 Text(loc("لتفعيل التذكير، اسمح للتطبيق بالإشعارات من إعدادات الجهاز."))
             }
+            .sheet(item: $exportURL) { url in
+                ShareSheet(items: [url]).ignoresSafeArea()
+            }
+            .fileImporter(isPresented: $showImporter, allowedContentTypes: [.json]) { result in
+                switch result {
+                case .success(let url):
+                    do {
+                        let n = try DataExport.importFile(url, into: store.defaults)
+                        store.applyStoredTheme(); store.objectWillChange.send()
+                        importMessage = loc("استُوردت %1$@ قيمة", n.counterText)
+                        Task { await Reminders.rescheduleAll(store: store) }
+                    } catch { importMessage = error.localizedDescription }
+                case .failure: importMessage = loc("لم يُختر ملف")
+                }
+            }
         }
     }
 
@@ -137,17 +155,28 @@ struct SettingsView: View {
                 }
 
                 if store.remindersEnabled {
+                    if !store.adhkarReminderByPrayer {
                     SettingsDivider()
                     SettingsRow(icon: "sunrise.fill", tint: Theme.accent(for: "dawn"), title: loc("rowMorning")) {
                         DatePicker("", selection: morningBinding, displayedComponents: .hourAndMinute)
                             .labelsHidden()
                             .accessibilityLabel(loc("rowMorning"))
                     }
+                    }
+                    SettingsDivider()
+                    SettingsRow(icon: "clock.arrow.2.circlepath", tint: Theme.accent(for: "green"),
+                                title: loc("بوقت الصلاة"), subtitle: loc("الصباح بعد الفجر والمساء بعد العصر تلقائيًّا")) {
+                        Toggle("", isOn: Binding(get: { store.adhkarReminderByPrayer }, set: { store.adhkarReminderByPrayer = $0; scheduleReminders() }))
+                            .labelsHidden()
+                            .accessibilityLabel(loc("تذكير الأذكار بوقت الصلاة"))
+                    }
+                    if !store.adhkarReminderByPrayer {
                     SettingsDivider()
                     SettingsRow(icon: "moon.stars.fill", tint: Theme.accent(for: "dusk"), title: loc("rowEvening")) {
                         DatePicker("", selection: eveningBinding, displayedComponents: .hourAndMinute)
                             .labelsHidden()
                             .accessibilityLabel(loc("rowEvening"))
+                    }
                     }
                 }
 
@@ -323,6 +352,15 @@ struct SettingsView: View {
                 }
 
                 SettingsDivider()
+                NavigationLink { PrayerAlertsView() } label: {
+                    SettingsRow(icon: "slider.horizontal.below.rectangle", tint: Theme.accent(for: "dusk"),
+                                title: loc("تخصيص كل صلاة"),
+                                subtitle: store.hasCustomPrayerPrefs ? loc("مخصَّصة — اضغط للمراجعة") : loc("صوت أو صمت أو تنبيه قبلي لكل فريضة")) {
+                        Image(systemName: "chevron.forward").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.inkFaint)
+                    }
+                }
+                .buttonStyle(.plain)
+                SettingsDivider()
                 NavigationLink { PrayerOffsetsView() } label: {
                     SettingsRow(icon: "plusminus.circle.fill", tint: Theme.accent(for: "noon"),
                                 title: loc("ضبط المواقيت يدويًّا"),
@@ -443,6 +481,18 @@ struct SettingsView: View {
                         .labelsHidden()
                         .accessibilityLabel(loc("مزامنة iCloud"))
                 }
+                SettingsDivider()
+                Button { exportData() } label: {
+                    SettingsRow(icon: "square.and.arrow.up.on.square.fill", tint: Theme.accent(for: "sea"),
+                                title: loc("تصدير بياناتي"), subtitle: loc("ملف واحد: المفضّلة والسجلات والختمة والإعدادات")) { EmptyView() }
+                }
+                .buttonStyle(.plain)
+                SettingsDivider()
+                Button { showImporter = true } label: {
+                    SettingsRow(icon: "square.and.arrow.down.on.square.fill", tint: Theme.accent(for: "sea"),
+                                title: loc("استيراد نسخة"), subtitle: importMessage ?? loc("من ملف صدّرته من أثر")) { EmptyView() }
+                }
+                .buttonStyle(.plain)
                 SettingsDivider()
                 SettingsRow(icon: "hand.tap.fill", tint: Theme.accent(for: "gold"), title: loc("rowHaptics")) {
                     Toggle("", isOn: Binding(
@@ -675,6 +725,10 @@ struct SettingsView: View {
             guard !Task.isCancelled else { return }
             await Reminders.rescheduleHadith(store: store)
         }
+    }
+
+    private func exportData() {
+        do { exportURL = try DataExport.export(from: store.defaults) } catch { importMessage = loc("تعذّر التصدير") }
     }
 
     private func refreshPrayers() {

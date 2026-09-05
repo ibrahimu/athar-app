@@ -25,9 +25,30 @@ enum Reminders {
 
     static func reschedule(store: AtharStore) async {
         let center = UNUserNotificationCenter.current()
-        center.removePendingNotificationRequests(withIdentifiers: [morningId, eveningId])
+        let pending = await center.pendingNotificationRequests()
+        center.removePendingNotificationRequests(withIdentifiers: [morningId, eveningId] + pending.map(\.identifier).filter { $0.hasPrefix(morningId + ".") || $0.hasPrefix(eveningId + ".") })
         await rescheduleAthan(store: store)
         guard store.remindersEnabled else { return }
+
+        // بوقت الصلاة: الصباح بعد الفجر بعشرين دقيقة والمساء بعد العصر بعشرين — لأربعة أيام،
+        // وتتجدّد مع كل فتح. (تُحتسب من سقف iOS الـ٦٤.)
+        if store.adhkarReminderByPrayer {
+            let cal = Calendar.current
+            for dayOffset in 0..<4 {
+                guard let day = cal.date(byAdding: .day, value: dayOffset, to: Date()), let t = store.prayerTimes(for: day) else { continue }
+                for (prayer, id, title, body) in [(Prayer.fajr, morningId, "أذكار الصباح", "﴿ فَاذْكُرُونِي أَذْكُرْكُمْ ﴾ — بعد الفجر أطيبُ وقتٍ لها."),
+                                                   (Prayer.asr, eveningId, "أذكار المساء", "حصّن يومك قبل أن يغيب — أذكار المساء بانتظارك.")] {
+                    guard let base = t[prayer] else { continue }
+                    let fire = base.addingTimeInterval(20 * 60)
+                    guard fire > Date() else { continue }
+                    let c = UNMutableNotificationContent(); c.title = title; c.body = body; c.sound = .default
+                    let comps = cal.dateComponents([.year, .month, .day, .hour, .minute], from: fire)
+                    try? await center.add(UNNotificationRequest(identifier: "\(id).\(dayOffset)", content: c,
+                        trigger: UNCalendarNotificationTrigger(dateMatching: comps, repeats: false)))
+                }
+            }
+            return
+        }
 
         await add(id: morningId,
                   title: "أذكار الصباح",
@@ -66,6 +87,9 @@ enum Reminders {
 
             for entry in times.ordered where entry.prayer.isPrayer {
                 guard entry.date > now else { continue }
+                // تخصيص كل صلاة: قد تُعطَّل، أو تُنبَّه بنغمة النظام، أو صامتة، أو بتنبيه قبلي خاص.
+                let prefs = store.prayerPrefs(entry.prayer)
+                guard prefs.enabled else { continue }
 
                 let content = UNMutableNotificationContent()
                 // العنوان اسم الصلاة وحده، والسطر الثاني نداؤها ومكانها ووقتها، والمتن آية
@@ -73,7 +97,11 @@ enum Reminders {
                 content.title = entry.prayer.title
                 content.subtitle = "حيّ على الصلاة · \(store.placeName) · \(clockText(entry.date, store: store))"
                 content.body = athanBody(for: entry.prayer, dayOffset: dayOffset)
-                content.sound = athanSound(store)
+                switch prefs.soundMode {
+                case .athan:  content.sound = athanSound(store)
+                case .system: content.sound = .default
+                case .silent: content.sound = nil
+                }
                 // حسّاس للوقت: يخترق «عدم الإزعاج» وأوضاع التركيز، لأن
                 // تنبيهًا يصل بعد فوات الوقت لا فائدة منه.
                 content.interruptionLevel = .timeSensitive
@@ -107,8 +135,9 @@ enum Reminders {
 
                 // تنبيه الاستعداد قبل الأذان: بنغمة النظام لا بالأذان، حتى لا يظنّه
                 // المستخدم دخولَ الوقت. يحمل بادئة الأذان نفسها فيُمحى معه.
-                guard preMinutes > 0 else { continue }
-                let preDate = entry.date.addingTimeInterval(-Double(preMinutes) * 60)
+                let effectivePre = prefs.preMinutes ?? preMinutes
+                guard effectivePre > 0 else { continue }
+                let preDate = entry.date.addingTimeInterval(-Double(effectivePre) * 60)
                 guard preDate > now else { continue }
 
                 let pre = UNMutableNotificationContent()

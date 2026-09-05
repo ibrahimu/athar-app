@@ -67,6 +67,10 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>للتسميع: يُقارن ما تقرؤه بنصّ الآية ويظلّل ما فاتك. يُفضَّل التعرّف على الجهاز، ولا يُحفظ صوتك.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>لسماع قراءتك أثناء التسميع فقط.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>لحساب أوقات الصلاة في مكانك بدقة. يُستخدم الموقع على جهازك فقط ولا يُرسل إلى أي جهة.</string>
 	<key>UIAppFonts</key>
@@ -81,6 +85,52 @@
 	</array>
 	<key>NSSupportsLiveActivities</key>
 	<true/>
+	<key>UIApplicationShortcutItems</key>
+	<array>
+		<dict>
+			<key>UIApplicationShortcutItemType</key>
+			<string>com.ibrahim.athar.mushaf</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>المصحف</string>
+			<key>UIApplicationShortcutItemSymbolName</key>
+			<string>book.closed.fill</string>
+		</dict>
+		<dict>
+			<key>UIApplicationShortcutItemType</key>
+			<string>com.ibrahim.athar.tasbih</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>المسبحة</string>
+			<key>UIApplicationShortcutItemSymbolName</key>
+			<string>circle.hexagongrid.fill</string>
+		</dict>
+		<dict>
+			<key>UIApplicationShortcutItemType</key>
+			<string>com.ibrahim.athar.qibla</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>القبلة</string>
+			<key>UIApplicationShortcutItemSymbolName</key>
+			<string>location.north.line.fill</string>
+		</dict>
+		<dict>
+			<key>UIApplicationShortcutItemType</key>
+			<string>com.ibrahim.athar.hadith</string>
+			<key>UIApplicationShortcutItemTitle</key>
+			<string>الحديث</string>
+			<key>UIApplicationShortcutItemSymbolName</key>
+			<string>quote.opening</string>
+		</dict>
+	</array>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.ibrahim.athar</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>athar</string>
+			</array>
+		</dict>
+	</array>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 </dict>

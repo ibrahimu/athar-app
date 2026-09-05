@@ -79,6 +79,12 @@ struct HifzView: View {
         .toolbar(isRootTab ? .visible : .hidden, for: .tabBar)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
+                if let ref = current {
+                    NavigationLink { TasmiView(refs: [ref]) } label: { Image(systemName: "mic.fill") }
+                        .accessibilityLabel(loc("تسميع الآية"))
+                }
+            }
+            ToolbarItem(placement: .topBarLeading) {
                 Button { showPicker = true } label: { Image(systemName: "plus.circle") }
                     .accessibilityLabel(loc("أضِف آيات"))
             }
