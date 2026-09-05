@@ -21,6 +21,11 @@
 - **ضبط المواقيت بالدقائق** لكل صلاة لتطابق مسجدك، و**تنبيه الإقامة** بعد الأذان، و**مدينة ثانية** بتوقيتها للمسافر.
 - **iPad**: التفسير جنبًا إلى جنب مع المصحف. و**مزامنة iCloud** اختيارية للتفضيلات والمفضّلة.
 - **ودجات** حديث اليوم واسم اليوم والراتبة القادمة، وورقة «ما الجديد».
+- **يوم الجمعة ورمضان في الرئيسية**: الكهف والغسل والصلاة على النبي ﷺ يوم الجمعة، والإمساك والإفطار بعدّ تنازلي ودعاء الإفطار في رمضان.
+- **وضع الحفظ** في المصحف: إخفاء كلمات أو أواخر الآيات والنقر يكشفها، و**مشاركة الآية صورةً** بخط المصحف.
+- **الأذكار بالصوت** مع العدّ التلقائي، و**إحصاء شهري** هجري لأذكارك وصفحاتك وصلواتك.
+- **الختمة الجماعية** برمز للعائلة والأصدقاء، و**سبب النزول** (الواحدي) و**فضل السورة** (الصحيحان) في ورقة التفسير.
+- **المسافر**: عند تغيّر المنطقة الزمنية يسألك التطبيق قبل تبديل موقعك.
 - **مصحف مؤطَّر**، وخطّ يتبع حجم خطّ النظام، وتسميات صوتية لكل الأزرار، وعشرات الإصلاحات.
 
 ## What's New (English)
@@ -41,6 +46,11 @@
 - **Per-prayer minute adjustments** to match your mosque, an **iqamah alert**, and a **second city** in its own time zone.
 - **iPad**: tafsir side by side with the Mushaf. Optional **iCloud sync** for preferences and favourites.
 - **Widgets** for hadith of the day, name of the day and the next sunnah prayer, plus a What's New card.
+- **Friday & Ramadan on the Today screen**: al-Kahf, ghusl and salawat on Fridays; imsak/iftar countdown and the iftar du'a in Ramadan.
+- **Memorisation mode** in the Mushaf (hide words or ayah endings, tap to reveal) and **share an ayah as an image** card.
+- **Spoken adhkar** with automatic counting, and a **monthly Hijri report** of your dhikr, pages and prayers.
+- **Group khatmah** by code for family and friends, plus **reasons of revelation** (al-Wahidi) and **surah virtues** (the two Sahihs) in the tafsir sheet.
+- **Travelling**: when the time zone changes, the app asks before switching your location.
 - Framed Mushaf, Dynamic Type, VoiceOver labels, and dozens of fixes.
 
 ## ملاحظات للرفع
