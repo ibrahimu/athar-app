@@ -37,7 +37,8 @@ struct RootView: View {
             guard store.didOnboard,
                   CommandLine.arguments.contains("-whatsnew") || store.whatsNewShownVersion != WhatsNewView.version
             else { return }
-            try? await Task.sleep(for: .milliseconds(900))
+            // تراكبٌ لا ورقة، فلا حاجة لتأخير: يظهر مع أول إطار (التأخير على المحاكي المثقل
+            // كان يمتدّ ثواني لأن متابعة النوم تنتظر دورها على الخيط الرئيس).
             withAnimation(Motion.smooth) { showWhatsNew = true }
         }
         .overlay {
