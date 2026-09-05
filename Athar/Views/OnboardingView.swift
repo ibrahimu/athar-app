@@ -240,5 +240,8 @@ private struct OnboardingLocationHost: View {
 
     var body: some View {
         LocationPickerView(location: location)
+            // أول تشغيل: يُطلب الموقع تلقائيًّا فتُضبط المواقيت من اللحظة الأولى بلا بحث عن مدينة؛
+            // ومن رفض بقيت له القائمة والمدينة الافتراضية.
+            .onAppear { if location.status == .notDetermined { location.request() } }
     }
 }
