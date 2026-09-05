@@ -32,6 +32,7 @@ struct NextPrayerActivity: Widget {
                 }
                 DynamicIslandExpandedRegion(.trailing) {
                     Text(timerInterval: look.range, countsDown: true)
+                    .environment(\.locale, Locale(identifier: "ar_SA@numbers=latn"))
                         .monospacedDigit()
                         .font(.system(size: 17, weight: .semibold, design: .rounded))
                         .foregroundStyle(look.tint)
@@ -64,6 +65,7 @@ struct NextPrayerActivity: Widget {
                     .foregroundStyle(look.tint)
             } compactTrailing: {
                 Text(timerInterval: look.range, countsDown: true)
+                    .environment(\.locale, Locale(identifier: "ar_SA@numbers=latn"))
                     .monospacedDigit()
                     .font(.system(size: 13, weight: .semibold, design: .rounded))
                     .foregroundStyle(look.tint)
@@ -109,6 +111,7 @@ private struct NextPrayerLockScreenView: View {
 
                 VStack(alignment: .trailing, spacing: 2) {
                     Text(timerInterval: look.range, countsDown: true)
+                    .environment(\.locale, Locale(identifier: "ar_SA@numbers=latn"))
                         .monospacedDigit()
                         .font(.system(size: 24, weight: .bold, design: .rounded))
                         .foregroundStyle(look.tint)
