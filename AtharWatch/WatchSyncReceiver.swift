@@ -21,4 +21,22 @@ final class WatchSyncReceiver: NSObject, WCSessionDelegate {
     func session(_ session: WCSession, didReceiveApplicationContext ctx: [String: Any]) {
         DispatchQueue.main.async { AtharStore.shared.applyWatchContext(ctx) }
     }
+
+    // MARK: عدّ المسبحة يُرسل إلى الهاتف دفعاتٍ مؤجّلة — لا رسالة مع كل نقرة.
+    private var pendingDelta = 0
+    private var flushWork: DispatchWorkItem?
+
+    func reportTasbih(_ delta: Int) {
+        pendingDelta += delta
+        flushWork?.cancel()
+        let w = DispatchWorkItem { [weak self] in self?.flush() }
+        flushWork = w
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3, execute: w)
+    }
+
+    private func flush() {
+        guard pendingDelta > 0, WCSession.isSupported(), WCSession.default.activationState == .activated else { return }
+        WCSession.default.transferUserInfo(["tasbihDelta": pendingDelta, "at": Date().timeIntervalSince1970])
+        pendingDelta = 0
+    }
 }

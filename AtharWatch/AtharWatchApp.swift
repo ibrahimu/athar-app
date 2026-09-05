@@ -101,15 +101,17 @@ struct WatchPrayerPage: View {
                                 .foregroundStyle(moment.inkSoft)
                         }
                     }
-                    .frame(width: 150, height: 150)
-                    .padding(.top, 4)
+                    .frame(width: 146, height: 146)
+                    .padding(.top, 14)
+                    .padding(.bottom, 4)
 
                     Text(store.placeName)
                         .font(.custom("NotoNaskhArabic-Regular", size: 13)).foregroundStyle(moment.inkSoft)
+                        .padding(.bottom, 10)
                 }
 
                 if let t = times {
-                    VStack(spacing: 0) {
+                    VStack(spacing: 4) {
                         ForEach(Prayer.allCases.filter(\.isPrayer)) { p in
                             let isNext = window?.prayer == p
                             HStack(spacing: 8) {
@@ -126,8 +128,8 @@ struct WatchPrayerPage: View {
                                     .monospacedDigit()
                                     .foregroundStyle(isNext ? moment.tint : moment.inkSoft)
                             }
-                            .padding(.vertical, 6).padding(.horizontal, 10)
-                            .background(RoundedRectangle(cornerRadius: 10, style: .continuous)
+                            .padding(.vertical, 8).padding(.horizontal, 12)
+                            .background(RoundedRectangle(cornerRadius: 12, style: .continuous)
                                 .fill(isNext ? Color.white.opacity(0.10) : .clear))
                         }
                     }
@@ -138,10 +140,10 @@ struct WatchPrayerPage: View {
                         .multilineTextAlignment(.center)
                 }
             }
-            .padding(.horizontal, 6)
+            .padding(.horizontal, 8)
+            .padding(.bottom, 12)
         }
         .containerBackground(LinearGradient(colors: moment.gradient, startPoint: .top, endPoint: .bottom), for: .navigation)
-        .navigationTitle(Text("الصلاة").font(.custom("NotoNaskhArabic-Bold", size: 17)))
         .onReceive(ticker) { now = $0 }
     }
 }
@@ -159,9 +161,10 @@ struct WatchTasbihPage: View {
     private var moment: AtharStyle.Moment { .at(Date(), times: store.prayerTimes()) }
 
     var body: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: 12) {
             Text(phrases[phraseIndex])
-                .font(.custom("NotoNaskhArabic-Bold", size: 17))
+                .font(.custom("NotoNaskhArabic-Bold", size: 18))
+                .padding(.top, 6)
                 .foregroundStyle(moment.ink)
                 .lineLimit(1).minimumScaleFactor(0.7)
 
@@ -170,6 +173,7 @@ struct WatchTasbihPage: View {
                 count += 1
                 WKInterfaceDevice.current().play(count % target == 0 ? .success : .click)
                 store.tasbihCount += 1
+                WatchSyncReceiver.shared.reportTasbih(1)
             } label: {
                 ZStack {
                     Circle().stroke(Color.white.opacity(0.12), lineWidth: 10)
@@ -189,7 +193,7 @@ struct WatchTasbihPage: View {
                             .foregroundStyle(moment.inkSoft)
                     }
                 }
-                .frame(width: 138, height: 138)
+                .frame(width: 132, height: 132)
                 .contentShape(Circle())
             }
             .buttonStyle(.plain)
@@ -217,7 +221,6 @@ struct WatchTasbihPage: View {
         }
         .padding(.horizontal, 4)
         .containerBackground(LinearGradient(colors: moment.gradient, startPoint: .top, endPoint: .bottom), for: .navigation)
-        .navigationTitle(Text("المسبحة").font(.custom("NotoNaskhArabic-Bold", size: 17)))
     }
 }
 
@@ -237,10 +240,11 @@ struct WatchDhikrPage: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 10) {
+            VStack(spacing: 12) {
                 if let d = dhikr {
                     Text(d.text)
                         .font(.custom("NotoNaskhArabic-Regular", size: 17))
+                        .padding(.top, 10)
                         .foregroundStyle(moment.ink)
                         .multilineTextAlignment(.center)
                         .lineSpacing(4)
@@ -271,6 +275,5 @@ struct WatchDhikrPage: View {
             }
         }
         .containerBackground(LinearGradient(colors: moment.gradient, startPoint: .top, endPoint: .bottom), for: .navigation)
-        .navigationTitle(Text("ذكر اليوم").font(.custom("NotoNaskhArabic-Bold", size: 17)))
     }
 }

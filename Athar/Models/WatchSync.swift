@@ -27,4 +27,14 @@ final class WatchSync: NSObject, WCSessionDelegate {
     func sessionDidBecomeInactive(_ session: WCSession) {}
     func sessionDidDeactivate(_ session: WCSession) { session.activate() }
     func sessionWatchStateDidChange(_ session: WCSession) { push(store: AtharStore.shared) }
+
+    /// تسبيح الساعة يُضاف إلى عدّاد الهاتف ومجموع الأذكار — حتى يكون الرقم واحدًا في الجهازين.
+    func session(_ session: WCSession, didReceiveUserInfo userInfo: [String: Any] = [:]) {
+        guard let delta = userInfo["tasbihDelta"] as? Int, delta > 0 else { return }
+        DispatchQueue.main.async {
+            let store = AtharStore.shared
+            store.tasbihCount += delta
+            store.totalDhikrCount += delta
+        }
+    }
 }
