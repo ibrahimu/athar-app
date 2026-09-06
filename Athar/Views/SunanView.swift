@@ -36,9 +36,8 @@ struct SunanView: View {
         .onAppear { times = store.prayerTimes(for: Date()) }
         .sheet(item: $selected) { s in
             SunnahDetailSheet(sunnah: s, tint: tint)
-                .environment(\.layoutDirection, AppConfig.arabicOnly ? .rightToLeft : store.appLanguage.layoutDirection)
                 .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
+                .atharSheetChrome()
         }
     }
 
@@ -213,8 +212,7 @@ private struct SunnahDetailSheet: View {
             AtharBackground(tint: tint)
             ScrollView {
                 VStack(spacing: 16) {
-                    Capsule().fill(Theme.hairline).frame(width: 36, height: 5).padding(.top, 10)
-
+                    // مقبض السحب من النظام (كسوة الأوراق) — لا مقبضٌ ثانٍ مرسوم.
                     AtharCard(padding: 18, elevation: .e2, tint: tint) {
                         VStack(alignment: .leading, spacing: 10) {
                             HStack(spacing: 12) {
@@ -251,6 +249,7 @@ private struct SunnahDetailSheet: View {
                         }
                     }
                 }
+                .padding(.top, Theme.Space.xl)
                 .padding(.horizontal, Theme.gutter)
                 .padding(.bottom, 30)
             }

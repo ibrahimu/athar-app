@@ -302,6 +302,29 @@ extension View {
     }
 }
 
+// MARK: - Sheet chrome
+
+/// كسوة الأوراق الموحّدة: خلفية بلون اللوح فلا تطلّ حافّة النظام البيضاء من خلف
+/// محتوانا الملوّن، وزوايا الأوراق الكبيرة، ومقبض السحب من النظام (فلا مقبض
+/// مرسوم باليد داخل المحتوى)، وتثبيت اتجاه الواجهة — الأوراق لا ترثه من الجذر.
+/// تُطبَّق على محتوى كل .sheet مع إبقاء مقاساته (presentationDetents) كما هي.
+struct AtharSheetChrome: ViewModifier {
+    @EnvironmentObject private var store: AtharStore
+
+    func body(content: Content) -> some View {
+        content
+            .presentationBackground(Theme.canvas)
+            .presentationCornerRadius(Theme.Radius.xl)
+            .presentationDragIndicator(.visible)
+            .environment(\.layoutDirection, AppConfig.arabicOnly ? .rightToLeft : store.appLanguage.layoutDirection)
+    }
+}
+
+extension View {
+    /// كسوة الأوراق الموحّدة — انظر AtharSheetChrome.
+    func atharSheetChrome() -> some View { modifier(AtharSheetChrome()) }
+}
+
 // MARK: - Haptics
 
 enum Haptics {

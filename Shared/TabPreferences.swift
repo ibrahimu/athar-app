@@ -3,9 +3,10 @@ import Foundation
 /// التبويبات المتاحة في الشريط السفلي. المستخدم يختار أيّها يظهر وبأي ترتيب،
 /// وكل قسم في التطبيق تبويبٌ محتمل — فمن أراد «الختمة» أو «الحديث» أسفل الشاشة وضعه.
 enum AppTab: String, CaseIterable, Identifiable, Codable {
-    // «live» بعد «prayer» مباشرة: ترتيب الحالات هو ترتيب البلاطات في مجموعة «الصلاة والعبادة».
-    case home, mushaf, adhkar, prayer, live, tasbih, hajj, qibla, hifz, recitation,
-         khatmah, wird, hadith, names, ahkam, prayerLog, calendar, zakat, sunan, settings
+    // «live» و«radio» بعد «prayer» مباشرة، و«phrases» بعد «hadith»: ترتيب الحالات هو ترتيب
+    // البلاطات داخل مجموعات شاشة «الأقسام»، لا ترتيب إضافتها للتطبيق.
+    case home, mushaf, adhkar, prayer, live, radio, tasbih, hajj, qibla, hifz, recitation,
+         khatmah, wird, hadith, phrases, names, ahkam, prayerLog, calendar, zakat, wallet, sunan, settings
 
     var id: String { rawValue }
 
@@ -26,9 +27,9 @@ enum AppTab: String, CaseIterable, Identifiable, Codable {
     var group: Group {
         switch self {
         case .mushaf, .recitation, .khatmah, .wird, .hifz: return .quran
-        case .prayer, .live, .qibla, .prayerLog, .hajj, .sunan: return .worship
-        case .adhkar, .tasbih, .hadith, .names, .ahkam:     return .knowledge
-        case .calendar, .zakat, .home, .settings:           return .tools
+        case .prayer, .live, .radio, .qibla, .prayerLog, .hajj, .sunan: return .worship
+        case .adhkar, .tasbih, .hadith, .phrases, .names, .ahkam:       return .knowledge
+        case .calendar, .zakat, .wallet, .home, .settings:  return .tools
         }
     }
 
@@ -39,6 +40,7 @@ enum AppTab: String, CaseIterable, Identifiable, Codable {
         case .adhkar:     return loc("adhkar")
         case .prayer:     return loc("prayer")
         case .live:       return loc("البث المباشر")
+        case .radio:      return loc("إذاعة القرآن")
         case .tasbih:     return loc("tasbih")
         case .hajj:       return loc("hajj")
         case .qibla:      return loc("qibla")
@@ -47,11 +49,13 @@ enum AppTab: String, CaseIterable, Identifiable, Codable {
         case .khatmah:    return loc("khatmah")
         case .wird:       return loc("الورد")
         case .hadith:     return loc("الحديث")
+        case .phrases:    return loc("عبارات")
         case .names:      return loc("الأسماء الحسنى")
         case .ahkam:      return loc("الأحكام")
         case .prayerLog:  return loc("سجل الصلاة")
         case .calendar:   return loc("التقويم")
         case .zakat:      return loc("الزكاة")
+        case .wallet:     return loc("بطاقات المحفظة")
         case .sunan:      return loc("السنن الرواتب")
         case .settings:   return loc("settings")
         }
@@ -64,6 +68,7 @@ enum AppTab: String, CaseIterable, Identifiable, Codable {
         case .adhkar:     return "text.book.closed.fill"
         case .prayer:     return "moon.stars.fill"        // بديل — الفعلي سجّادة مخصّصة
         case .live:       return "dot.radiowaves.left.and.right"
+        case .radio:      return "radio.fill"
         case .tasbih:     return "circle.hexagongrid.fill"
         case .hajj:       return "cube.fill"              // احتياط فقط — الظاهر دائمًا كعبة مرسومة
         case .qibla:      return "location.north.line.fill"
@@ -72,11 +77,13 @@ enum AppTab: String, CaseIterable, Identifiable, Codable {
         case .khatmah:    return "books.vertical.fill"
         case .wird:       return "bookmark.fill"
         case .hadith:     return "quote.opening"
+        case .phrases:    return "text.quote"
         case .names:      return "sparkle"
         case .ahkam:      return "list.bullet.clipboard.fill"
         case .prayerLog:  return "checkmark.circle.fill"
         case .calendar:   return "calendar"
         case .zakat:      return "banknote.fill"
+        case .wallet:     return "wallet.pass.fill"
         case .sunan:      return "rays"
         case .settings:   return "gearshape.fill"
         }
@@ -90,6 +97,7 @@ enum AppTab: String, CaseIterable, Identifiable, Codable {
         case .adhkar:     return "sea"
         case .prayer:     return "night"
         case .live:       return "sea"
+        case .radio:      return "sea"
         case .tasbih:     return "calm"
         case .hajj:       return "gold"
         case .qibla:      return "maghrib"
@@ -98,11 +106,13 @@ enum AppTab: String, CaseIterable, Identifiable, Codable {
         case .khatmah:    return "gold"
         case .wird:       return "dawn"
         case .hadith:     return "sea"
+        case .phrases:    return "gold"
         case .names:      return "dusk"
         case .ahkam:      return "green"
         case .prayerLog:  return "night"
         case .calendar:   return "noon"
         case .zakat:      return "calm"
+        case .wallet:     return "gold"
         case .sunan:      return "dawn"
         case .settings:   return "green"
         }
@@ -116,6 +126,7 @@ enum AppTab: String, CaseIterable, Identifiable, Codable {
         case .adhkar:     return loc("أذكار اليوم بتخريجها")
         case .prayer:     return loc("مواقيت الصلاة وتنبيهاتها")
         case .live:       return loc("الحرمان الشريفان وإذاعة القرآن")
+        case .radio:      return loc("بثّ هيئة الإذاعة والتلفزيون الرسمي")
         case .tasbih:     return loc("مسبحة تعدّ لك أورادك")
         case .hajj:       return loc("مناسك العمرة والحج خطوةً خطوة")
         case .qibla:      return loc("اتجاه القبلة من مكانك")
@@ -124,11 +135,13 @@ enum AppTab: String, CaseIterable, Identifiable, Codable {
         case .khatmah:    return loc("ختمة القرآن بخطّة تناسبك")
         case .wird:       return loc("وردك اليومي من الآيات")
         case .hadith:     return loc("رياض الصالحين والأربعون النووية")
+        case .phrases:    return loc("آيات وأدعية وتهانٍ للنسخ والمشاركة")
         case .names:      return loc("أسماء الله الحسنى وشرحها")
         case .ahkam:      return loc("الطهارة والصلاة والصيام بدليلها")
         case .prayerLog:  return loc("تتبّع صلواتك وقضاء ما فات")
         case .calendar:   return loc("التقويم الهجري ومناسبات السنّة")
         case .zakat:      return loc("حاسبة زكاة المال بلا إنترنت")
+        case .wallet:     return loc("آية الكرسي وأذكارك في بطاقات للمحفظة")
         case .sunan:      return loc("رواتب الصلاة والوتر والضحى بدليلها")
         case .settings:   return loc("تفضيلاتك وتنبيهاتك")
         }
@@ -151,13 +164,14 @@ enum AppTab: String, CaseIterable, Identifiable, Codable {
 
 /// ما يظهر في شاشة «اليوم» وبأي ترتيب — «اليوم على كيفي».
 enum HomeCard: String, CaseIterable, Identifiable, Codable {
-    case prayer, stats, suggestion, dailyDhikr, dailyHadith, occasion, friday, ramadan, quickGrid, sections, sadaqah
+    case prayer, radio, stats, suggestion, dailyDhikr, dailyHadith, occasion, friday, ramadan, quickGrid, sections, sadaqah
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
         case .prayer:      return loc("الصلاة القادمة")
+        case .radio:       return loc("إذاعة القرآن")
         case .stats:       return loc("أرقامي")
         case .suggestion:  return loc("وقتها الآن")
         case .dailyDhikr:  return loc("ذكر اليوم")
@@ -174,6 +188,7 @@ enum HomeCard: String, CaseIterable, Identifiable, Codable {
     var icon: String {
         switch self {
         case .prayer:      return "moon.stars.fill"
+        case .radio:       return "radio.fill"
         case .stats:       return "chart.bar.fill"
         case .suggestion:  return "clock.badge.checkmark.fill"
         case .dailyDhikr:  return "text.quote"
@@ -187,7 +202,8 @@ enum HomeCard: String, CaseIterable, Identifiable, Codable {
         }
     }
 
-    static let defaultOrder: [HomeCard] = [.prayer, .ramadan, .friday, .stats, .suggestion, .dailyDhikr, .dailyHadith,
+    // «الإذاعة» بعد الصلاة مباشرة: زرّ تشغيل في متناول اليد من أول الشاشة.
+    static let defaultOrder: [HomeCard] = [.prayer, .radio, .ramadan, .friday, .stats, .suggestion, .dailyDhikr, .dailyHadith,
                                            .occasion, .quickGrid, .sections, .sadaqah]
 }
 
@@ -305,5 +321,6 @@ extension AtharStore {
         Theme.current = appTheme
         BackgroundPattern.current = backgroundPattern
         AppFont.current = uiFont
+        Theme.unifyIcons = unifyIcons
     }
 }

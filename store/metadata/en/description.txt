@@ -1,6 +1,6 @@
 Athar is a calm daily companion for Islamic remembrance (adhkar) and prayer times.
 
-No ads. No subscriptions. No accounts. No internet required.
+No ads. No subscriptions. No accounts. Works offline; iCloud sync, live streams and group khatmah are optional.
 
 
 LOCK SCREEN AND HOME SCREEN WIDGETS
@@ -51,11 +51,9 @@ Morning and evening adhkar reminders at times you choose, plus prayer-time alert
 
 YOUR PRIVACY
 
-We collect nothing. Nothing at all.
+Your logs and preferences are stored on your device. Athar adds no analytics, tracking, or advertising tools. Optional iCloud sync stores selected preferences in your account. Optional group khatmah stores your chosen display name and page count in the app's public CloudKit database.
 
-No accounts, no sign-in, no analytics, no tracking, no ads, no third-party SDKs, and no servers of our own. Everything — your counts, your stats, your location — stays on your device and is erased when you delete the app.
-
-Location access is entirely optional, and the prayer-time calculation runs on your device. The only network request the app can make is an optional lookup to Apple's geocoding service to turn your coordinates into a city name, and only if you enable location.
+Prayer times are calculated locally; Apple may receive coordinates to look up a city name. Recitation, streaming, and server-based speech recognition contact their providers when used. See the privacy policy for data handling, retention, and deletion details.
 
 The interface is in Arabic.
 

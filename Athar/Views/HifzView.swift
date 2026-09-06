@@ -94,8 +94,7 @@ struct HifzView: View {
                 enroll(refs)
                 loadQueue()
             }
-            // الأوراق لا ترث اتجاه الواجهة من الجذر، فنفرضه صراحةً.
-            .environment(\.layoutDirection, AppConfig.arabicOnly ? .rightToLeft : store.appLanguage.layoutDirection)
+            .atharSheetChrome()
         }
         // الحفظ تبويب مقيم، فلا يكفي التحميل مرة واحدة: نصون الجلسة الجارية وحدها،
         // ونعيد التحميل عند أول ظهور، أو بعد انقلاب اليوم، أو حين يكون الطابور فارغًا

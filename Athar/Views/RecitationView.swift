@@ -120,18 +120,17 @@ struct RecitationView: View {
         .toolbar(isRootTab ? .visible : .hidden, for: .tabBar)
         .sheet(isPresented: $showReciters) {
             ReciterPicker()
-                .environment(\.layoutDirection, AppConfig.arabicOnly ? .rightToLeft : store.appLanguage.layoutDirection)
+                .atharSheetChrome()
         }
         .sheet(isPresented: $showPlayer) {
             PlayerView()
-                .environment(\.layoutDirection, AppConfig.arabicOnly ? .rightToLeft : store.appLanguage.layoutDirection)
+                .atharSheetChrome()
         }
         .sheet(isPresented: $showSleep) {
             SleepTimerSheet()
                 // ارتفاع ثابت (٤٣٠) كان أقصر من الصفوف الثمانية فالتصقت البطاقة بحافة الشاشة.
                 .presentationDetents([.medium, .large])
-                .presentationDragIndicator(.visible)
-                .environment(\.layoutDirection, AppConfig.arabicOnly ? .rightToLeft : store.appLanguage.layoutDirection)
+                .atharSheetChrome()
         }
     }
 
@@ -517,19 +516,17 @@ struct PlayerView: View {
             }
             .sheet(isPresented: $showReciters) {
                 ReciterPicker()
-                    .environment(\.layoutDirection, AppConfig.arabicOnly ? .rightToLeft : store.appLanguage.layoutDirection)
+                    .atharSheetChrome()
             }
             .sheet(isPresented: $showSleep) {
                 SleepTimerSheet()
                     .presentationDetents([.medium, .large])
-                    .presentationDragIndicator(.visible)
-                    .environment(\.layoutDirection, AppConfig.arabicOnly ? .rightToLeft : store.appLanguage.layoutDirection)
+                    .atharSheetChrome()
             }
             .sheet(isPresented: $showSpeed) {
                 SpeedSheet()
                     .presentationDetents([.height(240)])
-                    .presentationDragIndicator(.visible)
-                    .environment(\.layoutDirection, AppConfig.arabicOnly ? .rightToLeft : store.appLanguage.layoutDirection)
+                    .atharSheetChrome()
             }
             // خليّة «محمَّلة» تجاور خلايا حالةٍ لا تُضغط فتُقرأ حالةً، ولمسةٌ عابرة تُسقط نحو ١٠ م.ب.
             .confirmationDialog(loc("حذف التنزيل؟"), isPresented: $confirmDelete, titleVisibility: .visible) {
@@ -1172,7 +1169,7 @@ struct MiniPlayer: View {
         }
         .sheet(isPresented: $showPlayer) {
             PlayerView()
-                .environment(\.layoutDirection, AppConfig.arabicOnly ? .rightToLeft : store.appLanguage.layoutDirection)
+                .atharSheetChrome()
         }
     }
 

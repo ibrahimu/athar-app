@@ -1,111 +1,47 @@
 import SwiftUI
-import WidgetKit
 
+/// جذر الإعدادات: ستّ مجموعات قصيرة يُتوقَّع مكان كل شيء فيها — المظهر والخط في
+/// الجذر لأنها الأكثر لمسًا، وما سواها صفٌّ واحد يفتح صفحته (الصلاة، التذكيرات،
+/// المصحف، البيانات) بدل عشرات الصفوف المبعثرة في شاشة واحدة.
 struct SettingsView: View {
-    @State private var rescheduleTask: Task<Void, Never>?
-    @State private var exportURL: URL?
-    @State private var showImporter = false
-    @State private var importMessage: String?
     /// حين تُعرض داخل مكدّس تنقّل قائم، لا نغلّفها بمكدّس آخر.
     var embedded = false
 
     @EnvironmentObject private var store: AtharStore
-    @State private var showResetConfirm = false
-    @State private var permissionDenied = false
-    @State private var showCityPicker = false
-
-    private var morningBinding: Binding<Date> {
-        Binding(
-            get: { Self.date(fromMinutes: store.morningReminderMinutes) },
-            set: { store.morningReminderMinutes = Self.minutes(from: $0); scheduleReminders() }
-        )
-    }
-
-    private var eveningBinding: Binding<Date> {
-        Binding(
-            get: { Self.date(fromMinutes: store.eveningReminderMinutes) },
-            set: { store.eveningReminderMinutes = Self.minutes(from: $0); scheduleReminders() }
-        )
-    }
-
-    private var hadithBinding: Binding<Date> {
-        Binding(
-            get: { Self.date(fromMinutes: store.hadithReminderMinutes) },
-            set: {
-                store.hadithReminderMinutes = Self.minutes(from: $0)
-                scheduleHadith()
-            }
-        )
-    }
 
     var body: some View {
         if embedded { content } else { NavigationStack { content } }
     }
 
     private var content: some View {
-        Group {
-            ScrollView {
-                VStack(spacing: 30) {
-                    if !AppConfig.arabicOnly { languageRow.appearStagger(0) }
-                    reminders.appearStagger(1)
-                    sunanReminders.appearStagger(2)
-                    prayer.appearStagger(3)
-                    display.appearStagger(4)
-                    sources.appearStagger(5)
-                    stats.appearStagger(6)
-                    about.appearStagger(7)
-                    blessing.appearStagger(8)
-                }
-                .padding(.horizontal, Theme.gutter)
-                .padding(.top, 6)
-                .padding(.bottom, 34)
-                .readableWidth(560)
+        ScrollView {
+            VStack(spacing: 30) {
+                if !AppConfig.arabicOnly { languageRow.appearStagger(0) }
+                appearance.appearStagger(1)
+                prayer.appearStagger(2)
+                reminders.appearStagger(3)
+                reading.appearStagger(4)
+                data.appearStagger(5)
+                app.appearStagger(6)
+                blessing.appearStagger(7)
             }
-            .scrollIndicators(.hidden)
-            .modifier(PaperTopEdge())
-            // الخلفية خلف ScrollView لا حوله في ZStack، فيبقى هو جذر الشاشة الذي
-            // يكتشفه شريط العنوان ويعامل حافته العلوية عند التمرير تحته.
-            .background {
-                ZStack {
-                    AtharBackground(tint: Theme.accent, secondary: Theme.gold)
-                    settingsAura
-                }
-            }
-            .navigationTitle(loc("settings"))
-            .navigationBarTitleDisplayMode(.inline)
-            .confirmationDialog(loc("هل تريد تصفير كل الإحصائيات؟"), isPresented: $showResetConfirm, titleVisibility: .visible) {
-                Button(loc("تصفير"), role: .destructive) {
-                    store.resetAllProgress()
-                    WidgetCenter.shared.reloadAllTimelines()
-                }
-                Button(loc("cancel"), role: .cancel) {}
-            }
-            .alert(loc("الإشعارات موقوفة"), isPresented: $permissionDenied) {
-                Button(loc("فتح الإعدادات")) {
-                    if let url = URL(string: UIApplication.openSettingsURLString) {
-                        UIApplication.shared.open(url)
-                    }
-                }
-                Button(loc("later"), role: .cancel) {}
-            } message: {
-                Text(loc("لتفعيل التذكير، اسمح للتطبيق بالإشعارات من إعدادات الجهاز."))
-            }
-            .sheet(item: $exportURL) { url in
-                ShareSheet(items: [url]).ignoresSafeArea()
-            }
-            .fileImporter(isPresented: $showImporter, allowedContentTypes: [.json]) { result in
-                switch result {
-                case .success(let url):
-                    do {
-                        let n = try DataExport.importFile(url, into: store.defaults)
-                        store.applyStoredTheme(); store.objectWillChange.send()
-                        importMessage = loc("استُوردت %1$@ قيمة", n.counterText)
-                        Task { await Reminders.rescheduleAll(store: store) }
-                    } catch { importMessage = error.localizedDescription }
-                case .failure: importMessage = loc("لم يُختر ملف")
-                }
+            .padding(.horizontal, Theme.gutter)
+            .padding(.top, 6)
+            .padding(.bottom, 34)
+            .readableWidth(560)
+        }
+        .scrollIndicators(.hidden)
+        .modifier(PaperTopEdge())
+        // الخلفية خلف ScrollView لا حوله في ZStack، فيبقى هو جذر الشاشة الذي
+        // يكتشفه شريط العنوان ويعامل حافته العلوية عند التمرير تحته.
+        .background {
+            ZStack {
+                AtharBackground(tint: Theme.accent, secondary: Theme.gold)
+                settingsAura
             }
         }
+        .navigationTitle(loc("settings"))
+        .navigationBarTitleDisplayMode(.inline)
     }
 
     /// طبقات ضوئية ناعمة فوق الخلفية: توهّج لوني علوي، بركة ذهبية سفلية،
@@ -126,94 +62,11 @@ struct SettingsView: View {
         .ignoresSafeArea()
     }
 
-    // MARK: التذكير
-
-    private var reminders: some View {
-        VStack(spacing: 8) {
-            SettingsGroupTitle(text: loc("grpReminders"), tint: Theme.accent(for: "gold"))
-            SettingsCard {
-                SettingsRow(icon: "bell.badge.fill", tint: Theme.accent(for: "gold"),
-                            title: loc("rowAdhkarRem"),
-                            subtitle: store.remindersEnabled ? nil : loc("تنبيه لطيف للصباح والمساء")) {
-                    Toggle("", isOn: Binding(
-                        get: { store.remindersEnabled },
-                        set: { enabled in
-                            store.remindersEnabled = enabled
-                            Task {
-                                if enabled, await !Reminders.requestAuthorization() {
-                                    store.remindersEnabled = false
-                                    permissionDenied = true
-                                    return
-                                }
-                                await Reminders.reschedule(store: store)
-                            }
-                        }
-                    ))
-                    .labelsHidden()
-                    // المفتاح بلا عنوان مرئي، فيقرأ VoiceOver اسم الصف بدل «مفتاح» فقط.
-                    .accessibilityLabel(loc("rowAdhkarRem"))
-                }
-
-                if store.remindersEnabled {
-                    if !store.adhkarReminderByPrayer {
-                    SettingsDivider()
-                    SettingsRow(icon: "sunrise.fill", tint: Theme.accent(for: "dawn"), title: loc("rowMorning")) {
-                        DatePicker("", selection: morningBinding, displayedComponents: .hourAndMinute)
-                            .labelsHidden()
-                            .accessibilityLabel(loc("rowMorning"))
-                    }
-                    }
-                    SettingsDivider()
-                    SettingsRow(icon: "clock.arrow.2.circlepath", tint: Theme.accent(for: "green"),
-                                title: loc("بوقت الصلاة"), subtitle: loc("الصباح بعد الفجر والمساء بعد العصر تلقائيًّا")) {
-                        Toggle("", isOn: Binding(get: { store.adhkarReminderByPrayer }, set: { store.adhkarReminderByPrayer = $0; scheduleReminders() }))
-                            .labelsHidden()
-                            .accessibilityLabel(loc("تذكير الأذكار بوقت الصلاة"))
-                    }
-                    if !store.adhkarReminderByPrayer {
-                    SettingsDivider()
-                    SettingsRow(icon: "moon.stars.fill", tint: Theme.accent(for: "dusk"), title: loc("rowEvening")) {
-                        DatePicker("", selection: eveningBinding, displayedComponents: .hourAndMinute)
-                            .labelsHidden()
-                            .accessibilityLabel(loc("rowEvening"))
-                    }
-                    }
-                }
-
-                SettingsDivider()
-                SettingsRow(icon: "text.quote", tint: Theme.accent(for: "sea"),
-                            title: loc("تذكير حديث اليوم"),
-                            subtitle: store.hadithReminder ? nil : loc("حديث من الصحيحين كل يوم")) {
-                    Toggle("", isOn: Binding(
-                        get: { store.hadithReminder },
-                        set: { enabled in
-                            store.hadithReminder = enabled
-                            Task {
-                                if enabled, await !Reminders.requestAuthorization() {
-                                    store.hadithReminder = false
-                                    permissionDenied = true
-                                    return
-                                }
-                                await Reminders.rescheduleHadith(store: store)
-                            }
-                        }
-                    ))
-                    .labelsHidden()
-                    .accessibilityLabel(loc("تذكير حديث اليوم"))
-                }
-
-                if store.hadithReminder {
-                    SettingsDivider()
-                    SettingsRow(icon: "clock.fill", tint: Theme.accent(for: "dusk"), title: loc("وقت التذكير")) {
-                        DatePicker("", selection: hadithBinding, displayedComponents: .hourAndMinute)
-                            .labelsHidden()
-                            .accessibilityLabel(loc("وقت تذكير الحديث"))
-                    }
-                }
-            }
-        }
-        .animation(Motion.smooth, value: store.remindersEnabled)
-        .animation(Motion.smooth, value: store.hadithReminder)
+    /// سهم الصفوف التي تفتح شاشة — واحد للجميع فلا يتفرّق مقاسه.
+    private var chevron: some View {
+        Image(systemName: "chevron.forward")
+            .font(.system(size: 12, weight: .semibold))
+            .foregroundStyle(Theme.inkFaint)
     }
 
     // MARK: اللغة
@@ -231,269 +84,272 @@ struct SettingsView: View {
         }
     }
 
-    // MARK: تنويع التذكيرات
+    // MARK: المظهر والخط
 
-    private func alertToggle(_ get: @escaping () -> Bool, _ set: @escaping (Bool) -> Void) -> Binding<Bool> {
-        Binding(get: get, set: { on in
-            set(on)
-            Task {
-                if on, await !Reminders.requestAuthorization() {
-                    set(false); permissionDenied = true; return
-                }
-                await Reminders.rescheduleAll(store: store)
-            }
-        })
-    }
-
-    private var sunanReminders: some View {
+    private var appearance: some View {
         VStack(spacing: 8) {
-            SettingsGroupTitle(text: loc("grpSunan"), tint: Theme.accent(for: "dusk"))
-            SettingsCard {
-                SettingsRow(icon: "sparkles", tint: Theme.accent(for: "gold"), title: loc("rowJumuah"),
-                            subtitle: loc("subJumuah")) {
-                    Toggle("", isOn: alertToggle({ store.jumuahAlert }, { store.jumuahAlert = $0 })).labelsHidden()
-                        .accessibilityLabel(loc("rowJumuah"))
-                }
-                SettingsDivider()
-                SettingsRow(icon: "fork.knife", tint: Theme.accent(for: "sea"), title: loc("rowFasting"),
-                            subtitle: loc("subFasting")) {
-                    Toggle("", isOn: alertToggle({ store.fastingAlert }, { store.fastingAlert = $0 })).labelsHidden()
-                        .accessibilityLabel(loc("rowFasting"))
-                }
-                SettingsDivider()
-                SettingsRow(icon: "moon.circle.fill", tint: Theme.accent(for: "dusk"), title: loc("rowWhite"),
-                            subtitle: loc("subWhite")) {
-                    Toggle("", isOn: alertToggle({ store.whiteDaysAlert }, { store.whiteDaysAlert = $0 })).labelsHidden()
-                        .accessibilityLabel(loc("rowWhite"))
-                }
-                SettingsDivider()
-                SettingsRow(icon: "moon.stars.fill", tint: Theme.accent(for: "night"), title: loc("rowQiyam"),
-                            subtitle: loc("subQiyam")) {
-                    Toggle("", isOn: alertToggle({ store.qiyamAlert }, { store.qiyamAlert = $0 })).labelsHidden()
-                        .accessibilityLabel(loc("rowQiyam"))
-                }
-                SettingsDivider()
-                SettingsRow(icon: "drop.fill", tint: Theme.accent(for: "sea"), title: loc("rowIstighfar"),
-                            subtitle: loc("subIstighfar")) {
-                    Toggle("", isOn: alertToggle({ store.istighfarAlerts }, { store.istighfarAlerts = $0 })).labelsHidden()
-                        .accessibilityLabel(loc("rowIstighfar"))
-                }
-            }
-        }
-    }
-
-    // MARK: الصلاة
-
-    private var prayer: some View {
-        VStack(spacing: 8) {
-            SettingsGroupTitle(text: loc("grpPrayer"), tint: Theme.accent(for: "green"))
-            SettingsCard {
-                SettingsRow(icon: "bell.and.waves.left.and.right.fill", tint: Theme.accent,
-                            title: loc("rowAthan"),
-                            subtitle: loc("subAthan")) {
-                    Toggle("", isOn: Binding(
-                        get: { store.athanAlerts },
-                        set: { enabled in
-                            store.athanAlerts = enabled
-                            Task {
-                                if enabled, await !Reminders.requestAuthorization() {
-                                    store.athanAlerts = false
-                                    permissionDenied = true
-                                    return
-                                }
-                                await Reminders.rescheduleAthan(store: store)
-                            }
-                        }
-                    ))
-                    .labelsHidden()
-                    .accessibilityLabel(loc("rowAthan"))
-                }
-
-                if store.athanAlerts {
-                    SettingsDivider()
-                    // شاشة مخصّصة لا SettingsChoiceList: فيها استماع لكل صوت،
-                    // والاختيار لا يُغلقها حتى يقارن المستخدم بين الأصوات.
-                    NavigationLink { AthanSoundPicker(onChange: refreshPrayers) } label: {
-                        SettingsRow(icon: "speaker.wave.2.fill", tint: Theme.accent(for: "dusk"),
-                                    title: loc("صوت الأذان")) {
-                            HStack(spacing: 6) {
-                                Text(store.athanSound.shortTitle)
-                                    .font(Theme.display(15, weight: .medium))
-                                    .foregroundStyle(Theme.inkSoft)
-                                    .lineLimit(1)
-                                Image(systemName: "chevron.forward")
-                                    .font(.system(size: 12, weight: .semibold))
-                                    .foregroundStyle(Theme.inkFaint)
-                            }
-                        }
-                    }
-                    .buttonStyle(.plain)
-
-                    SettingsDivider()
-                    SettingsPickerRow(
-                        icon: "alarm.fill", tint: Theme.accent(for: "gold"),
-                        title: loc("تنبيه قبل الأذان"), options: PreAthanChoice.allCases,
-                        selection: Binding(
-                            get: { PreAthanChoice.from(minutes: store.preAthanMinutes) },
-                            set: { choice in
-                                store.preAthanMinutes = choice.rawValue
-                                Task { await Reminders.rescheduleAthan(store: store) }
-                            }))
-                    SettingsDivider()
-                    SettingsPickerRow(
-                        icon: "bell.badge.fill", tint: Theme.accent(for: "green"),
-                        title: loc("تنبيه الإقامة"), options: IqamahChoice.allCases,
-                        selection: Binding(
-                            get: { IqamahChoice.from(minutes: store.iqamahMinutes) },
-                            set: { choice in
-                                store.iqamahMinutes = choice.rawValue
-                                Task { await Reminders.rescheduleAthan(store: store) }
-                            }))
-                }
-
-                SettingsDivider()
-                NavigationLink { PrayerAlertsView() } label: {
-                    SettingsRow(icon: "slider.horizontal.below.rectangle", tint: Theme.accent(for: "dusk"),
-                                title: loc("تخصيص كل صلاة"),
-                                subtitle: store.hasCustomPrayerPrefs ? loc("مخصَّصة — اضغط للمراجعة") : loc("صوت أو صمت أو تنبيه قبلي لكل فريضة")) {
-                        Image(systemName: "chevron.forward").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.inkFaint)
-                    }
-                }
-                .buttonStyle(.plain)
-                SettingsDivider()
-                NavigationLink { PrayerOffsetsView() } label: {
-                    SettingsRow(icon: "plusminus.circle.fill", tint: Theme.accent(for: "noon"),
-                                title: loc("ضبط المواقيت يدويًّا"),
-                                subtitle: store.hasPrayerOffsets ? loc("معدَّلة — اضغط للمراجعة") : loc("دقائق زيادةً أو نقصًا لتطابق مسجدك")) {
-                        Image(systemName: "chevron.forward")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(Theme.inkFaint)
-                    }
-                }
-                .buttonStyle(.plain)
-
-                SettingsDivider()
-                SettingsPickerRow(
-                    icon: "slider.horizontal.3", tint: Theme.accent(for: "sea"),
-                    title: loc("rowCalc"), options: CalculationMethod.allCases,
-                    selection: Binding(
-                        get: { store.calculationMethod },
-                        set: { store.calculationMethod = $0; refreshPrayers() }))
-
-                SettingsDivider()
-                SettingsPickerRow(
-                    icon: "sun.haze.fill", tint: Theme.accent(for: "dawn"),
-                    title: loc("rowAsr"), options: AsrMethod.allCases,
-                    selection: Binding(
-                        get: { store.asrMethod },
-                        set: { store.asrMethod = $0; refreshPrayers() }))
-
-                SettingsDivider()
-                Button { showCityPicker = true } label: {
-                    SettingsRow(icon: "location.fill", tint: Theme.accent(for: "calm"), title: loc("rowLocation")) {
-                        HStack(spacing: 6) {
-                            SettingsValue(text: store.placeName)
-                            Image(systemName: "chevron.forward")
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundStyle(Theme.inkFaint)
-                        }
-                    }
-                }
-                .buttonStyle(.plain)
-            }
-            // تغيّر الموقع يعني مواقيت وأسماء مدنٍ جديدة، فنعيد جدولة الأذان
-            // بعد إغلاق الورقة تمامًا كما تفعل صفوف طريقة الحساب والعصر،
-            // وإلا بقيت تنبيهات المدينة السابقة تعمل سبعة أيام.
-            .sheet(isPresented: $showCityPicker, onDismiss: { refreshPrayers() }) {
-                // الأوراق لا ترث اتجاه الكتابة من جذر التطبيق، فنثبّته صراحةً.
-                LocationPickerHost(store: store)
-                    .environment(\.layoutDirection,
-                                 AppConfig.arabicOnly ? .rightToLeft : store.appLanguage.layoutDirection)
-            }
-        }
-    }
-
-    // MARK: العرض
-
-    private var display: some View {
-        VStack(spacing: 8) {
-            SettingsGroupTitle(text: loc("grpDisplay"), tint: Theme.accent(for: "calm"))
+            SettingsGroupTitle(text: loc("المظهر والخط"), tint: Theme.accent(for: "calm"))
             SettingsCard {
                 NavigationLink { AppearanceView() } label: {
                     SettingsRow(icon: "paintpalette.fill", tint: Theme.accent(for: "calm"),
                                 title: loc("rowAppearance"),
-                                subtitle: "\(store.appTheme.title) · \(store.appearance.title)") {
-                        Image(systemName: "chevron.forward")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundStyle(Theme.inkFaint)
+                                subtitle: "\(store.appTheme.title) · \(store.backgroundPattern.title)") {
+                        chevron
                     }
                 }
                 .buttonStyle(.plain)
 
                 SettingsDivider()
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack(spacing: 13) {
-                        IconChip(icon: "textformat.size", tint: Theme.accent(for: "sea"))
-                        Text(loc("rowFont"))
-                            .font(Theme.display(16))
-                            .foregroundStyle(Theme.ink)
-                        Spacer()
-                        SettingsValue(text: String(format: "%.0f٪", store.fontScale * 100))
+                fontChips
+
+                SettingsDivider()
+                fontScale
+
+                SettingsDivider()
+                lighting
+            }
+        }
+    }
+
+    /// خط الواجهة: ثلاث رقاقات، كلٌّ منها مكتوبة بخطّها هي — فما تراه هو ما ستختاره.
+    private var fontChips: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 13) {
+                IconChip(icon: "textformat", tint: Theme.accent(for: "dusk"), size: .sm)
+                Text(loc("خط الواجهة"))
+                    .font(Theme.display(16, weight: .regular))
+                    .foregroundStyle(Theme.ink)
+                Spacer()
+            }
+            HStack(spacing: 8) {
+                ForEach(AppFont.allCases) { font in fontChip(font) }
+            }
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel(loc("خط الواجهة"))
+            Text(loc("القرآن والأذكار والحديث تبقى بخط النسخ مهما اخترت هنا."))
+                .font(Theme.display(11))
+                .foregroundStyle(Theme.inkFaint)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+    }
+
+    private func fontChip(_ font: AppFont) -> some View {
+        let on = store.uiFont == font
+        return Button {
+            withAnimation(Motion.gentle) { store.uiFont = font }
+            Haptics.tap(enabled: store.hapticsEnabled)
+        } label: {
+            VStack(spacing: 3) {
+                // العيّنة بالخط نفسه لا بخط الواجهة الحالي.
+                Text("أثر")
+                    .font(font.font(size: Theme.scaled(19), weight: .medium))
+                    .foregroundStyle(on ? Theme.onAccent : Theme.ink)
+                Text(font.title)
+                    .font(Theme.display(11, weight: on ? .semibold : .regular))
+                    .foregroundStyle(on ? Theme.onAccent.opacity(0.85) : Theme.inkSoft)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 8)
+            .background(
+                RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous)
+                    .fill(on ? AnyShapeStyle(Theme.accentGradient) : AnyShapeStyle(Theme.surfaceAlt))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous)
+                    .strokeBorder(on ? .clear : Theme.hairline.opacity(0.6), lineWidth: 0.5)
+            )
+        }
+        .pressable()
+        .accessibilityLabel(font.title)
+        .accessibilityAddTraits(on ? .isSelected : [])
+    }
+
+    private var fontScale: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 13) {
+                IconChip(icon: "textformat.size", tint: Theme.accent(for: "sea"), size: .sm)
+                Text(loc("rowFont"))
+                    .font(Theme.display(16, weight: .regular))
+                    .foregroundStyle(Theme.ink)
+                Spacer()
+                SettingsValue(text: String(format: "%.0f٪", store.fontScale * 100))
+            }
+
+            HStack(spacing: 10) {
+                Text("أ").font(.system(size: 13)).foregroundStyle(Theme.inkFaint)
+                Slider(
+                    value: Binding(get: { store.fontScale }, set: { store.fontScale = $0 }),
+                    in: 0.85...1.6, step: 0.05
+                )
+                .tint(Theme.accent)
+                .accessibilityLabel(loc("حجم الخط"))
+                .accessibilityValue(String(format: "%.0f٪", store.fontScale * 100))
+                Text("أ").font(.system(size: 21)).foregroundStyle(Theme.inkFaint)
+            }
+
+            Text(loc("سُبْحَانَ اللهِ وَبِحَمْدِهِ"))
+                .font(Theme.dhikrFont(size: 19, scale: store.fontScale))
+                .foregroundStyle(Theme.ink)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(
+                    RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous)
+                        .fill(Theme.surfaceAlt)
+                )
+                .animation(Motion.snappy, value: store.fontScale)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+    }
+
+    /// الإضاءة (حسب الجهاز / فاتح / داكن) — المفتاح نفسه الذي في شاشة المظهر، لكنه
+    /// هنا في الجذر لأنه يُلمس أكثر من أي إعداد مظهر آخر.
+    private var lighting: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 13) {
+                IconChip(icon: "circle.lefthalf.filled", tint: Theme.accent(for: "night"), size: .sm)
+                Text(loc("lighting"))
+                    .font(Theme.display(16, weight: .regular))
+                    .foregroundStyle(Theme.ink)
+                Spacer()
+            }
+            HStack(spacing: 8) {
+                ForEach(AppearanceMode.allCases) { mode in lightingChip(mode) }
+            }
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel(loc("lighting"))
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+    }
+
+    private func lightingChip(_ mode: AppearanceMode) -> some View {
+        let on = store.appearance == mode
+        return Button {
+            withAnimation(Motion.smooth) { store.appearance = mode }
+            Haptics.tap(enabled: store.hapticsEnabled)
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: mode == .system ? "circle.lefthalf.filled"
+                                : mode == .light ? "sun.max.fill" : "moon.fill")
+                    .font(.system(size: 13))
+                Text(mode.title).font(Theme.display(13, weight: on ? .semibold : .regular))
+            }
+            .foregroundStyle(on ? Theme.onAccent : Theme.inkSoft)
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 10)
+            .background(
+                RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous)
+                    .fill(on ? AnyShapeStyle(Theme.accentGradient) : AnyShapeStyle(Theme.surfaceAlt))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous)
+                    .strokeBorder(on ? .clear : Theme.hairline.opacity(0.6), lineWidth: 0.5)
+            )
+        }
+        .pressable()
+        .accessibilityLabel(mode.title)
+        .accessibilityAddTraits(on ? .isSelected : [])
+    }
+
+    // MARK: الصلاة والمواقيت
+
+    private var prayer: some View {
+        VStack(spacing: 8) {
+            SettingsGroupTitle(text: loc("الصلاة والمواقيت"), tint: Theme.accent(for: "night"))
+            SettingsCard {
+                NavigationLink { PrayerSettingsView() } label: {
+                    SettingsRow(icon: "moon.stars.fill", tint: Theme.accent(for: "night"),
+                                title: loc("المواقيت والتنبيهات"),
+                                subtitle: "\(store.placeName) · \(store.calculationMethod.shortTitle)") {
+                        chevron
                     }
-
-                    HStack(spacing: 10) {
-                        Text("أ").font(.system(size: 13)).foregroundStyle(Theme.inkFaint)
-                        Slider(
-                            value: Binding(get: { store.fontScale }, set: { store.fontScale = $0 }),
-                            in: 0.85...1.6, step: 0.05
-                        )
-                        .tint(Theme.accent)
-                        .accessibilityLabel(loc("حجم الخط"))
-                        .accessibilityValue(String(format: "%.0f٪", store.fontScale * 100))
-                        Text("أ").font(.system(size: 21)).foregroundStyle(Theme.inkFaint)
-                    }
-
-                    Text(loc("سُبْحَانَ اللهِ وَبِحَمْدِهِ"))
-                        .font(Theme.dhikrFont(size: 19, scale: store.fontScale))
-                        .foregroundStyle(Theme.ink)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 14)
-                        .background(
-                            RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous)
-                                .fill(Theme.surfaceAlt)
-                        )
-                        .animation(Motion.snappy, value: store.fontScale)
-                }
-                .padding(14)
-
-                SettingsDivider()
-                SettingsPickerRow(
-                    icon: "hand.point.up.left.fill", tint: Theme.accent(for: "calm"),
-                    title: loc("منطقة العدّ"), options: CountTapArea.allCases,
-                    selection: Binding(
-                        get: { store.countTapArea },
-                        set: { store.countTapArea = $0 }))
-
-                SettingsDivider()
-                SettingsRow(icon: "icloud.fill", tint: Theme.accent(for: "sea"), title: loc("مزامنة iCloud"),
-                            subtitle: loc("التفضيلات والمفضّلة والعلامات فقط — لا العدّادات")) {
-                    Toggle("", isOn: Binding(get: { store.cloudSyncEnabled }, set: { store.cloudSyncEnabled = $0 }))
-                        .labelsHidden()
-                        .accessibilityLabel(loc("مزامنة iCloud"))
-                }
-                SettingsDivider()
-                Button { exportData() } label: {
-                    SettingsRow(icon: "square.and.arrow.up.on.square.fill", tint: Theme.accent(for: "sea"),
-                                title: loc("تصدير بياناتي"), subtitle: loc("ملف واحد: المفضّلة والسجلات والختمة والإعدادات")) { EmptyView() }
                 }
                 .buttonStyle(.plain)
-                SettingsDivider()
-                Button { showImporter = true } label: {
-                    SettingsRow(icon: "square.and.arrow.down.on.square.fill", tint: Theme.accent(for: "sea"),
-                                title: loc("استيراد نسخة"), subtitle: importMessage ?? loc("من ملف صدّرته من أثر")) { EmptyView() }
+            }
+        }
+    }
+
+    // MARK: التذكيرات
+
+    /// عدد التذكيرات المفعّلة — تنبيه الأذان ليس منها؛ مكانه مجموعة الصلاة.
+    private var activeReminders: Int {
+        [store.remindersEnabled, store.hadithReminder, store.wirdEnabled, store.qiyamAlert,
+         store.istighfarAlerts, store.jumuahAlert, store.fastingAlert, store.whiteDaysAlert]
+            .filter { $0 }.count
+    }
+
+    private var remindersSubtitle: String {
+        switch activeReminders {
+        case 0:  return loc("لا تذكيرات مفعّلة")
+        case 1:  return loc("تذكير واحد مفعّل")
+        case 2:  return loc("تذكيران مفعّلان")
+        default: return loc("%1$@ تذكيرات مفعّلة", activeReminders.counterText)
+        }
+    }
+
+    private var reminders: some View {
+        VStack(spacing: 8) {
+            SettingsGroupTitle(text: loc("التذكيرات"), tint: Theme.accent(for: "gold"))
+            SettingsCard {
+                NavigationLink { RemindersSettingsView() } label: {
+                    SettingsRow(icon: "bell.badge.fill", tint: Theme.accent(for: "gold"),
+                                title: loc("الأذكار والحديث والورد والسنن"),
+                                subtitle: remindersSubtitle) {
+                        chevron
+                    }
                 }
                 .buttonStyle(.plain)
-                SettingsDivider()
+            }
+        }
+    }
+
+    // MARK: المصحف والقراءة
+
+    private var reading: some View {
+        VStack(spacing: 8) {
+            SettingsGroupTitle(text: loc("المصحف والقراءة"), tint: Theme.accent(for: "green"))
+            SettingsCard {
+                NavigationLink { ReadingSettingsView() } label: {
+                    SettingsRow(icon: "book.closed.fill", tint: Theme.accent(for: "green"),
+                                title: loc("وضع القراءة والصوت"),
+                                subtitle: "\(store.readingMode.title) · \(store.readingTheme.title)") {
+                        chevron
+                    }
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    // MARK: بياناتك
+
+    private var data: some View {
+        VStack(spacing: 8) {
+            SettingsGroupTitle(text: loc("بياناتك"), tint: Theme.accent(for: "sea"))
+            SettingsCard {
+                NavigationLink { DataSettingsView() } label: {
+                    SettingsRow(icon: "externaldrive.fill.badge.icloud", tint: Theme.accent(for: "sea"),
+                                title: loc("المزامنة والنسخ والإحصاء"),
+                                subtitle: store.cloudSyncEnabled ? loc("مزامنة iCloud مفعّلة") : loc("تصدير واستيراد، وأرقامك وتصفيرها")) {
+                        chevron
+                    }
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    // MARK: التطبيق
+
+    private var app: some View {
+        VStack(spacing: 8) {
+            SettingsGroupTitle(text: loc("التطبيق"), tint: Theme.accent(for: "dusk"))
+            SettingsCard {
                 SettingsRow(icon: "hand.tap.fill", tint: Theme.accent(for: "gold"), title: loc("rowHaptics")) {
                     Toggle("", isOn: Binding(
                         get: { store.hapticsEnabled },
@@ -502,134 +358,22 @@ struct SettingsView: View {
                     .labelsHidden()
                     .accessibilityLabel(loc("rowHaptics"))
                 }
-            }
-        }
-    }
-
-    // MARK: إحصائياتي
-
-    private var stats: some View {
-        VStack(spacing: 8) {
-            SettingsGroupTitle(text: loc("grpStats"), tint: Theme.accent(for: "dawn"))
-            SettingsCard {
-                HStack(spacing: 0) {
-                    statPill("flame.fill", Theme.gold, store.displayStreak.counterText, loc("statStreak"))
-                    Rectangle().fill(Theme.hairline).frame(width: 1, height: 44)
-                    statPill("trophy.fill", Theme.accent(for: "dawn"), store.bestStreak.counterText, loc("statBest"))
-                    Rectangle().fill(Theme.hairline).frame(width: 1, height: 44)
-                    statPill("infinity", Theme.accent, store.totalDhikrCount.counterText, loc("statTotal"))
-                }
-                .padding(.vertical, 16)
-                SettingsDivider(inset: 0)
-                NavigationLink { StatsView() } label: {
-                    SettingsRow(icon: "chart.bar.xaxis", tint: Theme.accent(for: "dawn"),
-                                title: loc("إحصاء الشهر"), subtitle: loc("أذكارك وصفحاتك وصلواتك في كل شهر هجري")) {
-                        Image(systemName: "chevron.forward").font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.inkFaint)
-                    }
-                }
-                .buttonStyle(.plain)
-
                 SettingsDivider()
-                Button { showResetConfirm = true } label: {
-                    // يفتح مربّع تأكيد لا شاشة، فلا سهم يعِد بانتقال لا يأتي.
-                    SettingsRow(icon: "arrow.counterclockwise", tint: Theme.danger,
-                                title: loc("rowReset"))
+                SettingsPickerRow(
+                    icon: "hand.point.up.left.fill", tint: Theme.accent(for: "calm"),
+                    title: loc("منطقة العدّ"), options: CountTapArea.allCases,
+                    selection: Binding(
+                        get: { store.countTapArea },
+                        set: { store.countTapArea = $0 }))
+                SettingsDivider()
+                NavigationLink { SourcesView() } label: {
+                    SettingsRow(icon: "checkmark.seal.fill", tint: Theme.accent(for: "green"),
+                                title: loc("المصادر والحقوق"),
+                                subtitle: loc("نصوصٌ موثّقة ومراجَعة — اطّلع على مصدر كل ما في التطبيق")) {
+                        chevron
+                    }
                 }
                 .buttonStyle(.plain)
-            }
-        }
-    }
-
-    private func statPill(_ icon: String, _ tint: Color, _ value: String, _ label: String) -> some View {
-        VStack(spacing: 5) {
-            Image(systemName: icon)
-                .font(.system(size: 13))
-                .foregroundStyle(tint)
-                .background(
-                    Circle().fill(tint.opacity(0.22)).frame(width: 26, height: 26).blur(radius: 7)
-                )
-            Text(value)
-                .font(.system(size: 21, weight: .bold, design: .rounded))
-                .foregroundStyle(LinearGradient(colors: [tint, tint.opacity(0.7)],
-                                                startPoint: .top, endPoint: .bottom))
-                .contentTransition(.numericText())
-            Text(label)
-                .font(Theme.display(11))
-                .foregroundStyle(Theme.inkFaint)
-                .lineLimit(1)
-                .minimumScaleFactor(0.8)
-        }
-        .frame(maxWidth: .infinity)
-    }
-
-    // MARK: المصادر والتوثيق
-
-    /// بطاقة توثيق بارزة تطمئن المستخدم أنّ كل نصٍّ في التطبيق من مصدر معلوم،
-    /// مع ثلاث رقاقات موجزة، وكامل التفصيل بلمسة على SourcesView.
-    private var sources: some View {
-        VStack(spacing: 8) {
-            SettingsGroupTitle(text: loc("المصادر والتوثيق"), tint: Theme.accent(for: "green"))
-            NavigationLink { SourcesView() } label: {
-                SettingsCard {
-                    VStack(alignment: .leading, spacing: 14) {
-                        HStack(spacing: 13) {
-                            IconChip(icon: "checkmark.seal.fill", tint: Theme.accent(for: "green"))
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(loc("نصوصٌ موثّقة ومراجَعة"))
-                                    .font(Theme.display(16, weight: .medium))
-                                    .foregroundStyle(Theme.ink)
-                                Text(loc("اطّلع على مصدر كل ما في التطبيق"))
-                                    .font(Theme.display(12))
-                                    .foregroundStyle(Theme.inkFaint)
-                            }
-                            Spacer(minLength: 8)
-                            Image(systemName: "chevron.forward")
-                                .font(.system(size: 12, weight: .semibold))
-                                .foregroundStyle(Theme.inkFaint)
-                        }
-                        HStack(spacing: 8) {
-                            sourceChip("book.closed.fill", loc("المصحف"), loc("مصحف تنزيل"))
-                            sourceChip("moon.stars.fill", loc("الأذكار"), loc("الكتاب والسنّة"))
-                            sourceChip("location.north.line.fill", loc("المواقيت"), loc("حساب فلكي"))
-                        }
-                    }
-                    .padding(16)
-                }
-            }
-            .buttonStyle(.plain)
-        }
-    }
-
-    private func sourceChip(_ icon: String, _ title: String, _ sub: String) -> some View {
-        VStack(spacing: 5) {
-            Image(systemName: icon)
-                .font(.system(size: 14, weight: .medium))
-                .foregroundStyle(Theme.accent)
-            Text(title)
-                .font(Theme.display(12, weight: .semibold))
-                .foregroundStyle(Theme.ink)
-            Text(sub)
-                .font(Theme.display(11))
-                .foregroundStyle(Theme.inkFaint)
-                .lineLimit(1)
-                .minimumScaleFactor(0.75)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 11)
-        .background(RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous).fill(Theme.accent.opacity(0.06)))
-        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous)
-            .strokeBorder(Theme.accent.opacity(0.14), lineWidth: 0.5))
-    }
-
-    // MARK: عن التطبيق
-
-    private var about: some View {
-        VStack(spacing: 8) {
-            SettingsGroupTitle(text: loc("grpAbout"), tint: Theme.accent(for: "sea"))
-            SettingsCard {
-                SettingsRow(icon: "info.circle.fill", tint: Theme.inkSoft, title: loc("rowVersion")) {
-                    SettingsValue(text: appVersion)
-                }
                 SettingsDivider()
                 linkRow("hand.raised.fill", Theme.accent(for: "calm"), loc("rowPrivacy"),
                         "https://ibrahimu.github.io/athar-app/privacy.html")
@@ -641,7 +385,6 @@ struct SettingsView: View {
                     sadaqahRow
                 }
                 .buttonStyle(.plain)
-
                 SettingsDivider()
                 ShareLink(item: Self.appStoreURL,
                           message: Text(loc("تطبيق أثر — أذكار وأوقات الصلاة ومسبحة. مجاني بلا إعلانات، ويعمل بلا إنترنت."))) {
@@ -650,6 +393,10 @@ struct SettingsView: View {
                                 title: loc("rowShare"), subtitle: loc("مَن دلَّ على خيرٍ فله مثل أجر فاعله"))
                 }
                 .buttonStyle(.plain)
+                SettingsDivider()
+                SettingsRow(icon: "info.circle.fill", tint: Theme.inkSoft, title: loc("rowVersion")) {
+                    SettingsValue(text: appVersion)
+                }
             }
         }
     }
@@ -737,37 +484,6 @@ struct SettingsView: View {
 
     // MARK: Helpers
 
-    /// عجلة الوقت تُطلق التغيير مع كل درجة؛ فتُؤجَّل الجدولة نصف ثانية وتُلغى السابقة —
-    /// لا تُعاد جدولة كل إشعارات التطبيق عشرات المرات وأنت تدير العجلة.
-    private func scheduleReminders() {
-        rescheduleTask?.cancel()
-        rescheduleTask = Task {
-            try? await Task.sleep(for: .milliseconds(500))
-            guard !Task.isCancelled else { return }
-            await Reminders.reschedule(store: store)
-        }
-    }
-
-    private func scheduleHadith() {
-        rescheduleTask?.cancel()
-        rescheduleTask = Task {
-            try? await Task.sleep(for: .milliseconds(500))
-            guard !Task.isCancelled else { return }
-            await Reminders.rescheduleHadith(store: store)
-        }
-    }
-
-    private func exportData() {
-        do { exportURL = try DataExport.export(from: store.defaults) } catch { importMessage = loc("تعذّر التصدير") }
-    }
-
-    private func refreshPrayers() {
-        WidgetCenter.shared.reloadAllTimelines()
-        // قيام الليل وتنبيهات الأذان كلاهما يتبعان المكان وطريقة الحساب، فتُعاد جدولتهما معًا.
-        Task { await Reminders.rescheduleAll(store: store) }
-        WatchSync.shared.push(store: store)
-    }
-
     /// App Store page for أثر (Apple ID 6806411693).
     static let appStoreURL = URL(string: "https://apps.apple.com/app/id6806411693")!
 
@@ -776,32 +492,4 @@ struct SettingsView: View {
         let b = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
         return "\(v) (\(b))"
     }
-
-    private static func date(fromMinutes minutes: Int) -> Date {
-        Calendar.current.date(bySettingHour: minutes / 60, minute: minutes % 60, second: 0, of: Date()) ?? Date()
-    }
-
-    private static func minutes(from date: Date) -> Int {
-        let c = Calendar.current.dateComponents([.hour, .minute], from: date)
-        return (c.hour ?? 0) * 60 + (c.minute ?? 0)
-    }
 }
-
-
-
-/// مضيف صغير يملك مزوّد الموقع طوال عمر الورقة: LocationPickerView يستقبله
-/// كـ@ObservedObject أي أنه لا يملكه، فلو أُنشئ داخل مغلِّف الورقة لضاع مع كل
-/// إعادة رسم وانقطع تتبّع الموقع في منتصفه.
-private struct LocationPickerHost: View {
-    @StateObject private var location: LocationProvider
-
-    init(store: AtharStore) {
-        _location = StateObject(wrappedValue: LocationProvider(store: store))
-    }
-
-    var body: some View {
-        LocationPickerView(location: location)
-    }
-}
-
-

@@ -1,6 +1,7 @@
 import SwiftUI
 
-/// المظهر: الطابع اللوني، الوضع الفاتح/الداكن، وترتيب الشريط السفلي.
+/// المظهر: الطابع اللوني، لون الأيقونات والخلفية، وترتيب الشريط السفلي وبطاقات اليوم.
+/// (خط الواجهة والإضاءة في بطاقة «المظهر والخط» بجذر الإعدادات — مصدر واحد لا اثنان.)
 struct AppearanceView: View {
     @EnvironmentObject private var store: AtharStore
     @State private var editing = false
@@ -20,10 +21,8 @@ struct AppearanceView: View {
                     tabBar
                 } else {
                     themes
-                    fontPicker
                     iconStylePicker
                     backgroundPicker
-                    appearanceMode
                     tabBar
                     homeCards.id("homeCards")
                 }
@@ -141,71 +140,6 @@ struct AppearanceView: View {
         .scaleEffect(on ? 1.03 : 1)
     }
 
-    // MARK: خط الواجهة
-
-    private var fontPicker: some View {
-        VStack(spacing: 8) {
-            SettingsGroupTitle(text: loc("خط الواجهة"), tint: Theme.accent(for: "dusk"))
-            VStack(spacing: 10) {
-                ForEach(AppFont.allCases) { font in
-                    Button {
-                        withAnimation(Motion.gentle) { store.uiFont = font }
-                        Haptics.tap(enabled: store.hapticsEnabled)
-                    } label: {
-                        fontTile(font)
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel(font.title)
-                    .accessibilityAddTraits(store.uiFont == font ? .isSelected : [])
-                }
-            }
-            .accessibilityElement(children: .contain)
-            .accessibilityLabel(loc("خط الواجهة"))
-            Text(loc("القرآن والأذكار والحديث تبقى بخط النسخ مهما اخترت هنا."))
-                .font(Theme.display(11))
-                .foregroundStyle(Theme.inkFaint)
-                .multilineTextAlignment(.center)
-                .frame(maxWidth: .infinity)
-        }
-    }
-
-    private func fontTile(_ font: AppFont) -> some View {
-        let on = store.uiFont == font
-        return VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 8) {
-                Text(font.title)
-                    .font(Theme.display(13, weight: on ? .semibold : .regular))
-                    .foregroundStyle(on ? Theme.accent : Theme.inkSoft)
-                Spacer(minLength: 0)
-                if on {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 18, weight: .bold))
-                        .foregroundStyle(Theme.accent)
-                }
-            }
-            // العيّنة بالخط نفسه لا بخط الواجهة الحالي — هذا ما سيراه المستخدم إن اختاره.
-            Text("أثر — أذكار ومواقيت وقرآن 1448")
-                .font(font.font(size: Theme.scaled(18), weight: .medium))
-                .foregroundStyle(Theme.ink)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
-            Text(font.detail)
-                .font(font.font(size: Theme.scaled(12), weight: .regular))
-                .foregroundStyle(Theme.inkFaint)
-                .lineLimit(2)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 16)
-        .padding(.vertical, 14)
-        .background(
-            RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous)
-                .fill(Theme.surfaceGradient)
-                .overlay(RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous)
-                    .strokeBorder(on ? Theme.accent : Theme.hairline.opacity(0.6), lineWidth: on ? 2.5 : 1))
-        )
-        .shadow(color: on ? Theme.accent.opacity(0.22) : .clear, radius: 8, y: 3)
-    }
-
     // MARK: لون الأيقونات
 
     private var iconStylePicker: some View {
@@ -308,45 +242,6 @@ struct AppearanceView: View {
                 .foregroundStyle(on ? Theme.accent : Theme.inkSoft)
         }
         .scaleEffect(on ? 1.03 : 1)
-    }
-
-    // MARK: الوضع
-
-    private var appearanceMode: some View {
-        VStack(spacing: 8) {
-            SettingsGroupTitle(text: loc("lighting"))
-            HStack(spacing: 10) {
-                ForEach(AppearanceMode.allCases) { mode in
-                    Button {
-                        withAnimation(Motion.smooth) { store.appearance = mode }
-                        Haptics.tap(enabled: store.hapticsEnabled)
-                    } label: {
-                        let on = store.appearance == mode
-                        VStack(spacing: 6) {
-                            Image(systemName: mode == .system ? "circle.lefthalf.filled"
-                                            : mode == .light ? "sun.max.fill" : "moon.fill")
-                                .font(.system(size: 17))
-                            Text(mode.title).font(Theme.display(12, weight: on ? .semibold : .regular))
-                        }
-                        .foregroundStyle(on ? Theme.onAccent : Theme.inkSoft)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 13)
-                        .background(
-                            RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous)
-                                .fill(on ? AnyShapeStyle(Theme.accentGradient) : AnyShapeStyle(Theme.surface))
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous)
-                                .stroke(on ? .clear : Theme.hairline)
-                        )
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityAddTraits(store.appearance == mode ? .isSelected : [])
-                }
-            }
-            .accessibilityElement(children: .contain)
-            .accessibilityLabel(loc("lighting"))
-        }
     }
 
     // MARK: الشريط السفلي

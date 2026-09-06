@@ -72,10 +72,25 @@ struct SurahReaderView: View {
     private var effectiveTheme: ReadingTheme { store.readingThemeAuto && store.isNightNow() ? .night : store.readingTheme }
     private var palette: ReadingPalette { .of(effectiveTheme) }
 
-    /// حجزُ ارتفاع المشغّل المصغّر أسفل كل أوضاع القراءة: الشريط السفلي صار
-    /// «مشغّل + شريط موضع»، وبطاقة المشغّل معتمة تغطّي آخر سطرٍ من الصفحة
-    /// ورقمَها وزرَّ «سورة التالية». صفرٌ حين لا تلاوة، فلا تتغيّر الصفحة.
-    private var bottomReserve: CGFloat { (audio.surah == nil && !ayahAudio.isActive) ? 0 : 86 }
+    /// ارتفاعات الشريط السفلي: شريط الموضع (خطّ ١٢ + حشو ٩×٢)، وبطاقة المشغّل المصغّر،
+    /// وشريط التلاوة آيةً آية فوقها (مع فجوة ٦). تُحجز أسفل كل أوضاع القراءة، لأن البطاقة
+    /// معتمة تغطّي آخر سطرٍ من الصفحة ورقمَها وزرَّ «سورة التالية». المشغّل وشريط الآية
+    /// يتبعان حجم خطّ النظام، فثابتاهما احتياطٌ أوّلي فقط حتى يُقاس الشريط فعلًا.
+    static let positionBarHeight: CGFloat = 34
+    static let miniPlayerHeight: CGFloat = 86
+    static let ayahBarHeight: CGFloat = 62
+    /// ارتفاع الشريط السفلي كما قِيس أثناء التلاوة (المشغّل مع شريط الآية إن كان)؛
+    /// صفرٌ قبل أوّل قياس فتُستعمل الثوابت أعلاه.
+    @State private var measuredReserve: CGFloat = 0
+    /// حجز المشغّل: صفرٌ حين لا تلاوة، فلا تتغيّر الصفحة.
+    private var bottomReserve: CGFloat {
+        guard audio.surah != nil || ayahAudio.isActive else { return 0 }
+        if measuredReserve > 0 { return measuredReserve }
+        return (audio.surah == nil ? 0 : Self.miniPlayerHeight) + (ayahAudio.isActive ? Self.ayahBarHeight : 0)
+    }
+    /// ما يعلو حافّة الصفحة من الأسفل: المشغّل إن جرت التلاوة، وإلا شريط الموضع —
+    /// فتُحسب ملاءمة الصفحة على ما يُرى فعلًا، ولا يختفي آخر سطرٍ تحت الكبسولة.
+    private var bottomOverlay: CGFloat { bottomReserve > 0 ? bottomReserve : Self.positionBarHeight }
 
     /// رقم السورة الظاهرة الآن — يتغيّر أثناء تقليب الصفحات عبر حدود السور.
     private var visibleSurahId: Int {
@@ -109,7 +124,7 @@ struct SurahReaderView: View {
                     selected: selected,
                     isDark: effectiveTheme == .night,
                     framed: store.readingMode == .framed,
-                    bottomInset: bottomReserve,
+                    bottomInset: bottomOverlay,
                     onTapAyah: { selected = $0 },
                     onPageVisible: { page in
                         let ref = Quran.firstAyah(ofPage: page)
@@ -151,6 +166,13 @@ struct SurahReaderView: View {
                 // وضع «صفحة» برقم الصفحة، وفي المشغّل الكامل.
                 if audio.surah == nil && !ayahAudio.isActive { positionBar }
             }
+            // يُقاس الشريط كما رُسم فعلًا ويصعد ارتفاعه ليُحجز أسفل الصفحة — بالنمط
+            // نفسه الذي تقيس به الصفحةُ ارتفاعَها للملاءمة (PageHeightKey).
+            .background(
+                GeometryReader { g in
+                    Color.clear.preference(key: BottomBarHeightKey.self, value: g.size.height)
+                }
+            )
             .background(alignment: .bottom) {
                 // شريط التبويب مخفيّ هنا، فلا شيء يغطّي شريط مؤشّر الرئيسية: كانت
                 // الآيات تمرّ تحت المشغّل ثم تعود ظاهرةً أسفله. تدرّجٌ بلون الورق
@@ -161,6 +183,10 @@ struct SurahReaderView: View {
                     .ignoresSafeArea(edges: .bottom)
                     .allowsHitTesting(false)
             }
+        }
+        .onPreferenceChange(BottomBarHeightKey.self) { h in
+            // يُسجَّل أثناء التلاوة فقط: بلا تلاوة يُقاس شريط الموضع وهو ثابتٌ أصلًا.
+            if audio.surah != nil || ayahAudio.isActive { measuredReserve = h }
         }
         // عالمٌ لونيّ واحد: التطبيق قد يكون داكنًا والورق فاتحًا، فألوان المشغّل
         // المصغّر «المتكيّفة» كانت تُحَلّ على سِمة التطبيق لا على الورق (بطاقة سوداء
@@ -226,11 +252,11 @@ struct SurahReaderView: View {
             // ارتفاعٌ ثانٍ كبير: معاينة البسملة تكبر مع المكبِّر وحجم النظام،
             // فلولاه انقطعت سِمة الصفحة أسفل الورقة ولم يبلغها القارئ.
             ReaderControls().presentationDetents([.height(430), .large])
-                .environment(\.layoutDirection, AppConfig.arabicOnly ? .rightToLeft : store.appLanguage.layoutDirection)
+                .atharSheetChrome()
         }
         .sheet(item: $selected) { ref in
             AyahActions(ref: ref).presentationDetents([.medium, .large])
-                .environment(\.layoutDirection, AppConfig.arabicOnly ? .rightToLeft : store.appLanguage.layoutDirection)
+                .atharSheetChrome()
         }
         // خلفية الشريط بلون الورق وظاهرة: بلا خلفيةٍ ظاهرة لا يقود toolbarColorScheme
         // شريطَ الحالة، فتُرسم الساعة والبطارية بيضاء على ورقٍ كريمي حين يكون
@@ -434,7 +460,7 @@ struct MushafPager: View {
     var selected: AyahRef? = nil
     let isDark: Bool
     var framed: Bool = false
-    /// مساحةٌ إضافية أسفل الصفحة يحجزها المشغّل المصغّر حين تجري التلاوة.
+    /// ارتفاع ما يعلو حافّة الصفحة السفلية (شريط الموضع، أو المشغّل حين تجري التلاوة).
     var bottomInset: CGFloat = 0
     let onTapAyah: (AyahRef) -> Void
     let onPageVisible: (Int) -> Void
@@ -503,7 +529,22 @@ private struct MushafPageContent: View {
     @Environment(\.dynamicTypeSize) private var typeSize
 
     /// أصغر معامل مسموح: أدنى منه يضيق النصّ الشرعي عن القراءة، فيُترك التمرير للباقي.
-    private static let minFit = 0.75
+    /// ٠٫٦٢ (نحو ١٤ نقطة) كي تدخل الصفحات الكثيفة كاملةً كما طلب صاحب التطبيق —
+    /// ٠٫٧٥ كان يقف قبل أن تدخل صفحةٌ كصفحة ٣ فيبقى آخر سطرها تحت شريط الموضع.
+    private static let minFit = 0.62
+    /// هامش التنفّس بين ذيل الصفحة (رقمها) والشريط السفلي.
+    private static let breathing: CGFloat = 12
+    /// هوامش الفرعين الرأسية: سادة ١٢ فوق؛ مؤطَّرة ١٠ خارج الإطار و٢٠ داخله فوق
+    /// و١٦ داخله تحت — والحافّة السفلية للفرعين تأتي من الشريط السفلي وهامش التنفّس.
+    private static let plainTop: CGFloat = 12
+    private static let framedOuterTop: CGFloat = 10
+    private static let framedInnerTop: CGFloat = 20
+    private static let framedInnerBottom: CGFloat = 16
+    /// ما تأكله هوامش الفرع من الارتفاع فوق المحتوى (الإطار خلفيةٌ لا يزيد الارتفاع شيئًا).
+    private var verticalInsets: CGFloat {
+        framed ? Self.framedOuterTop + Self.framedInnerTop + Self.framedInnerBottom
+               : Self.plainTop
+    }
     /// المقياس الفعلي للرسم: مكبِّر القارئ مضروبًا في معامل الملاءمة.
     private var drawScale: Double { scale * fit }
 
@@ -546,31 +587,34 @@ private struct MushafPageContent: View {
     var body: some View {
         // الصفحة لا تقصر عن الشاشة: في الصفحتين القصيرتين (١ و٢) كان رقم الصفحة
         // يقف تحت آخر آية وسط الشاشة كرقاقةٍ ضائعة. حدٌّ أدنى للارتفاع يساوي المتاح
-        // ناقص هوامش الفرع (١٢+٧٠ سادة، ١٠+٢٠+١٦+٧٤ مؤطَّرة) وحجزَ المشغّل، فيثبت
-        // الرقم في ذيل الصفحة ولا يتغيّر شيء في الصفحات الممتلئة.
+        // فيثبت الرقم في ذيل الصفحة ولا يتغيّر شيء في الصفحات الممتلئة.
+        // المتاح = ما يُرى فعلًا: ارتفاع الفرع ناقص ما يعلو الحافّة السفلية (شريط
+        // الموضع أو المشغّل) وهامش التنفّس، وناقص هوامش الفرع — فيقف رقم الصفحة
+        // ظاهرًا فوق الشريط لا تحته.
         // الملاءمة تقيس الارتفاع الطبيعي للكومة نفسها (قبل الحدّ الأدنى) بالمتاح
         // ذاته، وتصغّر الخطّ حتى تدخل الصفحة في الشاشة؛ والتمرير يُعطَّل ما دامت
         // داخلةً، ويبقى لصفحةٍ لا تنزل عن أقصى تصغير.
         GeometryReader { geo in
-            let available = max(0, geo.size.height - (framed ? 120 : 82) - bottomInset)
+            let bottomPad = bottomInset + Self.breathing
+            let available = max(0, geo.size.height - verticalInsets - bottomPad)
             ScrollView {
                 if framed {
                     measuredStack
                         .frame(minHeight: available, alignment: .top)
                         .padding(.horizontal, 17)
-                        .padding(.top, 20)
-                        .padding(.bottom, 16)
+                        .padding(.top, Self.framedInnerTop)
+                        .padding(.bottom, Self.framedInnerBottom)
                         .background(MushafFrame(palette: palette))
                         .padding(.horizontal, 12)
-                        .padding(.top, 10)
-                        .padding(.bottom, 74 + bottomInset)
+                        .padding(.top, Self.framedOuterTop)
+                        .padding(.bottom, bottomPad)
                         .readableWidth(700)
                 } else {
                     measuredStack
                         .frame(minHeight: available, alignment: .top)
                         .padding(.horizontal, 20)
-                        .padding(.top, 12)
-                        .padding(.bottom, 70 + bottomInset)
+                        .padding(.top, Self.plainTop)
+                        .padding(.bottom, bottomPad)
                         .readableWidth(700)
                 }
             }
@@ -609,6 +653,9 @@ private struct MushafPageContent: View {
                     FlowLayout(lineSpacing: 14 * drawScale, wordSpacing: 5 * drawScale) {
                         ForEach(tokens(of: run)) { tokenView($0) }
                     }
+                    // شريط التظليل يُرسم هنا خلف السطور آيةً كاملة من مواضع كلماتها،
+                    // لا كلمةً كلمة — داخل تثبيت LTR أدناه كي تطابق إحداثياته الرصّ.
+                    .backgroundPreferenceValue(AyahBandKey.self) { ayahBands($0) }
                     // جوهري: FlowLayout يرصّ من اليمين يدويًا، وبيئة RTL
                     // تعكسه تلقائيًا — فيثبَّت LTR هنا وإلا انقلب النص.
                     .environment(\.layoutDirection, .leftToRight)
@@ -723,13 +770,91 @@ private struct MushafPageContent: View {
         return out
     }
 
+    /// لون شريط الآية: المنقورة أولًا، ثم الجارية في التلاوة، ثم تظليل القارئ.
+    private func bandColor(_ ref: AyahRef) -> Color? {
+        if ref == selected { return palette.accent.opacity(0.22) }
+        if ref == playing { return palette.accent.opacity(0.18) }
+        return highlights[ref.id].flatMap(HighlightColor.init(rawValue:))?.color(dark: isDark)
+    }
+
+    /// أشرطة التظليل: شريط واحد متّصل لكل آية كقلم التحديد على الورق. كل سطرٍ من
+    /// الآية مستطيل يمتدّ نصف مسافة الكلمات (+١) أفقيًّا ونصف مسافة الأسطر رأسيًّا،
+    /// فتلتحم الكلمات المتجاورة والأسطر المتتالية كتلةً واحدة؛ والمسار واحد لكل آية
+    /// كي لا تتضاعف الشفافية عند التقاء المستطيلات. تُدوَّر الزوايا الخارجية فقط:
+    /// الطرف الأيمن من أول سطر (أول كلمة) والطرف الأيسر من آخر سطر (علامة الآية).
+    private func ayahBands(_ tokens: [AyahBandToken]) -> some View {
+        GeometryReader { g in
+            let hx = 5 * drawScale / 2 + 1
+            let vy = 14 * drawScale / 2
+            ForEach(Self.bands(tokens), id: \.ayah) { band in
+                Self.bandPath(band.anchors.map { g[$0] }, hx: hx, vy: vy, radius: 6 * drawScale)
+                    .fill(band.color)
+            }
+        }
+    }
+
+    private struct Band { let ayah: String; let color: Color; var anchors: [Anchor<CGRect>] }
+
+    /// كلمات كل آية مجموعةً بترتيب ورودها (ترتيب القراءة).
+    private static func bands(_ tokens: [AyahBandToken]) -> [Band] {
+        var out: [Band] = []
+        for t in tokens {
+            if let i = out.firstIndex(where: { $0.ayah == t.ayah }) { out[i].anchors.append(t.anchor) }
+            else { out.append(Band(ayah: t.ayah, color: t.color, anchors: [t.anchor])) }
+        }
+        return out
+    }
+
+    /// مسار الشريط من مستطيلات الكلمات: الكلمات المتساوية منتصفًا رأسيًّا على سطرٍ
+    /// واحد (FlowLayout يوسّطها في السطر)، فيتّحد كل سطر مستطيلًا واحدًا من أول كلمة
+    /// إلى آخرها — فيغطّي حتى فراغ الضبط بين الكلمات لا مسافتها الأصلية فقط.
+    private static func bandPath(_ rects: [CGRect], hx: CGFloat, vy: CGFloat, radius: CGFloat) -> Path {
+        var lines: [CGRect] = []
+        for r in rects.sorted(by: { $0.midY < $1.midY }) {
+            if let last = lines.last, abs(r.midY - last.midY) < max(r.height, last.height) / 2 {
+                lines[lines.count - 1] = last.union(r)
+            } else {
+                lines.append(r)
+            }
+        }
+        var path = Path()
+        for (i, line) in lines.enumerated() {
+            // نصف نقطة زيادة رأسيًّا تُغلق أي شعرة بين سطرين متلاصقين من تقريب الأرقام.
+            let rect = line.insetBy(dx: -hx, dy: -(vy + 0.5))
+            let r = min(radius, rect.height / 2)
+            let first = i == 0, last = i == lines.count - 1
+            // الرصّ مثبَّت LTR، فالبادئة (leading) هي اليسار: الآية تبدأ يمينًا وتنتهي يسارًا.
+            let shape = UnevenRoundedRectangle(topLeadingRadius: last ? r : 0, bottomLeadingRadius: last ? r : 0,
+                                               bottomTrailingRadius: first ? r : 0, topTrailingRadius: first ? r : 0,
+                                               style: .continuous)
+            path.addPath(shape.path(in: rect))
+        }
+        return path
+    }
+
     @ViewBuilder
     private func tokenView(_ t: Token) -> some View {
-        let hl = highlights[t.ref.id].flatMap(HighlightColor.init(rawValue:))
+        let band = bandColor(t.ref)
         let hidden = isHidden(t)
         Group {
             if t.isMarker {
-                AyahMedallion(number: t.number, size: 26 * drawScale, tint: palette.accent)
+                // الميدالية بارتفاع سطر الكلمات نفسه (نصّ خفيّ بخطّها يحدّد الارتفاع)
+                // كي يمتدّ شريط الآية عليها بلا ثلمة وتكبر لمستها — ولا يطول السطر
+                // لأنها لا تعلو الكلمات. العلامة المرجعية تبقى على الميدالية ذاتها.
+                Text(verbatim: " ")
+                    .font(Theme.dhikrFont(size: 23, scale: drawScale))
+                    .frame(width: 26 * drawScale)
+                    .overlay {
+                        AyahMedallion(number: t.number, size: 26 * drawScale, tint: palette.accent)
+                            .overlay(alignment: .topLeading) {
+                                if bookmarks.contains(t.ref) {
+                                    Image(systemName: "bookmark.fill")
+                                        .font(.system(size: 8))
+                                        .foregroundStyle(palette.accent)
+                                        .offset(x: -2, y: -3)
+                                }
+                            }
+                    }
             } else {
                 Text(t.text)
                     .font(Theme.dhikrFont(size: 23, scale: drawScale))
@@ -748,20 +873,11 @@ private struct MushafPageContent: View {
         }
         .padding(.horizontal, 2)
         .padding(.vertical, 3)
-        .background(
-            RoundedRectangle(cornerRadius: 5, style: .continuous)
-                // المنقورة أولًا، ثم الجارية في التلاوة، ثم تظليل القارئ.
-                .fill(t.ref == selected ? palette.accent.opacity(0.22)
-                      : t.ref == playing ? palette.accent.opacity(0.18)
-                      : (hl?.color(dark: isDark) ?? .clear))
-        )
-        .overlay(alignment: .topLeading) {
-            if t.isMarker, bookmarks.contains(t.ref) {
-                Image(systemName: "bookmark.fill")
-                    .font(.system(size: 8))
-                    .foregroundStyle(palette.accent)
-                    .offset(x: -2, y: -3)
-            }
+        // موضع الكلمة يصعد إلى FlowLayout ليُرسم شريط الآية كاملًا خلف السطر —
+        // لا شيء يصعد من كلمةٍ في آيةٍ غير مظلَّلة.
+        .anchorPreference(key: AyahBandKey.self, value: .bounds) { anchor in
+            guard let band else { return [] }
+            return [AyahBandToken(ayah: t.ref.id, color: band, anchor: anchor)]
         }
         .contentShape(Rectangle())
         .onTapGesture {
@@ -775,8 +891,26 @@ private struct MushafPageContent: View {
     }
 }
 
+/// موضع كلمةٍ مظلَّلة مع آيتها ولونها — تُجمع في FlowLayout لرسم شريط الآية كاملًا.
+private struct AyahBandToken {
+    let ayah: String
+    let color: Color
+    let anchor: Anchor<CGRect>
+}
+
+private struct AyahBandKey: PreferenceKey {
+    static let defaultValue: [AyahBandToken] = []
+    static func reduce(value: inout [AyahBandToken], nextValue: () -> [AyahBandToken]) { value += nextValue() }
+}
+
 /// ارتفاع كومة الصفحة الطبيعي — يصعد من خلفية الكومة إلى الصفحة لتقرّر الملاءمة.
 private struct PageHeightKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
+}
+
+/// ارتفاع الشريط السفلي (المشغّل وشريط الآية) كما رُسم — يصعد من الطبقة العلوية إلى القارئ.
+private struct BottomBarHeightKey: PreferenceKey {
     static let defaultValue: CGFloat = 0
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
 }
@@ -794,8 +928,6 @@ struct ReaderControls: View {
             // تُقتطع «سِمة الصفحة» أسفل الورقة ولا سبيل للوصول إليها.
             ScrollView {
                 VStack(spacing: 22) {
-                    Capsule().fill(Theme.hairline).frame(width: 36, height: 5).padding(.top, 10)
-
                     VStack(spacing: 12) {
                         HStack {
                             Text(loc("readerFont")).font(Theme.display(15, weight: .semibold)).foregroundStyle(Theme.ink)
@@ -910,6 +1042,8 @@ struct ReaderControls: View {
 
                     Spacer(minLength: 0)
                 }
+                // مقبض السحب من النظام (كسوة الأوراق)، فيبدأ المحتوى تحته بهامشٍ لا بمقبضٍ مرسوم.
+                .padding(.top, Theme.Space.xl)
                 .padding(.horizontal, 22)
                 .padding(.bottom, 18)
             }
@@ -1032,9 +1166,8 @@ struct AyahActions: View {
             // المتوسط؛ فبلا تمرير تُدفن «العلامة» و«الحفظ» و«المشاركة» تحت الحافة.
             ScrollView {
                 VStack(spacing: Theme.Space.lg) {
-                    Capsule().fill(Theme.hairline).frame(width: 36, height: 5).padding(.top, 10)
-
-                    // بطاقة الآية — سطح وعمق، والنصّ الشرعي سيّدها
+                    // بطاقة الآية أولًا مباشرة — مقبض السحب من النظام (كسوة الأوراق)،
+                    // لا مقبضٌ ثانٍ مرسوم تحته.
                     AtharCard(padding: Theme.Space.lg, elevation: .e2) {
                         VStack(spacing: Theme.Space.md) {
                             // خيط ذهبي علوي — كحاشية المصحف المذهّبة
@@ -1245,6 +1378,7 @@ struct AyahActions: View {
 
                     Spacer(minLength: 0)
                 }
+                .padding(.top, Theme.Space.xl)
                 .padding(.horizontal, 20)
                 .padding(.bottom, 16)
             }
@@ -1253,8 +1387,7 @@ struct AyahActions: View {
         .sheet(isPresented: $showTafsir) {
             TafsirSheet(ref: ref)
                 .presentationDetents([.large])
-                .presentationDragIndicator(.visible)
-                .environment(\.layoutDirection, AppConfig.arabicOnly ? .rightToLeft : store.appLanguage.layoutDirection)
+                .atharSheetChrome()
         }
         .sheet(isPresented: $showTasmi) {
             NavigationStack {
@@ -1265,7 +1398,7 @@ struct AyahActions: View {
                         }
                     }
             }
-            .environment(\.layoutDirection, AppConfig.arabicOnly ? .rightToLeft : store.appLanguage.layoutDirection)
+            .atharSheetChrome()
         }
     }
 }

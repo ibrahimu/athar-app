@@ -48,7 +48,7 @@ struct LiveView: View {
     }
 
     private var footer: some View {
-        Text(loc("مشغّل الفيديو من YouTube (Google) وتسري سياسته منذ تحميله عند فتح القسم، ولا تبقى بياناته بعد إغلاقه؛ والإذاعة بثّ هيئة الإذاعة والتلفزيون الرسمي ولا يُفتح إلا حين تضغط تشغيلًا."))
+        Text(loc("مشغّل الفيديو من YouTube (Google) وتسري سياسته منذ تحميله عند فتح القسم، ولا يحتفظ التطبيق ببيانات تصفحه محليًا بعد إغلاقه؛ وقد يحتفظ المزوّد ببيانات وفق سياسته؛ والإذاعة بثّ هيئة الإذاعة والتلفزيون الرسمي ولا يُفتح إلا حين تضغط تشغيلًا."))
             .font(Theme.display(11))
             .foregroundStyle(Theme.inkFaint)
             .multilineTextAlignment(.center)
@@ -68,7 +68,8 @@ private struct LivePill: View {
             Circle().fill(color).frame(width: 6, height: 6)
             Text(loc("مباشر"))
         }
-        .font(Theme.display(10, weight: .semibold))
+        // 11 هو الحدّ الأدنى للتسميات في نظام التصميم — مطابق لشارة الإذاعة.
+        .font(Theme.display(11, weight: .semibold))
         .foregroundStyle(color)
         .padding(.horizontal, 8).padding(.vertical, 4)
         .background(Capsule().fill(color.opacity(0.12)))

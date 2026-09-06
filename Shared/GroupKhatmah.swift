@@ -47,66 +47,105 @@ final class GroupKhatmahService: ObservableObject {
     }
 
     func create(title: String, name: String, goalDays: Int) async {
+        guard !busy else { return }
         busy = true; error = nil; defer { busy = false }
         let code = Self.makeCode()
-        let rec = CKRecord(recordType: "Khatmah", recordID: CKRecord.ID(recordName: "k-" + code))
-        rec["code"] = code; rec["title"] = title; rec["created"] = Date(); rec["goalDays"] = goalDays
+        let record = CKRecord(recordType: "Khatmah", recordID: CKRecord.ID(recordName: "k-" + code))
+        record["code"] = code; record["title"] = title; record["created"] = Date(); record["goalDays"] = goalDays
         do {
-            _ = try await db.save(rec)
-            UserDefaults.standard.set(code, forKey: codeKey)
-            await join(code: code, name: name)
-        } catch { self.error = Self.describe(error) }
-    }
-
-    func join(code: String, name: String) async {
-        busy = true; error = nil; defer { busy = false }
-        let code = code.trimmingCharacters(in: .whitespaces)
-        do {
-            let k = try await db.record(for: CKRecord.ID(recordName: "k-" + code))
-            group = GroupKhatmah(id: code, code: code, title: k["title"] as? String ?? "", created: k["created"] as? Date ?? Date(), goalDays: k["goalDays"] as? Int ?? 30)
-            let memberId = UserDefaults.standard.string(forKey: memberKey) ?? "m-" + UUID().uuidString.prefix(8)
-            UserDefaults.standard.set(memberId, forKey: memberKey)
-            UserDefaults.standard.set(code, forKey: codeKey)
-            UserDefaults.standard.set(name, forKey: nameKey)
-            let m = CKRecord(recordType: "Member", recordID: CKRecord.ID(recordName: "\(code)-\(memberId)"))
-            m["code"] = code; m["name"] = name; m["pages"] = 0; m["updated"] = Date()
-            _ = try? await db.modifyRecords(saving: [m], deleting: [], savePolicy: .changedKeys)
+            let saved = try await db.save(record)
+            do { try await joinGroup(record: saved, code: code, name: name) }
+            catch {
+                // لا نترك ختمة يتيمة إن فشلت عضوية منشئها.
+                _ = try? await db.deleteRecord(withID: saved.recordID)
+                throw error
+            }
             await refresh()
         } catch { self.error = Self.describe(error) }
     }
 
-    func leave() {
-        for k in [codeKey, memberKey] { UserDefaults.standard.removeObject(forKey: k) }
-        group = nil; members = []
+    func join(code: String, name: String) async {
+        guard !busy else { return }
+        busy = true; error = nil; defer { busy = false }
+        let code = code.trimmingCharacters(in: .whitespacesAndNewlines)
+        do {
+            let record = try await db.record(for: CKRecord.ID(recordName: "k-" + code))
+            try await joinGroup(record: record, code: code, name: name)
+            await refresh()
+        } catch { self.error = Self.describe(error) }
     }
 
-    /// يرفع صفحات المستخدم (من ختمته المحلية) ويجلب الأعضاء.
-    func sync(pages: Int) async {
-        guard let code = joinedCode, let memberId = UserDefaults.standard.string(forKey: memberKey) else { return }
+    private func joinGroup(record: CKRecord, code: String, name: String) async throws {
+        let memberId = UserDefaults.standard.string(forKey: memberKey) ?? "m-" + UUID().uuidString
+        let id = CKRecord.ID(recordName: "\(code)-\(memberId)")
+        let member = try await existingOrNewMember(id: id)
+        member["code"] = code; member["name"] = name; member["updated"] = Date()
+        if member["pages"] == nil { member["pages"] = 0 }
+        try await saveMember(member)
+        // لا نظهر نجاح الانضمام قبل تأكيد كتابة سجل العضو نفسه.
+        UserDefaults.standard.set(memberId, forKey: memberKey)
+        UserDefaults.standard.set(code, forKey: codeKey)
+        UserDefaults.standard.set(name, forKey: nameKey)
+        group = GroupKhatmah(id: code, code: code, title: record["title"] as? String ?? "",
+                            created: record["created"] as? Date ?? Date(), goalDays: record["goalDays"] as? Int ?? 30)
+    }
+
+    func leave() async {
+        guard !busy, let code = joinedCode, let memberId = UserDefaults.standard.string(forKey: memberKey) else { return }
+        busy = true; error = nil; defer { busy = false }
         do {
-            let id = CKRecord.ID(recordName: "\(code)-\(memberId)")
-            let rec = (try? await db.record(for: id)) ?? CKRecord(recordType: "Member", recordID: id)
-            rec["code"] = code; rec["name"] = memberName; rec["pages"] = pages; rec["updated"] = Date()
-            _ = try await db.modifyRecords(saving: [rec], deleting: [], savePolicy: .changedKeys)
+            do { _ = try await db.deleteRecord(withID: CKRecord.ID(recordName: "\(code)-\(memberId)")) }
+            catch let error as CKError where error.code == .unknownItem { /* سبق حذف العضوية */ }
+            UserDefaults.standard.removeObject(forKey: codeKey)
+            // الهوية تبقى ثابتة لمنع الازدواج عند العودة إلى الختمة.
+            group = nil; members = []
         } catch { self.error = Self.describe(error) }
-        await refresh()
+    }
+
+    func sync(pages: Int) async {
+        guard !busy, let code = joinedCode, let memberId = UserDefaults.standard.string(forKey: memberKey) else { return }
+        busy = true; error = nil; defer { busy = false }
+        do {
+            let record = try await existingOrNewMember(id: CKRecord.ID(recordName: "\(code)-\(memberId)"))
+            record["code"] = code; record["name"] = memberName
+            record["pages"] = max(0, min(Quran.pageCount, pages)); record["updated"] = Date()
+            try await saveMember(record)
+            await refresh()
+        } catch { self.error = Self.describe(error) }
+    }
+
+    private func existingOrNewMember(id: CKRecord.ID) async throws -> CKRecord {
+        do { return try await db.record(for: id) }
+        catch let error as CKError where error.code == .unknownItem {
+            return CKRecord(recordType: "Member", recordID: id)
+        }
+    }
+
+    private func saveMember(_ record: CKRecord) async throws {
+        let results = try await db.modifyRecords(saving: [record], deleting: [], savePolicy: .changedKeys)
+        guard let result = results.saveResults[record.recordID] else { throw CKError(.internalError) }
+        _ = try result.get()
     }
 
     func refresh() async {
         guard let code = joinedCode else { return }
-        busy = true; defer { busy = false }
         do {
             if group == nil {
                 let k = try await db.record(for: CKRecord.ID(recordName: "k-" + code))
                 group = GroupKhatmah(id: code, code: code, title: k["title"] as? String ?? "", created: k["created"] as? Date ?? Date(), goalDays: k["goalDays"] as? Int ?? 30)
             }
             let q = CKQuery(recordType: "Member", predicate: NSPredicate(format: "code == %@", code))
-            let (results, _) = try await db.records(matching: q, resultsLimit: 200)
+            var (results, cursor) = try await db.records(matching: q, resultsLimit: 200)
+            while let next = cursor {
+                let page = try await db.records(continuingMatchFrom: next, resultsLimit: 200)
+                results.append(contentsOf: page.matchResults)
+                cursor = page.queryCursor
+            }
             let me = UserDefaults.standard.string(forKey: memberKey) ?? ""
             members = results.compactMap { id, r -> GroupMember? in
                 guard let rec = try? r.get() else { return nil }
                 return GroupMember(id: id.recordName, code: code, name: rec["name"] as? String ?? "", pages: rec["pages"] as? Int ?? 0,
-                                   updated: rec["updated"] as? Date ?? Date(), mine: id.recordName.hasSuffix(me))
+                                   updated: rec["updated"] as? Date ?? Date(), mine: id.recordName == "\(code)-\(me)")
             }.sorted { $0.pages > $1.pages }
         } catch { self.error = Self.describe(error) }
     }

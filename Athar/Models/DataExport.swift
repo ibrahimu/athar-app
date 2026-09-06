@@ -6,7 +6,7 @@ enum DataExport {
     static let fileName = "athar-backup.json"
 
     /// المفاتيح التي تُصدَّر: كل ما يبدأ بـ athar. عدا ما هو مؤقت أو خاص بالجهاز.
-    private static let excludedPrefixes = ["athar.spotlight", "athar.whatsNew", "athar.tzChangePending", "athar.usesDeviceLocation"]
+    private static let excludedPrefixes = ["athar.spotlight", "athar.whatsNew", "athar.tzChangePending", "athar.usesDeviceLocation", "athar.groupKhatmah", "athar.notifications", "athar.cloudSync"]
 
     static func export(from defaults: UserDefaults) throws -> URL {
         var payload: [String: Any] = [:]
@@ -29,13 +29,26 @@ enum DataExport {
         defer { if access { url.stopAccessingSecurityScopedResource() } }
         let data = try Data(contentsOf: url)
         guard let obj = try JSONSerialization.jsonObject(with: data) as? [String: Any], obj["app"] as? String == "athar",
-              let keys = obj["keys"] as? [String: Any] else { throw NSError(domain: "athar", code: 1, userInfo: [NSLocalizedDescriptionKey: "ليس ملف نسخة احتياطية من أثر."]) }
-        var n = 0
-        for (k, v) in keys where k.hasPrefix("athar.") {
-            if let dict = v as? [String: Any], let b64 = dict["__data"] as? String, let d = Data(base64Encoded: b64) { defaults.set(d, forKey: k); n += 1 }
-            else if let dict = v as? [String: Any], let t = dict["__date"] as? Double { defaults.set(Date(timeIntervalSince1970: t), forKey: k); n += 1 }
-            else { defaults.set(v, forKey: k); n += 1 }
+              obj["version"] as? Int == 1, let keys = obj["keys"] as? [String: Any] else { throw NSError(domain: "athar", code: 1, userInfo: [NSLocalizedDescriptionKey: "ليس ملف نسخة احتياطية من أثر."]) }
+        var validated: [String: Any] = [:]
+        for (key, value) in keys where key.hasPrefix("athar.") && !excludedPrefixes.contains(where: { key.hasPrefix($0) }) {
+            let decoded: Any
+            if let dict = value as? [String: Any], let b64 = dict["__data"] as? String {
+                guard let bytes = Data(base64Encoded: b64) else { throw invalidBackup() }
+                decoded = bytes
+            } else if let dict = value as? [String: Any], let timestamp = dict["__date"] as? Double {
+                guard timestamp.isFinite else { throw invalidBackup() }
+                decoded = Date(timeIntervalSince1970: timestamp)
+            } else { decoded = value }
+            // JSON يسمح بـ null بينما UserDefaults لا يسمح به؛ نتحقق من الملف كله قبل أول كتابة.
+            guard PropertyListSerialization.propertyList([key: decoded], isValidFor: .binary) else { throw invalidBackup() }
+            validated[key] = decoded
         }
-        return n
+        for (key, value) in validated { defaults.set(value, forKey: key) }
+        return validated.count
+    }
+
+    private static func invalidBackup() -> NSError {
+        NSError(domain: "athar", code: 2, userInfo: [NSLocalizedDescriptionKey: "تحتوي النسخة على بيانات غير صالحة. لم تُستورد أي تغييرات."])
     }
 }

@@ -6,9 +6,18 @@ import Foundation
 // التفضيلات والمفضّلة والعلامات والتظليل — لا العدّادات ولا الإحصاءات.
 // آخر كاتبٍ يغلب (سياسة المخزن نفسه)، والمفتاح يُنسخ كما هو إلى التفضيلات المحلية.
 
+protocol CloudKeyValueStorage: AnyObject {
+    func object(forKey key: String) -> Any?
+    func set(_ value: Any?, forKey key: String)
+    func removeObject(forKey key: String)
+    @discardableResult func synchronize() -> Bool
+}
+extension NSUbiquitousKeyValueStore: CloudKeyValueStorage {}
+
 final class CloudKV {
     static let shared = CloudKV()
-    private let kv = NSUbiquitousKeyValueStore.default
+    private let kv: CloudKeyValueStorage
+    private let notifications: NotificationCenter
     private var observer: NSObjectProtocol?
     private var pulling = false
 
@@ -23,15 +32,22 @@ final class CloudKV {
         "athar.tasbihPhrase", "athar.tasbihTarget", "athar.secondaryCityId",
     ]
 
-    private init() {}
+    init(kv: CloudKeyValueStorage = NSUbiquitousKeyValueStore.default, notifications: NotificationCenter = .default) {
+        self.kv = kv; self.notifications = notifications
+    }
+
+    deinit { if let observer { notifications.removeObserver(observer) } }
 
     /// يُشغَّل عند الإقلاع حين يفعّل المستخدم المزامنة: يسحب ما في السحابة، ثم يراقب تغيّرها.
     func start(defaults: UserDefaults, onChange: @escaping () -> Void) {
-        observer = NotificationCenter.default.addObserver(
+        guard observer == nil else { return }
+        observer = notifications.addObserver(
             forName: NSUbiquitousKeyValueStore.didChangeExternallyNotification, object: kv, queue: .main) { [weak self] n in
-            guard let self else { return }
+            guard let self, self.observer != nil else { return }
             let changed = (n.userInfo?[NSUbiquitousKeyValueStoreChangedKeysKey] as? [String]) ?? Self.keys
-            self.pull(keys: changed, into: defaults)
+            // لا نحذف قيمة محلية لأن iCloud لا يعرفها: عند تبديل الحساب أو قبل أول تنزيل
+            // تكون المفاتيح غائبة كلها، وحذفها يمسح المفضّلة على كل الأجهزة.
+            self.pull(keys: changed, into: defaults, removeMissing: false)
             onChange()
         }
         kv.synchronize()
@@ -40,7 +56,7 @@ final class CloudKV {
     }
 
     func stop() {
-        if let o = observer { NotificationCenter.default.removeObserver(o); observer = nil }
+        if let o = observer { notifications.removeObserver(o); observer = nil }
     }
 
     /// يدفع المفاتيح المحلية إلى السحابة (عند الذهاب للخلفية وعند كل تغيير مهم).
@@ -54,10 +70,11 @@ final class CloudKV {
         kv.synchronize()
     }
 
-    private func pull(keys: [String], into defaults: UserDefaults) {
+    private func pull(keys: [String], into defaults: UserDefaults, removeMissing: Bool = false) {
         pulling = true; defer { pulling = false }
         for key in keys where Self.keys.contains(key) {
             if let remote = kv.object(forKey: key) { defaults.set(remote, forKey: key) }
+            else if removeMissing { defaults.removeObject(forKey: key) }
         }
     }
 

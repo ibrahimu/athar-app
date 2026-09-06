@@ -70,6 +70,7 @@ struct HomeView: View {
     private func homeCard(_ card: HomeCard) -> some View {
         switch card {
         case .prayer:      prayerStrip
+        case .radio:       radioStrip
         case .stats:       statsRow
         case .suggestion:  if let suggested { suggestionCard(suggested) }
         case .dailyDhikr:  if let dailyDhikr { dailyCard(dailyDhikr) }
@@ -386,6 +387,16 @@ struct HomeView: View {
         }
     }
 
+    // MARK: الإذاعة
+
+    /// بطاقة الإذاعة: طرفها القائد يفتح القسم (تبويبًا إن كان في الشريط، وإلا دُفع في المكدّس
+    /// كبطاقة الصلاة)، وزرّها الطرفي يشغّل ويوقف من غير مغادرة «اليوم». مراقبة المشغّل محصورة
+    /// في البطاقة نفسها كي لا تُعاد «اليوم» كلها مع كل تغيّر في حالة البثّ.
+    private var radioStrip: some View {
+        HomeRadioCard(tint: Theme.accent(for: "sea"), live: Theme.danger,
+                      inBar: store.visibleTabs.contains(.radio)) { onOpenTab(.radio) }
+    }
+
     private func countdown(to date: Date) -> String {
         let seconds = max(0, Int(date.timeIntervalSince(now)))
         let h = seconds / 3600, m = (seconds % 3600) / 60
@@ -636,6 +647,98 @@ struct HomeView: View {
             .foregroundStyle(Theme.inkFaint)
             .frame(maxWidth: .infinity)
             .padding(.top, 8)
+    }
+}
+
+// MARK: - بطاقة الإذاعة
+
+/// تراقب RadioPlayer وحدها؛ الألوان تُمرَّر قيمةً من الأب لتُعاد صبغتها مع تبديل الطابع.
+private struct HomeRadioCard: View {
+    @EnvironmentObject private var store: AtharStore
+    @ObservedObject private var radio = RadioPlayer.shared
+    var tint: Color
+    var live: Color
+    /// التبويب في الشريط السفلي؟ عندها تُبدَّل التبويبات بدل دفع نسخة ثانية من القسم.
+    var inBar: Bool
+    var onOpenTab: () -> Void
+
+    private let source: LiveSource = .radio
+    private var isThisSource: Bool { radio.source?.id == source.id }
+    private var playing: Bool { isThisSource && radio.isPlaying }
+
+    /// سطر الحالة تحت العنوان — من المشغّل نفسه، وإلا وصفٌ قصير للبثّ.
+    private var statusText: String {
+        if isThisSource, radio.error != nil { return loc("تعذّر الاتصال") }
+        if isThisSource, radio.isBuffering { return loc("جارٍ الاتصال…") }
+        if playing { return loc("يُبثّ الآن") }
+        if isThisSource { return loc("متوقّف") }   // محمَّلة لكن موقوفة — بلفظ RadioView نفسه
+        return loc("بثّ رسمي متواصل")
+    }
+
+    var body: some View {
+        AtharCard(padding: 14, elevation: playing ? .e2 : .e1, tint: tint) {
+            HStack(spacing: 12) {
+                if inBar {
+                    Button(action: onOpenTab) { front }.pressable()
+                } else {
+                    NavigationLink { SectionDestination(tab: .radio) } label: { front }.pressable()
+                }
+                toggleButton
+            }
+        }
+        .animation(Motion.snappy, value: playing)
+    }
+
+    private var front: some View {
+        HStack(spacing: 12) {
+            IconChip(icon: "radio.fill", tint: tint, size: .lg)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(loc("إذاعة القرآن"))
+                    .font(Theme.display(17, weight: .bold))
+                    .foregroundStyle(Theme.ink)
+                HStack(spacing: 6) {
+                    RadioLivePill(color: live)
+                    Text(statusText)
+                        .font(Theme.display(11))
+                        .foregroundStyle(playing ? tint : Theme.inkFaint)
+                        .lineLimit(1)
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .contentShape(Rectangle())
+    }
+
+    /// تشغيل/إيقاف من البطاقة مباشرة — نظير الزرّ الكبير في شاشة الإذاعة، مصغّرًا.
+    private var toggleButton: some View {
+        Button {
+            Haptics.tap(enabled: store.hapticsEnabled)
+            if playing { radio.pause() } else if isThisSource { radio.resume() } else { radio.play(source) }
+        } label: {
+            ZStack {
+                if playing {
+                    Circle()
+                        .fill(LinearGradient(colors: [tint, tint.opacity(0.82)],
+                                             startPoint: .topLeading, endPoint: .bottomTrailing))
+                        .shadow(color: tint.opacity(0.3), radius: 8, y: 4)
+                } else {
+                    Circle()
+                        .fill(tint.opacity(0.14))
+                        .overlay(Circle().strokeBorder(tint.opacity(0.18), lineWidth: 0.5))
+                }
+                if isThisSource, radio.isBuffering {
+                    ProgressView().controlSize(.small).tint(playing ? Theme.onAccent : tint)
+                } else {
+                    Image(systemName: playing ? "pause.fill" : "play.fill")
+                        .font(.system(size: 17, weight: .bold))
+                        .foregroundStyle(playing ? Theme.onAccent : tint)
+                        .contentTransition(.symbolEffect(.replace))
+                }
+            }
+            .frame(width: 46, height: 46)
+        }
+        .pressable()
+        .accessibilityLabel(playing ? loc("إيقاف مؤقّت") : loc("تشغيل"))
     }
 }
 

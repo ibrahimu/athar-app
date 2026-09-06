@@ -148,6 +148,7 @@ struct RootView: View {
         case .adhkar:   AdhkarIndexView()
         case .prayer:   PrayerView(store: store)
         case .live:     NavigationStack { LiveView(isRootTab: true) }
+        case .radio:    NavigationStack { RadioView(isRootTab: true) }
         case .tasbih:   TasbihView()
         case .hajj:     HajjView()
         case .qibla:    NavigationStack { QiblaView(isRootTab: true) }
@@ -156,11 +157,13 @@ struct RootView: View {
         case .khatmah:  NavigationStack { KhatmahView(isRootTab: true) }
         case .wird:     NavigationStack { WirdView(isRootTab: true) }
         case .hadith:   NavigationStack { HadithView(isRootTab: true) }
+        case .phrases:  NavigationStack { PhrasesView(isRootTab: true) }
         case .names:    NavigationStack { NamesView(isRootTab: true) }
         case .ahkam:    NavigationStack { AhkamView(isRootTab: true) }
         case .prayerLog: NavigationStack { PrayerLogView(isRootTab: true) }
         case .calendar: NavigationStack { HijriCalendarView(isRootTab: true) }
         case .zakat:    NavigationStack { ZakatView(isRootTab: true) }
+        case .wallet:   NavigationStack { WalletCardsView(isRootTab: true) }
         case .sunan:    NavigationStack { SunanView(isRootTab: true) }
         case .settings: SettingsView()
         }

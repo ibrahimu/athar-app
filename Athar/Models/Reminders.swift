@@ -2,7 +2,14 @@ import Foundation
 import UserNotifications
 
 /// Local-only reminders. No server, no tokens, nothing leaves the device.
+@MainActor
 enum Reminders {
+    private static var planningDate = Date()
+    private static var planned: [UNNotificationRequest] = []
+    private static var scheduling = false
+    private static var scheduleAgain = false
+    static let coverageKey = "athar.notifications.coverage"
+
     private static let morningId = "athar.reminder.morning"
     private static let eveningId = "athar.reminder.evening"
     private static let athanPrefix = "athar.athan."
@@ -23,11 +30,7 @@ enum Reminders {
         await UNUserNotificationCenter.current().notificationSettings().authorizationStatus
     }
 
-    static func reschedule(store: AtharStore) async {
-        let center = UNUserNotificationCenter.current()
-        let pending = await center.pendingNotificationRequests()
-        center.removePendingNotificationRequests(withIdentifiers: [morningId, eveningId] + pending.map(\.identifier).filter { $0.hasPrefix(morningId + ".") || $0.hasPrefix(eveningId + ".") })
-        await rescheduleAthan(store: store)
+    private static func scheduleAdhkar(store: AtharStore) {
         guard store.remindersEnabled else { return }
 
         // بوقت الصلاة: الصباح بعد الفجر بعشرين دقيقة والمساء بعد العصر بعشرين — لأربعة أيام،
@@ -35,27 +38,27 @@ enum Reminders {
         if store.adhkarReminderByPrayer {
             let cal = Calendar.current
             for dayOffset in 0..<4 {
-                guard let day = cal.date(byAdding: .day, value: dayOffset, to: Date()), let t = store.prayerTimes(for: day) else { continue }
+                guard let day = cal.date(byAdding: .day, value: dayOffset, to: planningDate), let t = store.prayerTimes(for: day) else { continue }
                 for (prayer, id, title, body) in [(Prayer.fajr, morningId, "أذكار الصباح", "﴿ فَاذْكُرُونِي أَذْكُرْكُمْ ﴾ — بعد الفجر أطيبُ وقتٍ لها."),
                                                    (Prayer.asr, eveningId, "أذكار المساء", "حصّن يومك قبل أن يغيب — أذكار المساء بانتظارك.")] {
                     guard let base = t[prayer] else { continue }
                     let fire = base.addingTimeInterval(20 * 60)
-                    guard fire > Date() else { continue }
+                    guard fire > planningDate else { continue }
                     let c = UNMutableNotificationContent(); c.title = title; c.body = body; c.sound = .default
                     let comps = cal.dateComponents([.year, .month, .day, .hour, .minute], from: fire)
-                    try? await center.add(UNNotificationRequest(identifier: "\(id).\(dayOffset)", content: c,
+                    collect(UNNotificationRequest(identifier: "\(id).\(dayOffset)", content: c,
                         trigger: UNCalendarNotificationTrigger(dateMatching: comps, repeats: false)))
                 }
             }
             return
         }
 
-        await add(id: morningId,
+        add(id: morningId,
                   title: "أذكار الصباح",
                   body: "﴿ فَاذْكُرُونِي أَذْكُرْكُمْ ﴾ — دقيقتان تكفيك اليوم كله.",
                   minutes: store.morningReminderMinutes)
 
-        await add(id: eveningId,
+        add(id: eveningId,
                   title: "أذكار المساء",
                   body: "حصّن يومك قبل أن يغيب — أذكار المساء بانتظارك.",
                   minutes: store.eveningReminderMinutes)
@@ -63,25 +66,14 @@ enum Reminders {
 
     /// Schedules the next few days of prayer alerts. iOS caps pending local
     /// notifications at 64, so we schedule 7 days x 5 prayers and refresh on launch.
-    static func rescheduleAthan(store: AtharStore) async {
-        let center = UNUserNotificationCenter.current()
-        let pending = await center.pendingNotificationRequests()
-        center.removePendingNotificationRequests(
-            withIdentifiers: pending.map(\.identifier).filter { $0.hasPrefix(athanPrefix) }
-        )
+    private static func scheduleAthan(store: AtharStore) {
         guard store.athanAlerts else { return }
 
         let calendar = Calendar.current
-        let now = Date()
+        let now = planningDate
         let preMinutes = store.preAthanMinutes
-        // سقف iOS 64 إشعارًا معلّقًا للتطبيق كله. الأذان 5 في اليوم (10 مع تنبيه ما قبله)،
-        // ومعه حديث اليوم والقيام والاستغفار والسنن والأذكار والورد؛ فالأفق 5 أيام
-        // بلا تنبيهٍ قبليّ و3 معه، والجدولة تتجدّد عند كل فتح للتطبيق على كل حال.
         let iqamah = store.iqamahMinutes
-        // تنبيه قبلي خاص بصلاةٍ ما يُحتسب في الأفق أيضًا، وإلا تجاوزنا سقف الـ64 وأُسقطت أبعدُ التنبيهات بصمت.
-        let anyPre = preMinutes > 0 || Prayer.allCases.contains { $0.isPrayer && (store.prayerPrefs($0).preMinutes ?? 0) > 0 }
-        let extras = (anyPre ? 1 : 0) + (iqamah > 0 ? 1 : 0)
-        let days = extras == 0 ? 5 : (extras == 1 ? 3 : 2)
+        let days = 7
 
         for dayOffset in 0..<days {
             guard let day = calendar.date(byAdding: .day, value: dayOffset, to: now),
@@ -115,7 +107,7 @@ enum Reminders {
                     content: content,
                     trigger: UNCalendarNotificationTrigger(dateMatching: comps, repeats: false)
                 )
-                try? await center.add(request)
+                collect(request)
 
                 // تنبيه الإقامة: بعد الأذان بدقائق يختارها المستخدم — نغمة النظام، وبادئة الأذان نفسها.
                 if iqamah > 0 {
@@ -128,7 +120,7 @@ enum Reminders {
                         iq.sound = .default
                         iq.interruptionLevel = .timeSensitive
                         let iqComps = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: iqDate)
-                        try? await center.add(UNNotificationRequest(
+                        collect(UNNotificationRequest(
                             identifier: "\(athanPrefix)iq.\(dayOffset).\(entry.prayer.rawValue)",
                             content: iq,
                             trigger: UNCalendarNotificationTrigger(dateMatching: iqComps, repeats: false)))
@@ -154,7 +146,7 @@ enum Reminders {
                     content: pre,
                     trigger: UNCalendarNotificationTrigger(dateMatching: preComps, repeats: false)
                 )
-                try? await center.add(preRequest)
+                collect(preRequest)
             }
         }
     }
@@ -171,15 +163,11 @@ enum Reminders {
 
     /// تذكير حديث اليوم: يُجدوَل كل يوم على حدة (لا تكرارًا) لأن نصّ الحديث
     /// يتغيّر مع اليوم، فيصل مع التنبيه الحديثُ نفسه الذي تعرضه البطاقة.
-    static func rescheduleHadith(store: AtharStore) async {
-        let center = UNUserNotificationCenter.current()
-        let pending = await center.pendingNotificationRequests()
-        center.removePendingNotificationRequests(
-            withIdentifiers: pending.map(\.identifier).filter { $0.hasPrefix(hadithPrefix) })
+    private static func scheduleHadith(store: AtharStore) {
         guard store.hadithReminder else { return }
 
         let calendar = Calendar.current
-        let now = Date()
+        let now = planningDate
         let minutes = store.hadithReminderMinutes
 
         // أربعة أيام تكفي: الجدولة تتجدّد مع كل فتح، والسقف 64 مشترك مع الأذان.
@@ -202,7 +190,7 @@ enum Reminders {
                 content: content,
                 trigger: UNCalendarNotificationTrigger(dateMatching: comps, repeats: false)
             )
-            try? await center.add(request)
+            collect(request)
         }
     }
 
@@ -218,11 +206,9 @@ enum Reminders {
     }
 
     /// تذكير الورد اليومي من القرآن.
-    static func rescheduleWird(store: AtharStore) async {
-        let center = UNUserNotificationCenter.current()
-        center.removePendingNotificationRequests(withIdentifiers: [wirdId])
+    private static func scheduleWird(store: AtharStore) {
         guard store.wirdEnabled else { return }
-        await add(id: wirdId,
+        add(id: wirdId,
                   title: "وردك من القرآن",
                   // «10 آيات تكفيك» لا «10 آية»: تمييز العدد في Int.ayahCountText.
                   body: "\(store.wirdTarget.ayahCountText) تكفيك اليوم — «أحبُّ الأعمال إلى الله أدومها».",
@@ -230,11 +216,7 @@ enum Reminders {
     }
 
     /// تذكير الاستغفار على مدار اليوم — من الفجر إلى العشاء، بلا إزعاج ليلي.
-    static func rescheduleIstighfar(store: AtharStore) async {
-        let center = UNUserNotificationCenter.current()
-        let pending = await center.pendingNotificationRequests()
-        center.removePendingNotificationRequests(
-            withIdentifiers: pending.map(\.identifier).filter { $0.hasPrefix(istighfarPrefix) })
+    private static func scheduleIstighfar(store: AtharStore) {
         guard store.istighfarAlerts else { return }
 
         let phrases = [
@@ -248,26 +230,22 @@ enum Reminders {
         var i = 0
         while hour <= 21 {
             let (title, body) = phrases[i % phrases.count]
-            await add(id: "\(istighfarPrefix)\(hour)", title: title, body: body, minutes: hour * 60)
+            add(id: "\(istighfarPrefix)\(hour)", title: title, body: body, minutes: hour * 60)
             hour += step; i += 1
         }
     }
 
     /// تنبيه قيام الليل عند دخول الثلث الأخير.
-    static func rescheduleQiyam(store: AtharStore) async {
-        let center = UNUserNotificationCenter.current()
-        let pending = await center.pendingNotificationRequests()
-        center.removePendingNotificationRequests(
-            withIdentifiers: pending.map(\.identifier).filter { $0.hasPrefix(qiyamPrefix) })
+    private static func scheduleQiyam(store: AtharStore) {
         guard store.qiyamAlert else { return }
 
         let cal = Calendar.current
         for day in 0..<7 {
-            guard let d = cal.date(byAdding: .day, value: day, to: Date()),
+            guard let d = cal.date(byAdding: .day, value: day, to: planningDate),
                   let t = store.prayerTimes(for: d),
                   let next = cal.date(byAdding: .day, value: 1, to: d),
                   let tm = store.prayerTimes(for: next), let fajr = tm[.fajr],
-                  let q = t.qiyam(tomorrowFajr: fajr), q.lastThird > Date()
+                  let q = t.qiyam(tomorrowFajr: fajr), q.lastThird > planningDate
             else { continue }
 
             let content = UNMutableNotificationContent()
@@ -277,38 +255,30 @@ enum Reminders {
             let c = cal.dateComponents([.year, .month, .day, .hour, .minute], from: q.lastThird)
             let r = UNNotificationRequest(identifier: "\(qiyamPrefix)\(day)", content: content,
                                           trigger: UNCalendarNotificationTrigger(dateMatching: c, repeats: false))
-            try? await UNUserNotificationCenter.current().add(r)
+            collect(r)
         }
     }
 
     /// تذكيرات السنن الأسبوعية والشهرية.
-    static func rescheduleSunan(store: AtharStore) async {
-        let center = UNUserNotificationCenter.current()
-        let pending = await center.pendingNotificationRequests()
-        center.removePendingNotificationRequests(withIdentifiers:
-            pending.map(\.identifier).filter {
-                $0 == jumuahId || $0.hasPrefix(jumuahId + ".") || $0.hasPrefix(fastingPrefix) || $0.hasPrefix(whitePrefix)
-            })
-
+    private static func scheduleSunan(store: AtharStore) {
         // الجمعة: قبل الظهر بساعة — الغسل والكهف والصلاة على النبي ﷺ. تُجدول للجُمَع الأربع
         // القادمة بوقت ظهر كل جمعة (لا ساعة ثابتة)، وتتجدّد مع كل فتح.
         if store.jumuahAlert {
             let cal = Calendar.current
             var scheduled = 0
-            var day = Date()
-            while scheduled < 4, let next = cal.date(byAdding: .day, value: 1, to: day) {
-                day = next
+            for offset in 0..<35 {
+                guard scheduled < 4, let day = cal.date(byAdding: .day, value: offset, to: planningDate) else { break }
                 guard cal.component(.weekday, from: day) == 6,
                       let dhuhr = store.prayerTimes(for: day)?[.dhuhr] else { continue }
                 let fire = dhuhr.addingTimeInterval(-3600)
-                guard fire > Date() else { continue }
+                guard fire > planningDate else { continue }
                 let c = UNMutableNotificationContent()
                 c.title = "جمعة مباركة"
                 c.subtitle = "بعد ساعة تُقام الجمعة"
                 c.body = "اغتسل وتطيّب، واقرأ سورة الكهف، وأكثِر من الصلاة على النبي ﷺ."
                 c.sound = .default
                 let comps = cal.dateComponents([.year, .month, .day, .hour, .minute], from: fire)
-                try? await center.add(UNNotificationRequest(identifier: "\(jumuahId).\(scheduled)", content: c,
+                collect(UNNotificationRequest(identifier: "\(jumuahId).\(scheduled)", content: c,
                     trigger: UNCalendarNotificationTrigger(dateMatching: comps, repeats: false)))
                 scheduled += 1
             }
@@ -322,7 +292,7 @@ enum Reminders {
                 c.body = "«تُعرض الأعمال يوم الاثنين والخميس، فأحب أن يُعرض عملي وأنا صائم» — انوِ الصيام."
                 c.sound = .default
                 var dc = DateComponents(); dc.weekday = wd; dc.hour = 21
-                try? await center.add(UNNotificationRequest(identifier: "\(fastingPrefix)\(wd)",
+                collect(UNNotificationRequest(identifier: "\(fastingPrefix)\(wd)",
                     content: c, trigger: UNCalendarNotificationTrigger(dateMatching: dc, repeats: true)))
             }
         }
@@ -330,7 +300,7 @@ enum Reminders {
         // الأيام البيض: مساء 12 هجري للأشهر الثلاثة القادمة
         if store.whiteDaysAlert {
             let hijri = Calendar(identifier: .islamicUmmAlQura)
-            var cursor = Date()
+            var cursor = planningDate
             for i in 0..<3 {
                 guard let eve = hijri.nextDate(after: cursor,
                         matching: DateComponents(day: 12, hour: 20), matchingPolicy: .nextTime)
@@ -341,22 +311,86 @@ enum Reminders {
                 c.body = "غدًا 13 من الشهر الهجري — صيام 13 و14 و15 كصيام الدهر."
                 c.sound = .default
                 let dc = Calendar.current.dateComponents([.year, .month, .day, .hour], from: eve)
-                try? await center.add(UNNotificationRequest(identifier: "\(whitePrefix)\(i)",
+                collect(UNNotificationRequest(identifier: "\(whitePrefix)\(i)",
                     content: c, trigger: UNCalendarNotificationTrigger(dateMatching: dc, repeats: false)))
             }
         }
     }
 
-    /// يعيد جدولة كل التذكيرات دفعة واحدة.
+    /// جميع نقاط التغيير تمر بخطة واحدة حتى لا تتنافس مجموعات التنبيهات على سقف النظام.
     static func rescheduleAll(store: AtharStore) async {
-        await reschedule(store: store)
-        await rescheduleAthan(store: store)
-        await rescheduleWird(store: store)
-        await rescheduleIstighfar(store: store)
-        await rescheduleQiyam(store: store)
-        await rescheduleSunan(store: store)
-        await rescheduleHadith(store: store)
+        if scheduling { scheduleAgain = true; return }
+        scheduling = true
+        defer { scheduling = false }
+        repeat {
+            scheduleAgain = false
+            let requests = makePlan(store: store)
+            let center = UNUserNotificationCenter.current()
+            let previous = await center.pendingNotificationRequests()
+            center.removePendingNotificationRequests(withIdentifiers: previous.map(\.identifier).filter { $0.hasPrefix("athar.") })
+            for request in requests {
+                do { try await center.add(request) }
+                catch { store.defaults.removeObject(forKey: coverageKey) }
+            }
+            let saved = await center.pendingNotificationRequests()
+            let lastPrayer = saved.filter { isPrayerAlert($0) }.compactMap { fireDate($0) }.max()
+            if let lastPrayer { store.defaults.set(lastPrayer, forKey: coverageKey) }
+            else { store.defaults.removeObject(forKey: coverageKey) }
+            store.objectWillChange.send()
+        } while scheduleAgain
     }
+
+    static func makePlan(store: AtharStore, now: Date = Date()) -> [UNNotificationRequest] {
+        planningDate = now
+        planned = []
+        scheduleAdhkar(store: store)
+        scheduleAthan(store: store)
+        scheduleWird(store: store)
+        scheduleIstighfar(store: store)
+        scheduleQiyam(store: store)
+        scheduleSunan(store: store)
+        scheduleHadith(store: store)
+        let chronological = planned.sorted {
+            (fireDate($0) ?? .distantFuture) < (fireDate($1) ?? .distantFuture)
+        }
+        // نضمن أقرب 25 أذانًا أولًا؛ ثم نملأ البقية بالتذكيرات الأقرب موعدًا.
+        let prayers = Array(chronological.filter(isPrayerAlert).prefix(25))
+        let ids = Set(prayers.map(\.identifier))
+        let others = chronological.filter { !ids.contains($0.identifier) }
+        var result = prayers + others.prefix(63 - prayers.count)
+        // تذكير واضح قبل نهاية التغطية؛ لا نعد بتجديد خلفي لا يضمنه النظام.
+        if let last = prayers.last.flatMap(fireDate) {
+            let fire = max(planningDate.addingTimeInterval(60), last.addingTimeInterval(-6 * 3600))
+            let content = UNMutableNotificationContent()
+            content.title = "جدّد تنبيهات الصلاة"
+            content.body = "افتح أثر لتحديث مواقيت الأيام القادمة واستمرار التنبيهات."
+            content.sound = .default
+            let parts = Calendar.current.dateComponents([.year, .month, .day, .hour, .minute], from: fire)
+            result.append(UNNotificationRequest(identifier: "athar.coverage", content: content,
+                trigger: UNCalendarNotificationTrigger(dateMatching: parts, repeats: false)))
+        }
+        planned = []
+        return result
+    }
+
+    private static func fireDate(_ request: UNNotificationRequest) -> Date? {
+        (request.trigger as? UNCalendarNotificationTrigger)?.nextTriggerDate()
+    }
+
+    private static func isPrayerAlert(_ request: UNNotificationRequest) -> Bool {
+        request.identifier.hasPrefix(athanPrefix) && !request.identifier.hasPrefix(athanPrefix + "pre.") && !request.identifier.hasPrefix(athanPrefix + "iq.")
+    }
+
+    private static func collect(_ request: UNNotificationRequest) { planned.append(request) }
+
+    static func reschedule(store: AtharStore) async { await rescheduleAll(store: store) }
+    static func rescheduleAthan(store: AtharStore) async { await rescheduleAll(store: store) }
+    static func rescheduleHadith(store: AtharStore) async { await rescheduleAll(store: store) }
+    static func rescheduleWird(store: AtharStore) async { await rescheduleAll(store: store) }
+    static func rescheduleIstighfar(store: AtharStore) async { await rescheduleAll(store: store) }
+    static func rescheduleQiyam(store: AtharStore) async { await rescheduleAll(store: store) }
+    static func rescheduleSunan(store: AtharStore) async { await rescheduleAll(store: store) }
+
 
     /// وقت الأذان بأرقام لاتينية في منطقة المكان المختار.
     private static func clockText(_ date: Date, store: AtharStore) -> String {
@@ -371,7 +405,7 @@ enum Reminders {
     /// (نُسخت من مصادرها لا من الذاكرة)، تتبدّل مع الأيام كي لا يُملّ التنبيه.
     /// الفجر والعصر لهما نصّاهما الخاصّان.
     private static func athanBody(for prayer: Prayer, dayOffset: Int) -> String {
-        let day = (Calendar.current.ordinality(of: .day, in: .era, for: Date()) ?? 0) + dayOffset
+        let day = (Calendar.current.ordinality(of: .day, in: .era, for: planningDate) ?? 0) + dayOffset
         switch prayer {
         case .fajr:
             return day.isMultiple(of: 2)
@@ -400,7 +434,7 @@ enum Reminders {
         return UNNotificationSound(named: UNNotificationSoundName(name + ".caf"))
     }
 
-    private static func add(id: String, title: String, body: String, minutes: Int) async {
+    private static func add(id: String, title: String, body: String, minutes: Int) {
         let content = UNMutableNotificationContent()
         content.title = title
         content.body = body
@@ -415,7 +449,7 @@ enum Reminders {
             content: content,
             trigger: UNCalendarNotificationTrigger(dateMatching: components, repeats: true)
         )
-        try? await UNUserNotificationCenter.current().add(request)
+        collect(request)
     }
 }
 

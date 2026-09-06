@@ -59,10 +59,9 @@ struct OnboardingView: View {
             Text(loc("لتصلك التذكيرات، اسمح للتطبيق بالإشعارات من إعدادات الجهاز. يمكنك تفعيلها لاحقًا من إعدادات أثر."))
         }
         .sheet(isPresented: $showCityPicker) {
-            // الأوراق لا ترث اتجاه الكتابة من جذر التطبيق، فنثبّته صراحةً كما في الإعدادات.
+            // الكسوة الموحّدة تثبّت اتجاه الكتابة وتوحّد شكل الورقة مع الإعدادات.
             OnboardingLocationHost(store: store)
-                .environment(\.layoutDirection,
-                             AppConfig.arabicOnly ? .rightToLeft : store.appLanguage.layoutDirection)
+                .atharSheetChrome()
         }
     }
 
@@ -147,7 +146,7 @@ struct OnboardingView: View {
                     .font(Theme.display(22, weight: .bold))
                     .foregroundStyle(Theme.ink)
 
-                Text(loc("مصحف وتفسير وأذكار ومواقيت وحديث — بلا إعلانات ولا حسابات ولا جمع بيانات"))
+                Text(loc("مصحف وتفسير وأذكار ومواقيت وحديث — بلا إعلانات، مع خدمات سحابية اختيارية"))
                     .font(Theme.display(14))
                     .foregroundStyle(Theme.inkSoft)
                     .multilineTextAlignment(.center)
@@ -511,7 +510,7 @@ private struct OnboardingLocationStep: View {
                 Text(loc("حدّد موقعك"))
                     .font(Theme.display(22, weight: .bold))
                     .foregroundStyle(Theme.ink)
-                Text(loc("موقعك يُستخدم على جهازك فقط لحساب المواقيت والقبلة"))
+                Text(loc("تُحسب المواقيت والقبلة على جهازك. قد تستخدم Apple موقعك للتعرّف على اسم المدينة"))
                     .font(Theme.display(14))
                     .foregroundStyle(Theme.inkSoft)
                     .multilineTextAlignment(.center)

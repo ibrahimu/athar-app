@@ -73,7 +73,7 @@ struct PrayerView: View {
             }
             .sheet(isPresented: $showCityPicker) {
                 LocationPickerView(location: location)
-                    .environment(\.layoutDirection, AppConfig.arabicOnly ? .rightToLeft : store.appLanguage.layoutDirection)
+                    .atharSheetChrome()
             }
         }
         .onReceive(ticker) { now = $0 }
@@ -386,7 +386,7 @@ struct PrayerView: View {
         }
         .sheet(isPresented: $showSecondPicker) {
             LocationPickerView(location: location, secondary: true, onPick: { store.secondaryCity = $0 })
-                .environment(\.layoutDirection, layoutDirection)
+                .atharSheetChrome()
         }
     }
 

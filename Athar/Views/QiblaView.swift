@@ -114,10 +114,8 @@ struct QiblaView: View {
         }
         .sheet(isPresented: $showCityPicker) {
             if let location {
-                // الأوراق لا ترث اتجاه التخطيط من الجذر، فنثبّته صراحةً كما في شاشة الصلاة.
                 LocationPickerView(location: location)
-                    .environment(\.layoutDirection,
-                                 AppConfig.arabicOnly ? .rightToLeft : store.appLanguage.layoutDirection)
+                    .atharSheetChrome()
             }
         }
     }

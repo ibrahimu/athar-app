@@ -8,6 +8,7 @@ struct GroupKhatmahView: View {
     @State private var name = ""
     @State private var code = ""
     @State private var days = 30
+    @State private var confirmLeave = false
 
     private var tint: Color { Theme.gold }
 
@@ -17,10 +18,10 @@ struct GroupKhatmahView: View {
                 if let g = service.group {
                     groupCard(g)
                     membersCard
-                    Button { service.leave() } label: {
-                        Text(loc("مغادرة الختمة")).font(Theme.display(14, weight: .semibold)).frame(maxWidth: .infinity).softButton(Theme.danger)
+                    Button { confirmLeave = true } label: {
+                        Text(loc("مغادرة الختمة وحذف مشاركتي")).font(Theme.display(14, weight: .semibold)).frame(maxWidth: .infinity).softButton(Theme.danger)
                     }
-                    .pressable()
+                    .pressable().disabled(service.busy)
                 } else {
                     intro
                     createCard
@@ -29,7 +30,7 @@ struct GroupKhatmahView: View {
                 if let e = service.error {
                     Text(e).font(Theme.display(12)).foregroundStyle(Theme.danger).multilineTextAlignment(.center)
                 }
-                Text(loc("تُحفظ الختمة في iCloud العام باسم يكتبه كل عضو بنفسه — بلا حسابات ولا معرّفات أجهزة."))
+                Text(loc("تحتاج المشاركة إلى تسجيل الدخول إلى iCloud. يُحفظ اسمك وعدد صفحاتك في قاعدة التطبيق العامة لدى Apple؛ استخدم اسمًا مستعارًا إن رغبت. مغادرة الختمة تحذف مشاركتك."))
                     .font(Theme.display(11)).foregroundStyle(Theme.inkFaint).multilineTextAlignment(.center)
             }
             .padding(.horizontal, Theme.gutter).padding(.top, 8).padding(.bottom, 32).readableWidth(560)
@@ -42,6 +43,10 @@ struct GroupKhatmahView: View {
         .toolbar(.hidden, for: .tabBar)
         .task { name = service.memberName; await service.refresh(); await service.sync(pages: store.khatmahPagesDone) }
         .refreshable { await service.sync(pages: store.khatmahPagesDone) }
+        .confirmationDialog(loc("مغادرة الختمة؟"), isPresented: $confirmLeave, titleVisibility: .visible) {
+            Button(loc("مغادرة وحذف مشاركتي"), role: .destructive) { Task { await service.leave() } }
+            Button(loc("إلغاء"), role: .cancel) {}
+        } message: { Text("يُحذف اسمك وتقدمك من هذه الختمة. لا تتأثر ختمتك الشخصية أو صفحاتك المحفوظة على الجهاز.") }
     }
 
     private var intro: some View {

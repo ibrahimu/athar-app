@@ -7,7 +7,7 @@ import UniformTypeIdentifiers
 enum SpotlightIndexer {
     static let domain = "com.ibrahim.athar"
     private static let versionKey = "athar.spotlight.version"
-    private static let version = 4   // ٤: تبويب «البث المباشر»
+    private static let version = 5   // ٥: تبويبا «إذاعة القرآن» و«عبارات»
 
     static func indexIfNeeded() {
         guard CSSearchableIndex.isIndexingAvailable(), UserDefaults.standard.integer(forKey: versionKey) != version else { return }

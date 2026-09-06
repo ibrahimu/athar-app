@@ -33,8 +33,8 @@ struct NextPrayerIntent: AppIntent {
 
 /// أقسام التطبيق التي يمكن فتحها بالصوت — القيم الخام تطابق `AppTab` ليكون التحويل مباشرًا.
 enum SectionChoice: String, AppEnum {
-    case mushaf, adhkar, prayer, tasbih, hajj, qibla, hifz, recitation,
-         khatmah, wird, hadith, names, ahkam, prayerLog, calendar, zakat
+    case mushaf, adhkar, prayer, live, radio, tasbih, hajj, qibla, hifz, recitation,
+         khatmah, wird, hadith, phrases, names, ahkam, prayerLog, calendar, zakat, wallet, sunan
 
     static var typeDisplayRepresentation: TypeDisplayRepresentation { "القسم" }
 
@@ -43,6 +43,8 @@ enum SectionChoice: String, AppEnum {
             .mushaf:     "المصحف",
             .adhkar:     "الأذكار",
             .prayer:     "الصلاة",
+            .live:       "البث المباشر",
+            .radio:      "إذاعة القرآن",
             .tasbih:     "المسبحة",
             .hajj:       "الحج والعمرة",
             .qibla:      "القبلة",
@@ -51,11 +53,14 @@ enum SectionChoice: String, AppEnum {
             .khatmah:    "الختمة",
             .wird:       "الورد",
             .hadith:     "الحديث",
+            .phrases:    "عبارات",
             .names:      "الأسماء الحسنى",
             .ahkam:      "الأحكام",
             .prayerLog:  "سجل الصلاة",
             .calendar:   "التقويم",
-            .zakat:      "الزكاة"
+            .zakat:      "الزكاة",
+            .wallet:     "بطاقات المحفظة",
+            .sunan:      "السنن الرواتب"
         ]
     }
 

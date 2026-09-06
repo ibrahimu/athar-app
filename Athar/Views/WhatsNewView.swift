@@ -8,7 +8,7 @@ struct WhatsNewView: View {
     var onClose: () -> Void = {}
 
     /// يُرفع مع كل إصدار يستحق العرض.
-    static let version = "1.2"
+    static let version = "1.3"
 
     private struct Item: Identifiable {
         let id: String
@@ -43,7 +43,11 @@ struct WhatsNewView: View {
         .init(id: "group", icon: "person.3.fill", accent: "gold", title: "ختمة مع الأهل وتقرير شهري",
               detail: "ختمة برمزٍ تتقاسمونها مع الأهل والأصدقاء، وتقرير شهري هجري لأذكارك وصفحاتك وصلواتك، وتصدير بياناتك ملفًا واحدًا.", tab: .khatmah),
         .init(id: "live", icon: "dot.radiowaves.left.and.right", accent: "sea", title: "البث المباشر",
-              detail: "المسجد الحرام والمسجد النبوي مباشرة، وإذاعة القرآن الكريم", tab: .live),
+              detail: "المسجد الحرام والمسجد النبوي مباشرة، وإذاعة القرآن الكريم من بثّ هيئة الإذاعة والتلفزيون الرسمي — تستمرّ في الخلفية وتتحكّم بها من شاشة القفل.", tab: .live),
+        .init(id: "phrases", icon: "text.quote", accent: "gold", title: "عبارات للنسخ والمشاركة",
+              detail: "آيات وأدعية وتهانٍ جاهزة للنسخ أو مشاركتها صورةً على واتساب وسناب", tab: .phrases),
+        .init(id: "wallet", icon: "wallet.pass.fill", accent: "gold", title: "بطاقات Apple Wallet",
+              detail: "آية الكرسي وخواتيم البقرة وأذكارك في بطاقات تُضاف إلى المحفظة", tab: .wallet),
     ]
 
     var onOpen: ((AppTab) -> Void)? = nil
@@ -58,7 +62,7 @@ struct WhatsNewView: View {
                         Text(loc("جديد أثر %1$@", Self.version))
                             .font(Theme.display(24, weight: .bold))
                             .foregroundStyle(Theme.ink)
-                        Text(loc("أقسام وأدوات جديدة، وكلها من مصادر أهل السنّة وتعمل بلا إنترنت."))
+                        Text(loc("أقسام وأدوات جديدة للقراءة والذكر والمشاركة، مع بث وخدمات سحابية اختيارية."))
                             .font(Theme.display(13))
                             .foregroundStyle(Theme.inkSoft)
                             .multilineTextAlignment(.center)

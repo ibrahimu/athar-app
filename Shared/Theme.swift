@@ -136,6 +136,16 @@ enum Theme {
                 size: size * scale, relativeTo: .body)
     }
 
+    /// بحجم ثابت لا يتبع حجم خطّ النظام — لما يُصيَّر خارج الشاشة على لوحة بأبعاد
+    /// محدّدة (بطاقة القصّة ١٠٨٠×١٩٢٠)، وإلا كبر النصّ مع Dynamic Type وفاض عن الإطار.
+    static func dhikrFont(fixed size: CGFloat) -> Font {
+        .custom("NotoNaskhArabic-Regular", fixedSize: size)
+    }
+
+    static func naskhFont(fixed size: CGFloat, bold: Bool = false) -> Font {
+        .custom(bold ? "NotoNaskhArabic-Bold" : "NotoNaskhArabic-Medium", fixedSize: size)
+    }
+
     /// خط الواجهة: يتبع اختيار المستخدم (AppFont.current) لا النص الشرعي —
     /// dhikrFont وnaskhFont أعلاه تبقيان على النسخ مهما تغيّر هذا.
     static func display(_ size: CGFloat, weight: Font.Weight = .semibold) -> Font {
