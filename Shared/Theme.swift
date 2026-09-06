@@ -136,8 +136,10 @@ enum Theme {
                 size: size * scale, relativeTo: .body)
     }
 
+    /// خط الواجهة: يتبع اختيار المستخدم (AppFont.current) لا النص الشرعي —
+    /// dhikrFont وnaskhFont أعلاه تبقيان على النسخ مهما تغيّر هذا.
     static func display(_ size: CGFloat, weight: Font.Weight = .semibold) -> Font {
-        .system(size: scaled(size), weight: weight)
+        AppFont.current.font(size: scaled(size), weight: weight)
     }
 
     /// يتبع حجم خطّ النظام (Dynamic Type) كما تفعل خطوط النسخ، بسقف ١٫٣٥

@@ -1,5 +1,6 @@
 import Foundation
 import AVFoundation
+import MediaPlayer
 import Combine
 
 // MARK: - تلاوة آية بآية (everyayah.com)
@@ -65,12 +66,82 @@ final class AyahAudio: NSObject, ObservableObject {
         guard player != nil, let raw = n.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
               let type = AVAudioSession.InterruptionType(rawValue: raw) else { return }
         switch type {
-        case .began: isPlaying = false
+        case .began: isPlaying = false; updateNowPlayingRate()
         case .ended:
             let opts = AVAudioSession.InterruptionOptions(rawValue: n.userInfo?[AVAudioSessionInterruptionOptionKey] as? UInt ?? 0)
-            if opts.contains(.shouldResume) { try? AVAudioSession.sharedInstance().setActive(true); player?.play(); isPlaying = true }
+            if opts.contains(.shouldResume) {
+                try? AVAudioSession.sharedInstance().setActive(true); player?.play(); isPlaying = true
+                updateNowPlayingRate()
+            }
         @unknown default: break
         }
+    }
+
+    // MARK: شاشة القفل
+
+    private var remoteReady = false
+
+    /// أزرار شاشة القفل وسمّاعة الأذن — تُسجَّل مرّة واحدة كما في Recitation، وتُهمَل
+    /// ما لم تكن تلاوة الآيات جارية حتى لا تنازع تلاوة السور على الأوامر نفسها.
+    private func setupRemoteCommands() {
+        guard !remoteReady else { return }
+        remoteReady = true
+        let c = MPRemoteCommandCenter.shared()
+        c.playCommand.addTarget { [weak self] _ in
+            guard let self else { return .commandFailed }
+            return MainActor.assumeIsolated {
+                guard self.player != nil, !self.isPlaying else { return .noActionableNowPlayingItem }
+                self.toggle(); return .success
+            }
+        }
+        c.pauseCommand.addTarget { [weak self] _ in
+            guard let self else { return .commandFailed }
+            return MainActor.assumeIsolated {
+                guard self.player != nil, self.isPlaying else { return .noActionableNowPlayingItem }
+                self.toggle(); return .success
+            }
+        }
+        c.togglePlayPauseCommand.addTarget { [weak self] _ in
+            guard let self else { return .commandFailed }
+            return MainActor.assumeIsolated {
+                guard self.player != nil else { return .noActionableNowPlayingItem }
+                self.toggle(); return .success
+            }
+        }
+        c.nextTrackCommand.addTarget { [weak self] _ in
+            guard let self else { return .commandFailed }
+            return MainActor.assumeIsolated {
+                guard self.player != nil else { return .noActionableNowPlayingItem }
+                self.next(); return .success
+            }
+        }
+        c.previousTrackCommand.addTarget { [weak self] _ in
+            guard let self else { return .commandFailed }
+            return MainActor.assumeIsolated {
+                guard self.player != nil else { return .noActionableNowPlayingItem }
+                self.previous(); return .success
+            }
+        }
+    }
+
+    /// «سورة X · الآية N» على شاشة القفل ومركز التحكّم، بغلاف التطبيق — وإلا بقيت
+    /// الشاشة فارغة والتطبيق مغلق مع أنّ الصوت يعمل.
+    private func updateNowPlayingInfo(for ref: AyahRef) {
+        var info: [String: Any] = [:]
+        let surahName = Quran.surah(ref.surah)?.name ?? ""
+        info[MPMediaItemPropertyTitle] = "سورة " + surahName + " · الآية " + ref.ayah.counterText
+        info[MPMediaItemPropertyArtist] = reciter.name
+        info[MPMediaItemPropertyAlbumTitle] = "القرآن الكريم — أثر"
+        info[MPNowPlayingInfoPropertyPlaybackRate] = isPlaying ? 1.0 : 0.0
+        if let art = Recitation.nowPlayingArtwork { info[MPMediaItemPropertyArtwork] = art }
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = info
+    }
+
+    /// يعكس الإيقاف والاستئناف على زرّ شاشة القفل دون إعادة بناء المعلومات كلّها.
+    private func updateNowPlayingRate() {
+        guard current != nil, var info = MPNowPlayingInfoCenter.default().nowPlayingInfo else { return }
+        info[MPNowPlayingInfoPropertyPlaybackRate] = isPlaying ? 1.0 : 0.0
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = info
     }
 
     private func url(for ref: AyahRef) -> URL? {
@@ -81,6 +152,7 @@ final class AyahAudio: NSObject, ObservableObject {
     func play(from ref: AyahRef, onAdvance: ((AyahRef) -> Void)? = nil) {
         self.onAdvance = onAdvance
         Recitation.shared.pause()                     // لا يتداخل صوتان
+        NotificationCenter.default.post(name: .atharAudioStarted, object: nil)
         let session = AVAudioSession.sharedInstance()
         try? session.setCategory(.playback, mode: .spokenAudio)
         try? session.setActive(true)
@@ -109,6 +181,8 @@ final class AyahAudio: NSObject, ObservableObject {
         }
         p.play()
         isPlaying = true
+        setupRemoteCommands()
+        updateNowPlayingInfo(for: ref)
         onAdvance?(ref)
     }
 
@@ -129,6 +203,7 @@ final class AyahAudio: NSObject, ObservableObject {
     func toggle() {
         guard let p = player else { return }
         if isPlaying { p.pause(); isPlaying = false } else { p.play(); isPlaying = true }
+        updateNowPlayingRate()
     }
 
     func next() {
@@ -147,7 +222,9 @@ final class AyahAudio: NSObject, ObservableObject {
         isPlaying = false
         isLoading = false
         stopAt = nil
-        if !Recitation.shared.isPlaying {
+        MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
+        // يُستدعى بلا شرط عند إغلاق القارئ والتفسير، فلا نُطفئ الجلسة تحت التلاوة ولا الإذاعة.
+        if !Recitation.shared.isPlaying, !RadioPlayer.shared.isPlaying {
             try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
         }
     }

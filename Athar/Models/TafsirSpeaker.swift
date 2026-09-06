@@ -26,6 +26,7 @@ final class TafsirSpeaker: NSObject, ObservableObject, AVSpeechSynthesizerDelega
         stop()
         Recitation.shared.pause()
         AyahAudio.shared.stop()
+        RadioPlayer.shared.pause()                    // وإلا قُرئ التفسير فوق البثّ الحيّ
         var clean = text
         clean.removeAll { $0 == marks.open || $0 == marks.close }
         let session = AVAudioSession.sharedInstance()

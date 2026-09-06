@@ -5,12 +5,26 @@ import WidgetKit
 @main
 struct AtharApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
-    @StateObject private var store = AtharStore.shared
+    @StateObject private var store: AtharStore
     @Environment(\.scenePhase) private var scenePhase
+
+    init() {
+        // خط «ثمانية» يُسجَّل قبل بناء المخزن وأي واجهة، حتى تجده Font.custom من أول رسم
+        // (المخزن يضبط AppFont.current من المحفوظ في applyStoredTheme).
+        FontLoader.registerAll()
+        let store = AtharStore.shared
+        // الخط المحفوظ قبل أول رسم — المخزن يضبط الطابع والنقش في init ولا يعرف الخط.
+        store.applyStoredTheme()
+        _store = StateObject(wrappedValue: store)
+    }
 
     var body: some Scene {
         WindowGroup {
             RootView()
+                // تغيير اللغة يعيد بناء الجذر وحده — قبل غطاء الترحيب لا فوقه، وإلا هُدم الغطاء
+                // وأُعيد عرضه من أوّله. أما خط الواجهة فتُعاد به مفاتيح التبويبات داخل RootView
+                // لا الجذر كله، حتى لا تُطوى «الإعدادات» ولا يُهدم الترحيب مع كل بلاطة خط.
+                .id(AppConfig.arabicOnly ? AppLanguage.ar.rawValue : store.appLanguage.rawValue)
                 .fullScreenCover(isPresented: Binding(
                     get: { !store.didOnboard },
                     set: { if !$0 { store.didOnboard = true } }
@@ -23,7 +37,6 @@ struct AtharApp: App {
                 }
                 .environmentObject(store)
                 .environment(\.layoutDirection, AppConfig.arabicOnly ? .rightToLeft : store.appLanguage.layoutDirection)
-                .id(AppConfig.arabicOnly ? AppLanguage.ar : store.appLanguage)
                 .tint(Theme.accent)
                 // القارئ الظاهر يفرض سِمة ورقه على شريط الحالة أيضًا.
                 // بحث iOS واختصارات الودجات: كلاهما يصبّ في وجهة معلّقة يعرضها الجذر.

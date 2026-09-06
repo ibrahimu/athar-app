@@ -27,6 +27,7 @@ final class DhikrSpeaker: NSObject, ObservableObject, AVSpeechSynthesizerDelegat
         stop()
         Recitation.shared.pause()
         AyahAudio.shared.stop()
+        RadioPlayer.shared.pause()                    // وإلا نُطق الذكر فوق البثّ الحيّ
         self.text = text; remaining = max(1, times); self.onEach = onEach; self.onDone = onDone
         let s = AVAudioSession.sharedInstance()
         try? s.setCategory(.playback, mode: .spokenAudio)

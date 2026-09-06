@@ -106,6 +106,7 @@ struct SurahReaderView: View {
                     bookmarks: Set(store.bookmarks),
                     highlights: store.highlights,
                     playing: ayahAudio.current,
+                    selected: selected,
                     isDark: effectiveTheme == .night,
                     framed: store.readingMode == .framed,
                     bottomInset: bottomReserve,
@@ -272,6 +273,7 @@ struct SurahReaderView: View {
                                  bookmarks: Set(store.bookmarks),
                                  highlights: store.highlights,
                                  playing: ayahAudio.current,
+                                 selected: selected,
                                  isDark: effectiveTheme == .night,
                                  onTapAyah: { selected = $0 },
                                  onVisible: {
@@ -428,6 +430,8 @@ struct MushafPager: View {
     let highlights: [String: String]
     /// الآية الجارية في التلاوة آيةً آية — تُظلَّل بلون الطابع.
     var playing: AyahRef? = nil
+    /// الآية التي نقرها القارئ (ورقة الخيارات مفتوحة عليها) — تُبرَز فوق كل تظليل.
+    var selected: AyahRef? = nil
     let isDark: Bool
     var framed: Bool = false
     /// مساحةٌ إضافية أسفل الصفحة يحجزها المشغّل المصغّر حين تجري التلاوة.
@@ -444,7 +448,7 @@ struct MushafPager: View {
                     ForEach(1...Quran.pageCount, id: \.self) { page in
                         MushafPageContent(page: page, palette: palette, scale: scale,
                                           bookmarks: bookmarks, highlights: highlights,
-                                          playing: playing,
+                                          playing: playing, selected: selected,
                                           isDark: isDark, framed: framed,
                                           bottomInset: bottomInset, onTapAyah: onTapAyah)
                             .containerRelativeFrame(.horizontal)
@@ -476,10 +480,54 @@ private struct MushafPageContent: View {
     let bookmarks: Set<AyahRef>
     let highlights: [String: String]
     var playing: AyahRef? = nil
+    /// الآية المنقورة — تُبرَز فوق تظليل التلاوة وألوان القارئ.
+    var selected: AyahRef? = nil
     let isDark: Bool
     var framed: Bool = false
     var bottomInset: CGFloat = 0
     let onTapAyah: (AyahRef) -> Void
+
+    // MARK: ملاءمة الصفحة للشاشة
+
+    /// معامل التصغير التلقائي لهذه الصفحة وحدها (١ = بلا تصغير). الصفحة الممتلئة
+    /// تطول عن الشاشة بمكبِّر الخطّ أو بحجم نصّ النظام، فتُقاس وتُصغَّر حتى تظهر
+    /// كاملةً بلا تمرير كالمصحف المطبوع — إن فعّل القارئ «الصفحة كاملة على الشاشة».
+    @State private var fit: Double = 1
+    /// عدد جولات الملاءمة منذ آخر إعادة ضبط — سقفٌ يمنع حلقة قياس/رسم لا تنتهي.
+    @State private var fitPasses = 0
+    /// آخر ارتفاع مقيس لكومة الصفحة — يُعاد استعماله حين يتبدّل المتاح لا المحتوى.
+    @State private var measured: CGFloat = 0
+    /// الصفحة أطول من المتاح رغم أقصى تصغير (أو قبل اكتمال الملاءمة) — فيبقى التمرير.
+    @State private var overflows = false
+    /// أحجام «إمكانية الوصول» في الخط الديناميكي: المستخدم كبّر عمدًا، فلا تُصغَّر الصفحة عليه.
+    @Environment(\.dynamicTypeSize) private var typeSize
+
+    /// أصغر معامل مسموح: أدنى منه يضيق النصّ الشرعي عن القراءة، فيُترك التمرير للباقي.
+    private static let minFit = 0.75
+    /// المقياس الفعلي للرسم: مكبِّر القارئ مضروبًا في معامل الملاءمة.
+    private var drawScale: Double { scale * fit }
+
+    /// جولة ملاءمة: الارتفاع ينمو مع المقياس شبه تربيعيًّا (سطورٌ أكثر وأطول)،
+    /// فالجذر التربيعي للنسبة يقرّب في جولةٍ أو جولتين، مع هامش ١٫٥٪ احتياطًا.
+    private func refit(measured h: CGFloat, available: CGFloat) {
+        guard store.fitPage, available > 0, h > 0 else { overflows = false; return }
+        let over = h > available + 1
+        overflows = over
+        // حجم إمكانية الوصول يُلغي التصغير لا التمرير: overflows بقيت صادقة فيبقى التمرير.
+        guard !typeSize.isAccessibilitySize else { return }
+        guard over, fitPasses < 4, fit > Self.minFit else { return }
+        let next = max(Self.minFit, fit * sqrt(Double(available / h)) * 0.985)
+        guard abs(next - fit) > 0.002 else { return }
+        fitPasses += 1
+        fit = next
+    }
+
+    /// إعادة الضبط حين يتبدّل المكبِّر أو المتاح: الرجوع إلى ١ يغيّر الارتفاع فيعيد
+    /// القياسُ الملاءمةَ من جديد؛ وإن كان ١ أصلًا لم يتغيّر شيء، فتُحسب بالقياس المحفوظ.
+    private func resetFit(available: CGFloat) {
+        fitPasses = 0
+        if fit != 1 { fit = 1 } else { refit(measured: measured, available: available) }
+    }
 
     /// آيات الصفحة مقسومة أشواطًا: كل شوط سورة واحدة، لتظهر فاتحة
     /// السورة الجديدة في موضعها إن بدأت وسط الصفحة.
@@ -500,11 +548,15 @@ private struct MushafPageContent: View {
         // يقف تحت آخر آية وسط الشاشة كرقاقةٍ ضائعة. حدٌّ أدنى للارتفاع يساوي المتاح
         // ناقص هوامش الفرع (١٢+٧٠ سادة، ١٠+٢٠+١٦+٧٤ مؤطَّرة) وحجزَ المشغّل، فيثبت
         // الرقم في ذيل الصفحة ولا يتغيّر شيء في الصفحات الممتلئة.
+        // الملاءمة تقيس الارتفاع الطبيعي للكومة نفسها (قبل الحدّ الأدنى) بالمتاح
+        // ذاته، وتصغّر الخطّ حتى تدخل الصفحة في الشاشة؛ والتمرير يُعطَّل ما دامت
+        // داخلةً، ويبقى لصفحةٍ لا تنزل عن أقصى تصغير.
         GeometryReader { geo in
+            let available = max(0, geo.size.height - (framed ? 120 : 82) - bottomInset)
             ScrollView {
                 if framed {
-                    pageStack
-                        .frame(minHeight: max(0, geo.size.height - 120 - bottomInset), alignment: .top)
+                    measuredStack
+                        .frame(minHeight: available, alignment: .top)
                         .padding(.horizontal, 17)
                         .padding(.top, 20)
                         .padding(.bottom, 16)
@@ -514,8 +566,8 @@ private struct MushafPageContent: View {
                         .padding(.bottom, 74 + bottomInset)
                         .readableWidth(700)
                 } else {
-                    pageStack
-                        .frame(minHeight: max(0, geo.size.height - 82 - bottomInset), alignment: .top)
+                    measuredStack
+                        .frame(minHeight: available, alignment: .top)
                         .padding(.horizontal, 20)
                         .padding(.top, 12)
                         .padding(.bottom, 70 + bottomInset)
@@ -523,16 +575,38 @@ private struct MushafPageContent: View {
                 }
             }
             .scrollIndicators(.hidden)
+            .scrollDisabled(store.fitPage && !overflows)
+            .onPreferenceChange(PageHeightKey.self) { h in
+                measured = h
+                refit(measured: h, available: available)
+            }
+            .onChange(of: store.fitPage) { _, on in
+                fitPasses = 0
+                if on { refit(measured: measured, available: available) } else { fit = 1; overflows = false }
+            }
+            .onChange(of: scale) { _, _ in resetFit(available: available) }
+            .onChange(of: typeSize) { _, _ in resetFit(available: available) }   // الخروج من حجم إمكانية الوصول يعيد الملاءمة، والدخول إليه يعيد الخطّ إلى ١
+            .onChange(of: available) { _, a in resetFit(available: a) }
         }
+        .animation(Motion.snappy, value: selected)
+    }
+
+    /// الكومة مع قياس ارتفاعها الطبيعي — القياس على الكومة ذاتها لا على إطار الحدّ الأدنى.
+    private var measuredStack: some View {
+        pageStack.background(
+            GeometryReader { g in
+                Color.clear.preference(key: PageHeightKey.self, value: g.size.height)
+            }
+        )
     }
 
     private var pageStack: some View {
-            VStack(spacing: 14 * scale) {
+            VStack(spacing: 14 * drawScale) {
                 ForEach(runs, id: \.first) { run in
                     if let first = run.first, first.ayah == 1 {
                         surahHeader(first.surah)
                     }
-                    FlowLayout(lineSpacing: 14 * scale, wordSpacing: 5 * scale) {
+                    FlowLayout(lineSpacing: 14 * drawScale, wordSpacing: 5 * drawScale) {
                         ForEach(tokens(of: run)) { tokenView($0) }
                     }
                     // جوهري: FlowLayout يرصّ من اليمين يدويًا، وبيئة RTL
@@ -577,7 +651,7 @@ private struct MushafPageContent: View {
                         .fill(palette.accent.opacity(0.55))
                         .frame(width: 7, height: 7)
                     Text(loc("سُورَةُ %1$@", su.name))
-                        .font(Theme.naskhFont(size: 18, bold: true))
+                        .font(Theme.naskhFont(size: 18, scale: min(fit, 1), bold: true))
                         .foregroundStyle(palette.accent)
                         .lineLimit(1)
                         .fixedSize()
@@ -588,7 +662,7 @@ private struct MushafPageContent: View {
                 }
                 if su.hasBasmalah, su.id != 1 {
                     Text(Quran.basmalah)
-                        .font(Theme.dhikrFont(size: 20, scale: min(scale, 1.4)))
+                        .font(Theme.dhikrFont(size: 20, scale: min(scale, 1.4) * fit))
                         .foregroundStyle(palette.ink.opacity(0.85))
                 }
             }
@@ -655,10 +729,10 @@ private struct MushafPageContent: View {
         let hidden = isHidden(t)
         Group {
             if t.isMarker {
-                AyahMedallion(number: t.number, size: 26 * scale, tint: palette.accent)
+                AyahMedallion(number: t.number, size: 26 * drawScale, tint: palette.accent)
             } else {
                 Text(t.text)
-                    .font(Theme.dhikrFont(size: 23, scale: scale))
+                    .font(Theme.dhikrFont(size: 23, scale: drawScale))
                     .foregroundStyle(t.isSajdah ? palette.accent : palette.ink)
                     // الكلمة المخفيّة تبقى بحجمها (فلا يتغيّر رصّ السطر) وتُغطّى بلوحٍ ناعم.
                     .opacity(hidden ? 0 : 1)
@@ -676,7 +750,10 @@ private struct MushafPageContent: View {
         .padding(.vertical, 3)
         .background(
             RoundedRectangle(cornerRadius: 5, style: .continuous)
-                .fill(t.ref == playing ? palette.accent.opacity(0.18) : (hl?.color(dark: isDark) ?? .clear))
+                // المنقورة أولًا، ثم الجارية في التلاوة، ثم تظليل القارئ.
+                .fill(t.ref == selected ? palette.accent.opacity(0.22)
+                      : t.ref == playing ? palette.accent.opacity(0.18)
+                      : (hl?.color(dark: isDark) ?? .clear))
         )
         .overlay(alignment: .topLeading) {
             if t.isMarker, bookmarks.contains(t.ref) {
@@ -696,6 +773,12 @@ private struct MushafPageContent: View {
             }
         }
     }
+}
+
+/// ارتفاع كومة الصفحة الطبيعي — يصعد من خلفية الكومة إلى الصفحة لتقرّر الملاءمة.
+private struct PageHeightKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
 }
 
 // MARK: - ضوابط القراءة
@@ -762,6 +845,19 @@ struct ReaderControls: View {
                                 .pressable()
                                 .accessibilityAddTraits(on ? .isSelected : [])
                             }
+                        }
+                        // في وضعَي الصفحة: تصغيرٌ تلقائي حتى تظهر الصفحة كاملةً بلا تمرير
+                        // كالمصحف المطبوع. لا معنى له في «آية آية» فيُخفى هناك.
+                        if store.readingMode != .ayah {
+                            Toggle(isOn: Binding(get: { store.fitPage }, set: { store.fitPage = $0 })) {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(loc("الصفحة كاملة على الشاشة")).font(Theme.display(14, weight: .medium)).foregroundStyle(Theme.ink)
+                                    Text(loc("تصغير الخط تلقائيًّا حتى تظهر الصفحة بلا تمرير")).font(Theme.display(11)).foregroundStyle(Theme.inkFaint)
+                                }
+                            }
+                            .tint(Theme.accent)
+                            .padding(.horizontal, 12).padding(.vertical, 8)
+                            .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Theme.surfaceAlt))
                         }
                     }
 
@@ -1184,6 +1280,8 @@ struct AyahListPage: View {
     let bookmarks: Set<AyahRef>
     let highlights: [String: String]
     var playing: AyahRef? = nil
+    /// الآية المنقورة — بطاقتها تُبرَز فوق تظليل التلاوة والألوان.
+    var selected: AyahRef? = nil
     let isDark: Bool
     let onTapAyah: (AyahRef) -> Void
     let onVisible: (AyahRef) -> Void
@@ -1224,7 +1322,9 @@ struct AyahListPage: View {
                 .padding(14)
                 .background(
                     RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous)
-                        .fill(ref == playing ? palette.accent.opacity(0.16) : (hl?.color(dark: isDark) ?? palette.ink.opacity(0.03)))
+                        .fill(ref == selected ? palette.accent.opacity(0.22)
+                              : ref == playing ? palette.accent.opacity(0.16)
+                              : (hl?.color(dark: isDark) ?? palette.ink.opacity(0.03)))
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous)
@@ -1240,6 +1340,7 @@ struct AyahListPage: View {
             }
         }
         .padding(.top, 8)
+        .animation(Motion.snappy, value: selected)
     }
 }
 

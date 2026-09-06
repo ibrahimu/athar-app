@@ -139,6 +139,7 @@ struct SectionDestination: View {
         case .mushaf:     MushafView(embedded: true)
         case .adhkar:     AdhkarIndexView(embedded: true)
         case .prayer:     PrayerViewEmbedded()
+        case .live:       LiveView()
         case .tasbih:     TasbihView(embedded: true)
         case .hajj:       HajjView(embedded: true)
         case .qibla:      QiblaView()

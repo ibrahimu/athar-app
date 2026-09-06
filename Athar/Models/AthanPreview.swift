@@ -18,6 +18,7 @@ final class AthanPreview: NSObject, ObservableObject, AVAudioPlayerDelegate {
         guard let name = sound.fileName,
               let url = Bundle.main.url(forResource: name + "-full", withExtension: "m4a") else { return }
         Recitation.shared.pause()                     // لا يتداخل صوتان
+        RadioPlayer.shared.pause()                    // ولا الأذان فوق الإذاعة
         let session = AVAudioSession.sharedInstance()
         try? session.setCategory(.playback, mode: .default)
         try? session.setActive(true)

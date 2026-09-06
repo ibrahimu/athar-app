@@ -9,6 +9,11 @@ struct RootView: View {
     @State private var coveredRoute: AppRoute?
     /// «ما الجديد» تراكبٌ فوق التبويبات كلها: الأوراق المطلوبة لحظة الإقلاع كانت تُهدم فور ظهورها.
     @State private var showWhatsNew = false
+    /// مفتاح خط الواجهة الذي تُبنى به التبويبات: الخط يُقرأ من Theme.display لا من حالة مراقَبة،
+    /// فالأوراق المتساوية قيمةً لا تُعاد بغير تبديل الهوية. يلحق بـ store.uiFont فورًا ما دام
+    /// المستخدم خارج «الإعدادات»، ويُؤجَّل حتى مغادرتها إن بدّله منها — إعادة البناء تطوي
+    /// مكدّسها فكانت تُخرجه من شاشة «المظهر» مع كل بلاطة.
+    @State private var fontKey: AppFont = AppFont.current
 
     @ViewBuilder
     private func icon(for tab: AppTab) -> some View {
@@ -23,9 +28,16 @@ struct RootView: View {
         TabView(selection: $selection) {
             ForEach(store.visibleTabs) { tab in
                 view(for: tab)
+                    .id(fontKey)
                     .tabItem { Label { Text(tab.title) } icon: { icon(for: tab) } }
                     .tag(tab)
             }
+        }
+        .onChange(of: store.uiFont) { _, font in
+            if selection != .settings { fontKey = font }
+        }
+        .onChange(of: selection) { _, _ in
+            if fontKey != store.uiFont { fontKey = store.uiFont }
         }
         // تغيّر المنطقة الزمنية (سفر): تُعاد جدولة التنبيهات وتُحدَّث الودجات فورًا،
         // وإلا بقيت تنبيهات الأذان على توقيت البلد السابق حتى الفتح التالي.
@@ -135,6 +147,7 @@ struct RootView: View {
         case .mushaf:   MushafView()
         case .adhkar:   AdhkarIndexView()
         case .prayer:   PrayerView(store: store)
+        case .live:     NavigationStack { LiveView(isRootTab: true) }
         case .tasbih:   TasbihView()
         case .hajj:     HajjView()
         case .qibla:    NavigationStack { QiblaView(isRootTab: true) }

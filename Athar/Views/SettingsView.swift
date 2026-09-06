@@ -638,13 +638,7 @@ struct SettingsView: View {
                         "https://ibrahimu.github.io/athar-app/support.html")
                 SettingsDivider()
                 Link(destination: URL(string: "https://ehsan.sa")!) {
-                    SettingsRow(icon: "heart.fill", tint: Theme.accent(for: "gold"),
-                                title: loc("rowSadaqah"),
-                                subtitle: loc("المنصة الوطنية للعمل الخيري")) {
-                        Image(systemName: "arrow.up.forward")
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(Theme.inkFaint)
-                    }
+                    sadaqahRow
                 }
                 .buttonStyle(.plain)
 
@@ -658,6 +652,42 @@ struct SettingsView: View {
                 .buttonStyle(.plain)
             }
         }
+    }
+
+    /// صفّ إحسان: كصفّ الإعداد نفسه، لكن الرقاقة تحمل شعار المنصة بدل رمز النظام —
+    /// بألوانه الأصلية، وقالبًا بلون واحد حين تُوحَّد الأيقونات.
+    private var sadaqahRow: some View {
+        let gold = Theme.accent(for: "gold")
+        let chip = IconChip.Size.sm.rawValue
+        return HStack(spacing: 13) {
+            Image("EhsanLogo")
+                .renderingMode(store.unifyIcons ? .template : .original)
+                .resizable()
+                .scaledToFit()
+                .foregroundStyle(Theme.accent)
+                .frame(width: chip * 0.55, height: chip * 0.55)
+                .frame(width: chip, height: chip)
+                .background(Circle().fill(gold.opacity(0.13)))
+                .accessibilityHidden(true)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(loc("rowSadaqah"))
+                    .font(Theme.display(16, weight: .regular))
+                    .foregroundStyle(Theme.ink)
+                Text(loc("المنصة الوطنية للعمل الخيري"))
+                    .font(Theme.display(12))
+                    .foregroundStyle(Theme.inkFaint)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 8)
+            Image(systemName: "arrow.up.forward")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(Theme.inkFaint)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .contentShape(Rectangle())
     }
 
     private func linkRow(_ icon: String, _ tint: Color, _ title: String, _ url: String) -> some View {

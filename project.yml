@@ -6,6 +6,11 @@ options:
   createIntermediateGroups: true
   developmentLanguage: ar
   groupSortPosition: top
+  # خط «ثمانية» المموَّه (Resources/Fonts/Obf/*.bin) يُنسخ إلى حزمة التطبيق كمورد
+  # لا يُترجَم؛ يفكّه FontLoader في الذاكرة عند الإقلاع.
+  fileTypes:
+    bin:
+      buildPhase: resources
 
 settings:
   base:
@@ -77,6 +82,8 @@ targets:
         excludes:
           - "Recitation.swift"
           - "AyahAudio.swift"
+          - "LiveStreams.swift"
+          - "RadioPlayer.swift"
           - "CloudKV.swift"
           - "CloudSync.swift"
           - "GroupKhatmah.swift"
@@ -89,10 +96,12 @@ targets:
           - "hajj.json"
           - "sharh40.json"
           - "Resources/**"
-      # خطّ النسخ للأذكار والمسبحة على الساعة.
+      # خطّ النسخ للأذكار والمسبحة على الساعة. مجموعة لا مرجع مجلّد حتى يعمل الاستثناء:
+      # خط «ثمانية» المموَّه للتطبيق وحده — الساعة لا تسجّله ولا تحمله.
       - path: Athar/Resources/Fonts
-        type: folder
         buildPhase: resources
+        excludes:
+          - "Obf/**"
     dependencies:
       - target: AtharWatchWidget
         embed: true
@@ -122,6 +131,8 @@ targets:
         excludes:
           - "Recitation.swift"
           - "AyahAudio.swift"
+          - "LiveStreams.swift"
+          - "RadioPlayer.swift"
           - "CloudKV.swift"
           - "CloudSync.swift"
           - "GroupKhatmah.swift"
@@ -151,6 +162,8 @@ targets:
           # محرّكا التلاوة للتطبيق وحده — لا داعي لحملهما في الودجة.
           - "Recitation.swift"
           - "AyahAudio.swift"
+          - "LiveStreams.swift"
+          - "RadioPlayer.swift"
           - "GroupKhatmah.swift"
     settings:
       base:

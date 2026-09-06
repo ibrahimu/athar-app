@@ -42,6 +42,8 @@ struct WhatsNewView: View {
               detail: "الصلاة القادمة والمسبحة وذكر اليوم على الساعة، وودجات الحديث والاسم والراتبة.", tab: nil),
         .init(id: "group", icon: "person.3.fill", accent: "gold", title: "ختمة جماعية وإحصاء شهري",
               detail: "ختمة برمز للعائلة، وتقرير هجري لأذكارك وصفحاتك وصلواتك، وتصدير بياناتك ملفًا.", tab: .khatmah),
+        .init(id: "live", icon: "dot.radiowaves.left.and.right", accent: "sea", title: "البث المباشر",
+              detail: "المسجد الحرام والمسجد النبوي مباشرة، وإذاعة القرآن الكريم", tab: .live),
     ]
 
     var onOpen: ((AppTab) -> Void)? = nil

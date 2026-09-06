@@ -75,7 +75,7 @@ struct SourcesView: View {
                     block(
                         icon: "textformat",
                         title: loc("الخط"),
-                        body: loc("خط **Noto Naskh Arabic** من مشروع Noto، مرخّص برخصة الخطوط المفتوحة SIL Open Font License 1.1 التي تتيح التضمين في التطبيقات."),
+                        body: loc("خط **Noto Naskh Arabic** من مشروع Noto، مرخّص برخصة الخطوط المفتوحة SIL Open Font License 1.1 التي تتيح التضمين في التطبيقات. وخط **ثمانية** — © شركة ثمانية للنشر والتوزيع، مضمَّن بترخيصها للتطبيقات."),
                         linkTitle: "notofonts.github.io",
                         url: "https://notofonts.github.io",
                         note: nil,
@@ -115,7 +115,18 @@ struct SourcesView: View {
                         index: 9
                     )
 
-                    closing.appearStagger(10)
+                    block(
+                        icon: "heart.circle.fill",
+                        title: loc("الشعارات"),
+                        body: loc("شعار **إحسان** — منصة إحسان الوطنية للعمل الخيري، يُستخدم للتعريف بالمنصة فقط."),
+                        linkTitle: "ehsan.sa",
+                        url: "https://ehsan.sa",
+                        note: nil,
+                        accent: Theme.accent(for: "maghrib"),
+                        index: 10
+                    )
+
+                    closing.appearStagger(11)
                 }
                 .padding(.horizontal, 18)
                 .padding(.top, 8)

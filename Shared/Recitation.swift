@@ -155,6 +155,12 @@ enum DownloadState: Equatable {
 
 /// يشغّل سورة كاملة — من الملف المحمَّل إن وُجد، وإلا بثًّا من الشبكة.
 /// كل اتصال بالشبكة هنا لا يقع إلا بضغطة المستخدم على «تشغيل» أو «تنزيل».
+extension Notification.Name {
+    /// يُنشر حين يبدأ أي محرّك صوت في التطبيق (التلاوة، الآية، الإذاعة): مشغّل YouTube
+    /// المضمّن في «البث المباشر» يسمعه فيوقف الفيديو، إذ لا يعرفه أيّ محرّك.
+    static let atharAudioStarted = Notification.Name("athar.audioStarted")
+}
+
 @MainActor
 final class Recitation: NSObject, ObservableObject {
     static let shared = Recitation()
@@ -294,6 +300,7 @@ final class Recitation: NSObject, ObservableObject {
             url = reciter.url(surah: s)
         }
         guard let url else { failed = true; return }
+        NotificationCenter.default.post(name: .atharAudioStarted, object: nil)
 
         lastPlayed = s
         UserDefaults(suiteName: AtharStore.appGroup)?.set(s, forKey: Self.lastKey)
@@ -395,6 +402,8 @@ final class Recitation: NSObject, ObservableObject {
         player?.play()
         player?.rate = rate
         isPlaying = true
+        // تلاوة الآيات تمسح معلومات شاشة القفل عند انتهائها؛ فتُعاد كتابتها عند الاستئناف.
+        if MPNowPlayingInfoCenter.default().nowPlayingInfo == nil { updateNowPlayingInfo() }
         updateNowPlayingTime()
     }
 
@@ -407,7 +416,10 @@ final class Recitation: NSObject, ObservableObject {
         isBuffering = false
         progress = 0; elapsed = 0; duration = 0
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
-        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        // الإذاعة تشارك الجلسة نفسها: إطفاؤها تحتها يُسكت البثّ وهو ما زال «يعمل» في الواجهة.
+        if !RadioPlayer.shared.isPlaying {
+            try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        }
     }
 
     func seek(to fraction: Double) {
@@ -481,21 +493,35 @@ final class Recitation: NSObject, ObservableObject {
         guard !remoteReady else { return }
         remoteReady = true
         let c = MPRemoteCommandCenter.shared()
+        // تلاوة الآيات تُوقف هذه التلاوة مؤقّتًا لا تُنهيها؛ فما دامت هي الجارية
+        // تُترك أزرار شاشة القفل لها، وإلا استأنف الزرّ الصوتين معًا.
         c.playCommand.addTarget { [weak self] _ in
             guard let self else { return .commandFailed }
-            return MainActor.assumeIsolated { self.resume(); return .success }
+            return MainActor.assumeIsolated {
+                guard !AyahAudio.shared.isActive else { return .noActionableNowPlayingItem }
+                self.resume(); return .success
+            }
         }
         c.pauseCommand.addTarget { [weak self] _ in
             guard let self else { return .commandFailed }
-            return MainActor.assumeIsolated { self.pause(); return .success }
+            return MainActor.assumeIsolated {
+                guard !AyahAudio.shared.isActive else { return .noActionableNowPlayingItem }
+                self.pause(); return .success
+            }
         }
         c.nextTrackCommand.addTarget { [weak self] _ in
             guard let self else { return .commandFailed }
-            return MainActor.assumeIsolated { self.next(); return .success }
+            return MainActor.assumeIsolated {
+                guard !AyahAudio.shared.isActive else { return .noActionableNowPlayingItem }
+                self.next(); return .success
+            }
         }
         c.previousTrackCommand.addTarget { [weak self] _ in
             guard let self else { return .commandFailed }
-            return MainActor.assumeIsolated { self.previous(); return .success }
+            return MainActor.assumeIsolated {
+                guard !AyahAudio.shared.isActive else { return .noActionableNowPlayingItem }
+                self.previous(); return .success
+            }
         }
     }
 
@@ -505,8 +531,20 @@ final class Recitation: NSObject, ObservableObject {
         info[MPMediaItemPropertyTitle] = "سورة \(su.name)"
         info[MPMediaItemPropertyArtist] = reciter.name
         info[MPMediaItemPropertyAlbumTitle] = "القرآن الكريم — أثر"
+        if let art = Self.nowPlayingArtwork { info[MPMediaItemPropertyArtwork] = art }
         MPNowPlayingInfoCenter.default().nowPlayingInfo = info
     }
+
+    /// أيقونة التطبيق صورةً لشاشة القفل ومركز التحكّم — تُبنى مرّة واحدة وتشاركها
+    /// تلاوة السور وتلاوة الآيات، حتى لا يظهر مربّع رمادي مكان الغلاف.
+    static let nowPlayingArtwork: MPMediaItemArtwork? = {
+        #if canImport(UIKit)
+        guard let image = UIImage(named: "NowPlayingArt") else { return nil }
+        return MPMediaItemArtwork(boundsSize: image.size) { _ in image }
+        #else
+        return nil
+        #endif
+    }()
 
     private func updateNowPlayingTime() {
         guard MPNowPlayingInfoCenter.default().nowPlayingInfo != nil else { return }

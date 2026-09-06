@@ -3,7 +3,8 @@ import Foundation
 /// التبويبات المتاحة في الشريط السفلي. المستخدم يختار أيّها يظهر وبأي ترتيب،
 /// وكل قسم في التطبيق تبويبٌ محتمل — فمن أراد «الختمة» أو «الحديث» أسفل الشاشة وضعه.
 enum AppTab: String, CaseIterable, Identifiable, Codable {
-    case home, mushaf, adhkar, prayer, tasbih, hajj, qibla, hifz, recitation,
+    // «live» بعد «prayer» مباشرة: ترتيب الحالات هو ترتيب البلاطات في مجموعة «الصلاة والعبادة».
+    case home, mushaf, adhkar, prayer, live, tasbih, hajj, qibla, hifz, recitation,
          khatmah, wird, hadith, names, ahkam, prayerLog, calendar, zakat, sunan, settings
 
     var id: String { rawValue }
@@ -25,7 +26,7 @@ enum AppTab: String, CaseIterable, Identifiable, Codable {
     var group: Group {
         switch self {
         case .mushaf, .recitation, .khatmah, .wird, .hifz: return .quran
-        case .prayer, .qibla, .prayerLog, .hajj, .sunan:    return .worship
+        case .prayer, .live, .qibla, .prayerLog, .hajj, .sunan: return .worship
         case .adhkar, .tasbih, .hadith, .names, .ahkam:     return .knowledge
         case .calendar, .zakat, .home, .settings:           return .tools
         }
@@ -37,6 +38,7 @@ enum AppTab: String, CaseIterable, Identifiable, Codable {
         case .mushaf:     return loc("mushaf")
         case .adhkar:     return loc("adhkar")
         case .prayer:     return loc("prayer")
+        case .live:       return loc("البث المباشر")
         case .tasbih:     return loc("tasbih")
         case .hajj:       return loc("hajj")
         case .qibla:      return loc("qibla")
@@ -61,6 +63,7 @@ enum AppTab: String, CaseIterable, Identifiable, Codable {
         case .mushaf:     return "book.closed.fill"       // مصحف
         case .adhkar:     return "text.book.closed.fill"
         case .prayer:     return "moon.stars.fill"        // بديل — الفعلي سجّادة مخصّصة
+        case .live:       return "dot.radiowaves.left.and.right"
         case .tasbih:     return "circle.hexagongrid.fill"
         case .hajj:       return "cube.fill"              // احتياط فقط — الظاهر دائمًا كعبة مرسومة
         case .qibla:      return "location.north.line.fill"
@@ -86,6 +89,7 @@ enum AppTab: String, CaseIterable, Identifiable, Codable {
         case .mushaf:     return "green"
         case .adhkar:     return "sea"
         case .prayer:     return "night"
+        case .live:       return "sea"
         case .tasbih:     return "calm"
         case .hajj:       return "gold"
         case .qibla:      return "maghrib"
@@ -111,6 +115,7 @@ enum AppTab: String, CaseIterable, Identifiable, Codable {
         case .mushaf:     return loc("المصحف كاملًا بالرسم العثماني")
         case .adhkar:     return loc("أذكار اليوم بتخريجها")
         case .prayer:     return loc("مواقيت الصلاة وتنبيهاتها")
+        case .live:       return loc("الحرمان الشريفان وإذاعة القرآن")
         case .tasbih:     return loc("مسبحة تعدّ لك أورادك")
         case .hajj:       return loc("مناسك العمرة والحج خطوةً خطوة")
         case .qibla:      return loc("اتجاه القبلة من مكانك")
@@ -195,6 +200,7 @@ extension AtharStore {
         static let language   = "athar.language"
         static let bgPattern  = "athar.bgPattern"
         static let unifyIcons = "athar.unifyIcons"
+        static let uiFont     = "athar.uiFont"
     }
 
     /// التبويبات الظاهرة بترتيب المستخدم.
@@ -252,6 +258,17 @@ extension AtharStore {
         }
     }
 
+    /// خط الواجهة. النص الشرعي لا يتأثر به (يبقى نسخًا)، ولا تحمله الساعة والودجات
+    /// فيسقط فيها إلى خط النظام تلقائيًا.
+    var uiFont: AppFont {
+        get { AppFont(rawValue: defaults.string(forKey: TKey.uiFont) ?? "") ?? .system }
+        set {
+            defaults.set(newValue.rawValue, forKey: TKey.uiFont)
+            AppFont.current = newValue
+            objectWillChange.send()
+        }
+    }
+
     var appearance: AppearanceMode {
         get { AppearanceMode(rawValue: defaults.string(forKey: TKey.appearance) ?? "") ?? .system }
         set { defaults.set(newValue.rawValue, forKey: TKey.appearance); objectWillChange.send() }
@@ -283,9 +300,10 @@ extension AtharStore {
         }
     }
 
-    /// تُستدعى مرة عند الإقلاع لمزامنة الطابع والنقش مع الحالة العامة.
+    /// تُستدعى مرة عند الإقلاع لمزامنة الطابع والنقش والخط مع الحالة العامة.
     func applyStoredTheme() {
         Theme.current = appTheme
         BackgroundPattern.current = backgroundPattern
+        AppFont.current = uiFont
     }
 }

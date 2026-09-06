@@ -583,14 +583,49 @@ struct HomeView: View {
         }
     }
 
-    /// «الصدقة تطفئ الخطيئة كما يطفئ الماء النار» — مدخل سريع لإحسان.
+    /// «الصدقة تطفئ الخطيئة كما يطفئ الماء النار» — مدخل سريع لمنصة إحسان.
+    /// النصّ في الجهة القائدة (يمين العربية) وشعار إحسان في الجهة المقابلة.
     private var sadaqahCard: some View {
-        Link(destination: URL(string: "https://ehsan.sa")!) {
-            // التخريج كما في بطاقة القيام بشاشة الصلاة، فلا يبقى حديث بلا مصدر.
-            AtharLinkRow(icon: "heart.fill",
-                         tint: Theme.accent(for: "gold"),
-                         title: loc("صدقة اليوم"),
-                         subtitle: "«الصدقة تطفئ الخطيئة كما يطفئ الماء النار» — رواه الترمذي")
+        let gold = Theme.accent(for: "gold")
+        return Link(destination: URL(string: "https://ehsan.sa")!) {
+            AtharCard(padding: 16, tint: gold) {
+                HStack(alignment: .center, spacing: 14) {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(loc("بادر بالإحسان"))
+                            .font(Theme.display(17, weight: .bold))
+                            .foregroundStyle(Theme.ink)
+                        // حديث، فيبقى بخطّ النسخ ولون الحبر مهما تبدّل خطّ الواجهة.
+                        // التخريج كما في بطاقة القيام بشاشة الصلاة، فلا يبقى حديث بلا مصدر.
+                        Text("«الصدقة تطفئ الخطيئة كما يطفئ الماء النار» — رواه الترمذي")
+                            .font(Theme.naskhFont(size: 13))
+                            .foregroundStyle(Theme.ink)
+                            .lineSpacing(3)
+                            .multilineTextAlignment(.leading)
+                            .fixedSize(horizontal: false, vertical: true)
+                        HStack(spacing: 5) {
+                            Text(loc("تبرّع الآن"))
+                            Image(systemName: "arrow.up.forward")
+                                .font(.system(size: 10, weight: .bold))
+                        }
+                        .font(Theme.display(12, weight: .semibold))
+                        .foregroundStyle(gold)
+                        .padding(.horizontal, 12).padding(.vertical, 7)
+                        .background(Capsule().fill(gold.opacity(0.14)))
+                        .overlay(Capsule().strokeBorder(gold.opacity(0.2), lineWidth: 0.5))
+                        .padding(.top, 2)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                    // شعار إحسان بألوانه، وفي وضع الأيقونات الموحّد قالبًا بلون واحد.
+                    Image("EhsanLogo")
+                        .renderingMode(store.unifyIcons ? .template : .original)
+                        .resizable()
+                        .scaledToFit()
+                        .foregroundStyle(Theme.accent)
+                        .frame(height: 64)
+                        .accessibilityHidden(true)
+                }
+            }
         }
         .pressable()
     }

@@ -20,6 +20,7 @@ struct AppearanceView: View {
                     tabBar
                 } else {
                     themes
+                    fontPicker
                     iconStylePicker
                     backgroundPicker
                     appearanceMode
@@ -138,6 +139,71 @@ struct AppearanceView: View {
                 .foregroundStyle(on ? accent : Theme.inkSoft)
         }
         .scaleEffect(on ? 1.03 : 1)
+    }
+
+    // MARK: خط الواجهة
+
+    private var fontPicker: some View {
+        VStack(spacing: 8) {
+            SettingsGroupTitle(text: loc("خط الواجهة"), tint: Theme.accent(for: "dusk"))
+            VStack(spacing: 10) {
+                ForEach(AppFont.allCases) { font in
+                    Button {
+                        withAnimation(Motion.gentle) { store.uiFont = font }
+                        Haptics.tap(enabled: store.hapticsEnabled)
+                    } label: {
+                        fontTile(font)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(font.title)
+                    .accessibilityAddTraits(store.uiFont == font ? .isSelected : [])
+                }
+            }
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel(loc("خط الواجهة"))
+            Text(loc("القرآن والأذكار والحديث تبقى بخط النسخ مهما اخترت هنا."))
+                .font(Theme.display(11))
+                .foregroundStyle(Theme.inkFaint)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity)
+        }
+    }
+
+    private func fontTile(_ font: AppFont) -> some View {
+        let on = store.uiFont == font
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Text(font.title)
+                    .font(Theme.display(13, weight: on ? .semibold : .regular))
+                    .foregroundStyle(on ? Theme.accent : Theme.inkSoft)
+                Spacer(minLength: 0)
+                if on {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 18, weight: .bold))
+                        .foregroundStyle(Theme.accent)
+                }
+            }
+            // العيّنة بالخط نفسه لا بخط الواجهة الحالي — هذا ما سيراه المستخدم إن اختاره.
+            Text("أثر — أذكار ومواقيت وقرآن 1448")
+                .font(font.font(size: Theme.scaled(18), weight: .medium))
+                .foregroundStyle(Theme.ink)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+            Text(font.detail)
+                .font(font.font(size: Theme.scaled(12), weight: .regular))
+                .foregroundStyle(Theme.inkFaint)
+                .lineLimit(2)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 14)
+        .background(
+            RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous)
+                .fill(Theme.surfaceGradient)
+                .overlay(RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous)
+                    .strokeBorder(on ? Theme.accent : Theme.hairline.opacity(0.6), lineWidth: on ? 2.5 : 1))
+        )
+        .shadow(color: on ? Theme.accent.opacity(0.22) : .clear, radius: 8, y: 3)
     }
 
     // MARK: لون الأيقونات

@@ -513,4 +513,13 @@ extension AtharStore {
         get { HifzHide(rawValue: defaults.string(forKey: Self.hifzHideKey) ?? "") ?? .off }
         set { defaults.set(newValue.rawValue, forKey: Self.hifzHideKey); objectWillChange.send() }
     }
+
+    /// «الصفحة كاملة على الشاشة»: يصغّر القارئ خطّ الصفحة تلقائيًّا حتى تظهر
+    /// بلا تمرير كالمصحف المطبوع. مفعَّل افتراضيًّا، فيُقرأ المفتاح الغائب صراحةً
+    /// لأن bool(forKey:) يعيد false لما لم يُحفَظ.
+    private static let fitPageKey = "athar.fitPage"
+    var fitPage: Bool {
+        get { defaults.object(forKey: Self.fitPageKey) as? Bool ?? true }
+        set { defaults.set(newValue, forKey: Self.fitPageKey); objectWillChange.send() }
+    }
 }

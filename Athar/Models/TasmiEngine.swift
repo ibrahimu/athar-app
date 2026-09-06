@@ -32,7 +32,8 @@ final class TasmiEngine: NSObject, ObservableObject {
     func start() {
         guard !listening, let recognizer, recognizer.isAvailable else { error = "التعرّف على العربية غير متاح على هذا الجهاز الآن."; return }
         error = nil; transcript = ""
-        Recitation.shared.pause(); AyahAudio.shared.stop()
+        // الإذاعة أيضًا: فئة التسجيل تُسكت مشغّلها وتترك الواجهة على بثّ «يعمل» بلا صوت.
+        Recitation.shared.pause(); AyahAudio.shared.stop(); RadioPlayer.shared.pause()
         let session = AVAudioSession.sharedInstance()
         do {
             // فئة التسجيل لا تقبل duckOthers (تخصّ فئات التشغيل) فكان الضبط يفشل على بعض الأجهزة.
