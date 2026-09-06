@@ -61,4 +61,26 @@ struct LiveSource: Identifiable, Hashable {
         channelName: "إذاعة القرآن الكريم")
 
     static let all: [LiveSource] = [makkah, madinah, radio]
+
+    /// تضمين البثّ بمعرّف القناة لا يعمل لكل القنوات («هذا الفيديو غير متاح» لقناة القرآن الكريم)، بينما تضمين
+    /// معرّف الفيديو الجاري يعمل — لكنه يتغيّر حين تُعاد إذاعة البثّ. فنستخرج المعرّف الجاري من صفحة
+    /// «/live» للقناة عند فتح القسم ونسقط إلى تضمين القناة إن تعذّر.
+    static func resolveLiveVideoId(channel: String) async -> String? {
+        guard let url = URL(string: "https://www.youtube.com/channel/\(channel)/live") else { return nil }
+        var req = URLRequest(url: url, timeoutInterval: 12)
+        req.setValue("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124 Safari/537.36", forHTTPHeaderField: "User-Agent")
+        req.setValue("ar,en", forHTTPHeaderField: "Accept-Language")
+        guard let (data, _) = try? await URLSession.shared.data(for: req),
+              let html = String(data: data, encoding: .utf8),
+              let range = html.range(of: #"<link rel="canonical" href="https://www\.youtube\.com/watch\?v=([A-Za-z0-9_-]{11})""#, options: .regularExpression)
+        else { return nil }
+        let tag = html[range]
+        guard let eq = tag.range(of: "v=") else { return nil }
+        return String(tag[eq.upperBound...].prefix(11))
+    }
+
+    /// رابط تضمين فيديو بعينه (وضع الخصوصية المحسَّن).
+    static func embedURL(videoId: String) -> URL? {
+        URL(string: "https://www.youtube-nocookie.com/embed/\(videoId)?playsinline=1&rel=0&modestbranding=1")
+    }
 }

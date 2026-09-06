@@ -81,6 +81,8 @@ private struct LiveVideoCard: View {
     let source: LiveSource
     var tint: Color
     var live: Color
+    /// رابط التضمين بعد استخراج معرّف البثّ الجاري (أو تضمين القناة إن تعذّر).
+    @State private var embed: URL?
 
     var body: some View {
         AtharCard(padding: 14, tint: tint) {
@@ -99,11 +101,20 @@ private struct LiveVideoCard: View {
                     Spacer(minLength: 6)
                     LivePill(color: live)
                 }
-                if let url = source.embedURL {
-                    LiveWebView(url: url)
-                        .aspectRatio(16 / 9, contentMode: .fit)
-                        .background(RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous).fill(Color.black))
-                        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous))
+                ZStack {
+                    RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous).fill(Color.black)
+                    if let url = embed {
+                        LiveWebView(url: url)
+                    } else {
+                        ProgressView().tint(.white)
+                    }
+                }
+                .aspectRatio(16 / 9, contentMode: .fit)
+                .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous))
+                .task {
+                    guard embed == nil, case .youtubeChannel(let channel) = source.kind else { return }
+                    if let id = await LiveSource.resolveLiveVideoId(channel: channel), let u = LiveSource.embedURL(videoId: id) { embed = u }
+                    else { embed = source.embedURL }
                 }
                 Text(loc("المصدر: قناة %1$@ الرسمية على YouTube", source.channelName))
                     .font(Theme.display(11))
