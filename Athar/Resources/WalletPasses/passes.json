@@ -5,7 +5,7 @@
   "category": "القرآن الكريم",
   "source": "سورة الفاتحة",
   "count": 1,
-  "serial": "athar-fatihah-paper-13",
+  "serial": "athar-fatihah-paper-14",
   "kind": "quran",
   "surah": 1,
   "from": 1,
@@ -17,7 +17,7 @@
   "category": "القرآن الكريم",
   "source": "سورة البقرة: 255",
   "count": 1,
-  "serial": "athar-kursi-paper-13",
+  "serial": "athar-kursi-paper-14",
   "kind": "quran",
   "surah": 2,
   "from": 255,
@@ -29,7 +29,7 @@
   "category": "القرآن الكريم",
   "source": "سورة البقرة: 285–286",
   "count": 1,
-  "serial": "athar-baqarah-end-paper-13",
+  "serial": "athar-baqarah-end-paper-14",
   "kind": "quran",
   "surah": 2,
   "from": 285,
@@ -41,7 +41,7 @@
   "category": "القرآن الكريم",
   "source": "سورة الحشر: 22–24",
   "count": 1,
-  "serial": "athar-hashr-end-paper-13",
+  "serial": "athar-hashr-end-paper-14",
   "kind": "quran",
   "surah": 59,
   "from": 22,
@@ -53,7 +53,7 @@
   "category": "القرآن الكريم",
   "source": "سورة الشرح",
   "count": 1,
-  "serial": "athar-sharh-paper-13",
+  "serial": "athar-sharh-paper-14",
   "kind": "quran",
   "surah": 94,
   "from": 1,
@@ -65,7 +65,7 @@
   "category": "القرآن الكريم",
   "source": "سورة القدر",
   "count": 1,
-  "serial": "athar-qadr-paper-13",
+  "serial": "athar-qadr-paper-14",
   "kind": "quran",
   "surah": 97,
   "from": 1,
@@ -77,7 +77,7 @@
   "category": "القرآن الكريم",
   "source": "سورة العصر",
   "count": 1,
-  "serial": "athar-asr-paper-13",
+  "serial": "athar-asr-paper-14",
   "kind": "quran",
   "surah": 103,
   "from": 1,
@@ -89,7 +89,7 @@
   "category": "القرآن الكريم",
   "source": "سورة الكافرون",
   "count": 1,
-  "serial": "athar-kafirun-paper-13",
+  "serial": "athar-kafirun-paper-14",
   "kind": "quran",
   "surah": 109,
   "from": 1,
@@ -101,7 +101,7 @@
   "category": "القرآن الكريم",
   "source": "سورة الإخلاص",
   "count": 1,
-  "serial": "athar-ikhlas-paper-13",
+  "serial": "athar-ikhlas-paper-14",
   "kind": "quran",
   "surah": 112,
   "from": 1,
@@ -113,7 +113,7 @@
   "category": "القرآن الكريم",
   "source": "سورة الفلق",
   "count": 1,
-  "serial": "athar-falaq-paper-13",
+  "serial": "athar-falaq-paper-14",
   "kind": "quran",
   "surah": 113,
   "from": 1,
@@ -125,7 +125,7 @@
   "category": "القرآن الكريم",
   "source": "سورة الناس",
   "count": 1,
-  "serial": "athar-nas-paper-13",
+  "serial": "athar-nas-paper-14",
   "kind": "quran",
   "surah": 114,
   "from": 1,
@@ -137,7 +137,7 @@
   "category": "أذكار الصباح",
   "source": "رواه مسلم",
   "count": 1,
-  "serial": "athar-m05-paper-13",
+  "serial": "athar-m05-paper-14",
   "kind": "dhikr",
   "dhikrCategory": "morning",
   "dhikrId": "m05"
@@ -148,7 +148,7 @@
   "category": "أذكار الصباح",
   "source": "رواه الترمذي",
   "count": 1,
-  "serial": "athar-m06-paper-13",
+  "serial": "athar-m06-paper-14",
   "kind": "dhikr",
   "dhikrCategory": "morning",
   "dhikrId": "m06"
@@ -159,7 +159,7 @@
   "category": "أذكار الصباح",
   "source": "رواه البخاري — سيد الاستغفار",
   "count": 1,
-  "serial": "athar-m07-paper-13",
+  "serial": "athar-m07-paper-14",
   "kind": "dhikr",
   "dhikrCategory": "morning",
   "dhikrId": "m07"
@@ -170,7 +170,7 @@
   "category": "أذكار الصباح",
   "source": "رواه أبو داود",
   "count": 4,
-  "serial": "athar-m08-paper-13",
+  "serial": "athar-m08-paper-14",
   "kind": "dhikr",
   "dhikrCategory": "morning",
   "dhikrId": "m08"
@@ -181,7 +181,7 @@
   "category": "أذكار الصباح",
   "source": "رواه أبو داود",
   "count": 1,
-  "serial": "athar-m09-paper-13",
+  "serial": "athar-m09-paper-14",
   "kind": "dhikr",
   "dhikrCategory": "morning",
   "dhikrId": "m09"
@@ -192,7 +192,7 @@
   "category": "أذكار الصباح",
   "source": "رواه أبو داود",
   "count": 7,
-  "serial": "athar-m10-paper-13",
+  "serial": "athar-m10-paper-14",
   "kind": "dhikr",
   "dhikrCategory": "morning",
   "dhikrId": "m10"
@@ -203,7 +203,7 @@
   "category": "أذكار الصباح",
   "source": "رواه أبو داود وابن ماجه",
   "count": 1,
-  "serial": "athar-m11-paper-13",
+  "serial": "athar-m11-paper-14",
   "kind": "dhikr",
   "dhikrCategory": "morning",
   "dhikrId": "m11"
@@ -214,7 +214,7 @@
   "category": "أذكار الصباح",
   "source": "رواه الترمذي",
   "count": 1,
-  "serial": "athar-m12-paper-13",
+  "serial": "athar-m12-paper-14",
   "kind": "dhikr",
   "dhikrCategory": "morning",
   "dhikrId": "m12"
@@ -225,7 +225,7 @@
   "category": "أذكار الصباح",
   "source": "رواه أبو داود والترمذي",
   "count": 3,
-  "serial": "athar-m13-paper-13",
+  "serial": "athar-m13-paper-14",
   "kind": "dhikr",
   "dhikrCategory": "morning",
   "dhikrId": "m13"
@@ -236,7 +236,7 @@
   "category": "أذكار الصباح",
   "source": "رواه أبو داود والترمذي",
   "count": 3,
-  "serial": "athar-m14-paper-13",
+  "serial": "athar-m14-paper-14",
   "kind": "dhikr",
   "dhikrCategory": "morning",
   "dhikrId": "m14"
@@ -247,7 +247,7 @@
   "category": "أذكار الصباح",
   "source": "رواه الحاكم والنسائي",
   "count": 3,
-  "serial": "athar-m15-paper-13",
+  "serial": "athar-m15-paper-14",
   "kind": "dhikr",
   "dhikrCategory": "morning",
   "dhikrId": "m15"
@@ -258,7 +258,7 @@
   "category": "أذكار الصباح",
   "source": "رواه أحمد",
   "count": 1,
-  "serial": "athar-m16-paper-13",
+  "serial": "athar-m16-paper-14",
   "kind": "dhikr",
   "dhikrCategory": "morning",
   "dhikrId": "m16"
@@ -269,7 +269,7 @@
   "category": "أذكار الصباح",
   "source": "متفق عليه",
   "count": 100,
-  "serial": "athar-m17-paper-13",
+  "serial": "athar-m17-paper-14",
   "kind": "dhikr",
   "dhikrCategory": "morning",
   "dhikrId": "m17"
@@ -280,7 +280,7 @@
   "category": "أذكار الصباح",
   "source": "متفق عليه",
   "count": 10,
-  "serial": "athar-m18-paper-13",
+  "serial": "athar-m18-paper-14",
   "kind": "dhikr",
   "dhikrCategory": "morning",
   "dhikrId": "m18"
@@ -291,7 +291,7 @@
   "category": "أذكار الصباح",
   "source": "رواه مسلم",
   "count": 3,
-  "serial": "athar-m19-paper-13",
+  "serial": "athar-m19-paper-14",
   "kind": "dhikr",
   "dhikrCategory": "morning",
   "dhikrId": "m19"
@@ -302,7 +302,7 @@
   "category": "أذكار الصباح",
   "source": "رواه ابن ماجه",
   "count": 1,
-  "serial": "athar-m20-paper-13",
+  "serial": "athar-m20-paper-14",
   "kind": "dhikr",
   "dhikrCategory": "morning",
   "dhikrId": "m20"
@@ -313,7 +313,7 @@
   "category": "أذكار الصباح",
   "source": "رواه أبو داود",
   "count": 3,
-  "serial": "athar-m23-paper-13",
+  "serial": "athar-m23-paper-14",
   "kind": "dhikr",
   "dhikrCategory": "morning",
   "dhikrId": "m23"
@@ -324,7 +324,7 @@
   "category": "أذكار الصباح",
   "source": "رواه مسلم",
   "count": 3,
-  "serial": "athar-m24-paper-13",
+  "serial": "athar-m24-paper-14",
   "kind": "dhikr",
   "dhikrCategory": "morning",
   "dhikrId": "m24"
@@ -335,7 +335,7 @@
   "category": "أذكار المساء",
   "source": "رواه مسلم",
   "count": 1,
-  "serial": "athar-e05-paper-13",
+  "serial": "athar-e05-paper-14",
   "kind": "dhikr",
   "dhikrCategory": "evening",
   "dhikrId": "e05"
@@ -346,7 +346,7 @@
   "category": "أذكار المساء",
   "source": "رواه الترمذي",
   "count": 1,
-  "serial": "athar-e06-paper-13",
+  "serial": "athar-e06-paper-14",
   "kind": "dhikr",
   "dhikrCategory": "evening",
   "dhikrId": "e06"
@@ -357,7 +357,7 @@
   "category": "أذكار المساء",
   "source": "رواه أبو داود",
   "count": 4,
-  "serial": "athar-e08-paper-13",
+  "serial": "athar-e08-paper-14",
   "kind": "dhikr",
   "dhikrCategory": "evening",
   "dhikrId": "e08"
@@ -368,7 +368,7 @@
   "category": "أذكار المساء",
   "source": "رواه أبو داود",
   "count": 1,
-  "serial": "athar-e09-paper-13",
+  "serial": "athar-e09-paper-14",
   "kind": "dhikr",
   "dhikrCategory": "evening",
   "dhikrId": "e09"
@@ -379,7 +379,7 @@
   "category": "أذكار المساء",
   "source": "رواه أحمد",
   "count": 1,
-  "serial": "athar-e16-paper-13",
+  "serial": "athar-e16-paper-14",
   "kind": "dhikr",
   "dhikrCategory": "evening",
   "dhikrId": "e16"
@@ -390,7 +390,7 @@
   "category": "أذكار النوم",
   "source": "رواه البخاري",
   "count": 1,
-  "serial": "athar-s01-paper-13",
+  "serial": "athar-s01-paper-14",
   "kind": "dhikr",
   "dhikrCategory": "sleep",
   "dhikrId": "s01"
@@ -401,7 +401,7 @@
   "category": "أذكار النوم",
   "source": "متفق عليه",
   "count": 1,
-  "serial": "athar-s03-paper-13",
+  "serial": "athar-s03-paper-14",
   "kind": "dhikr",
   "dhikrCategory": "sleep",
   "dhikrId": "s03"
@@ -412,7 +412,7 @@
   "category": "أذكار النوم",
   "source": "رواه مسلم",
   "count": 1,
-  "serial": "athar-s08-paper-13",
+  "serial": "athar-s08-paper-14",
   "kind": "dhikr",
   "dhikrCategory": "sleep",
   "dhikrId": "s08"
@@ -423,7 +423,7 @@
   "category": "أذكار النوم",
   "source": "رواه مسلم",
   "count": 1,
-  "serial": "athar-s10-paper-13",
+  "serial": "athar-s10-paper-14",
   "kind": "dhikr",
   "dhikrCategory": "sleep",
   "dhikrId": "s10"
@@ -434,7 +434,7 @@
   "category": "أذكار الاستيقاظ",
   "source": "رواه البخاري",
   "count": 1,
-  "serial": "athar-w01-paper-13",
+  "serial": "athar-w01-paper-14",
   "kind": "dhikr",
   "dhikrCategory": "waking",
   "dhikrId": "w01"
@@ -445,7 +445,7 @@
   "category": "أذكار بعد الصلاة",
   "source": "رواه مسلم",
   "count": 1,
-  "serial": "athar-p02-paper-13",
+  "serial": "athar-p02-paper-14",
   "kind": "dhikr",
   "dhikrCategory": "prayer",
   "dhikrId": "p02"
@@ -456,7 +456,7 @@
   "category": "أذكار بعد الصلاة",
   "source": "متفق عليه",
   "count": 1,
-  "serial": "athar-p03-paper-13",
+  "serial": "athar-p03-paper-14",
   "kind": "dhikr",
   "dhikrCategory": "prayer",
   "dhikrId": "p03"
@@ -467,7 +467,7 @@
   "category": "أذكار بعد الصلاة",
   "source": "رواه مسلم",
   "count": 1,
-  "serial": "athar-p04-paper-13",
+  "serial": "athar-p04-paper-14",
   "kind": "dhikr",
   "dhikrCategory": "prayer",
   "dhikrId": "p04"
@@ -478,7 +478,7 @@
   "category": "أذكار بعد الصلاة",
   "source": "رواه مسلم",
   "count": 1,
-  "serial": "athar-p08-paper-13",
+  "serial": "athar-p08-paper-14",
   "kind": "dhikr",
   "dhikrCategory": "prayer",
   "dhikrId": "p08"
@@ -489,7 +489,7 @@
   "category": "أذكار بعد الصلاة",
   "source": "رواه أبو داود والنسائي",
   "count": 1,
-  "serial": "athar-p10-paper-13",
+  "serial": "athar-p10-paper-14",
   "kind": "dhikr",
   "dhikrCategory": "prayer",
   "dhikrId": "p10"
@@ -500,7 +500,7 @@
   "category": "أذكار الهم والكرب",
   "source": "متفق عليه",
   "count": 1,
-  "serial": "athar-d01-paper-13",
+  "serial": "athar-d01-paper-14",
   "kind": "dhikr",
   "dhikrCategory": "distress",
   "dhikrId": "d01"
@@ -511,7 +511,7 @@
   "category": "أذكار الهم والكرب",
   "source": "سورة الأنبياء: ٨٧",
   "count": 1,
-  "serial": "athar-d02-paper-13",
+  "serial": "athar-d02-paper-14",
   "kind": "dhikr",
   "dhikrCategory": "distress",
   "dhikrId": "d02"
@@ -522,7 +522,7 @@
   "category": "أذكار الهم والكرب",
   "source": "رواه أبو داود",
   "count": 1,
-  "serial": "athar-d03-paper-13",
+  "serial": "athar-d03-paper-14",
   "kind": "dhikr",
   "dhikrCategory": "distress",
   "dhikrId": "d03"
@@ -533,7 +533,7 @@
   "category": "أذكار الهم والكرب",
   "source": "سورة آل عمران: ١٧٣",
   "count": 1,
-  "serial": "athar-d04-paper-13",
+  "serial": "athar-d04-paper-14",
   "kind": "dhikr",
   "dhikrCategory": "distress",
   "dhikrId": "d04"
@@ -544,7 +544,7 @@
   "category": "أذكار الهم والكرب",
   "source": "رواه البخاري",
   "count": 1,
-  "serial": "athar-d05-paper-13",
+  "serial": "athar-d05-paper-14",
   "kind": "dhikr",
   "dhikrCategory": "distress",
   "dhikrId": "d05"
@@ -555,7 +555,7 @@
   "category": "أذكار الهم والكرب",
   "source": "رواه ابن حبان",
   "count": 1,
-  "serial": "athar-d06-paper-13",
+  "serial": "athar-d06-paper-14",
   "kind": "dhikr",
   "dhikrCategory": "distress",
   "dhikrId": "d06"
@@ -566,7 +566,7 @@
   "category": "أذكار الهم والكرب",
   "source": "رواه أحمد",
   "count": 1,
-  "serial": "athar-d07-paper-13",
+  "serial": "athar-d07-paper-14",
   "kind": "dhikr",
   "dhikrCategory": "distress",
   "dhikrId": "d07"
@@ -577,7 +577,7 @@
   "category": "الاستغفار والتوبة",
   "source": "رواه أبو داود والترمذي",
   "count": 3,
-  "serial": "athar-i02-paper-13",
+  "serial": "athar-i02-paper-14",
   "kind": "dhikr",
   "dhikrCategory": "istighfar",
   "dhikrId": "i02"
@@ -588,7 +588,7 @@
   "category": "الاستغفار والتوبة",
   "source": "رواه أبو داود",
   "count": 100,
-  "serial": "athar-i03-paper-13",
+  "serial": "athar-i03-paper-14",
   "kind": "dhikr",
   "dhikrCategory": "istighfar",
   "dhikrId": "i03"
@@ -599,7 +599,7 @@
   "category": "الصلاة على النبي ﷺ",
   "source": "متفق عليه — الصلاة الإبراهيمية",
   "count": 10,
-  "serial": "athar-sl01-paper-13",
+  "serial": "athar-sl01-paper-14",
   "kind": "dhikr",
   "dhikrCategory": "salawat",
   "dhikrId": "sl01"
@@ -610,7 +610,7 @@
   "category": "الباقيات الصالحات",
   "source": "متفق عليه",
   "count": 100,
-  "serial": "athar-t05-paper-13",
+  "serial": "athar-t05-paper-14",
   "kind": "dhikr",
   "dhikrCategory": "tasbih",
   "dhikrId": "t05"
@@ -621,7 +621,7 @@
   "category": "الباقيات الصالحات",
   "source": "رواه مسلم",
   "count": 100,
-  "serial": "athar-t06-paper-13",
+  "serial": "athar-t06-paper-14",
   "kind": "dhikr",
   "dhikrCategory": "tasbih",
   "dhikrId": "t06"
@@ -632,7 +632,7 @@
   "category": "الباقيات الصالحات",
   "source": "رواه مسلم",
   "count": 3,
-  "serial": "athar-t08-paper-13",
+  "serial": "athar-t08-paper-14",
   "kind": "dhikr",
   "dhikrCategory": "tasbih",
   "dhikrId": "t08"
@@ -643,7 +643,7 @@
   "category": "أذكار اليوم والليلة",
   "source": "رواه أبو داود — عند الخروج من المنزل",
   "count": 1,
-  "serial": "athar-y03-paper-13",
+  "serial": "athar-y03-paper-14",
   "kind": "dhikr",
   "dhikrCategory": "daily",
   "dhikrId": "y03"
@@ -654,7 +654,7 @@
   "category": "أذكار اليوم والليلة",
   "source": "رواه أبو داود — عند دخول المنزل",
   "count": 1,
-  "serial": "athar-y04-paper-13",
+  "serial": "athar-y04-paper-14",
   "kind": "dhikr",
   "dhikrCategory": "daily",
   "dhikrId": "y04"
@@ -665,7 +665,7 @@
   "category": "أذكار اليوم والليلة",
   "source": "رواه مسلم والترمذي — بعد الوضوء",
   "count": 1,
-  "serial": "athar-y07-paper-13",
+  "serial": "athar-y07-paper-14",
   "kind": "dhikr",
   "dhikrCategory": "daily",
   "dhikrId": "y07"
@@ -676,7 +676,7 @@
   "category": "أذكار اليوم والليلة",
   "source": "رواه البخاري — بعد الأذان",
   "count": 1,
-  "serial": "athar-y08-paper-13",
+  "serial": "athar-y08-paper-14",
   "kind": "dhikr",
   "dhikrCategory": "daily",
   "dhikrId": "y08"
@@ -687,7 +687,7 @@
   "category": "أذكار اليوم والليلة",
   "source": "رواه مسلم — عند ركوب الدابة أو السيارة",
   "count": 1,
-  "serial": "athar-y09-paper-13",
+  "serial": "athar-y09-paper-14",
   "kind": "dhikr",
   "dhikrCategory": "daily",
   "dhikrId": "y09"
@@ -698,7 +698,7 @@
   "category": "أذكار السفر",
   "source": "رواه مسلم — دعاء السفر",
   "count": 1,
-  "serial": "athar-tr01-paper-13",
+  "serial": "athar-tr01-paper-14",
   "kind": "dhikr",
   "dhikrCategory": "travel",
   "dhikrId": "tr01"
@@ -709,7 +709,7 @@
   "category": "أذكار السفر",
   "source": "رواه مسلم — عند العودة من السفر",
   "count": 1,
-  "serial": "athar-tr02-paper-13",
+  "serial": "athar-tr02-paper-14",
   "kind": "dhikr",
   "dhikrCategory": "travel",
   "dhikrId": "tr02"
@@ -720,7 +720,7 @@
   "category": "أذكار السفر",
   "source": "رواه أحمد وابن ماجه — وداع المقيم للمسافر",
   "count": 1,
-  "serial": "athar-tr05-paper-13",
+  "serial": "athar-tr05-paper-14",
   "kind": "dhikr",
   "dhikrCategory": "travel",
   "dhikrId": "tr05"
@@ -731,7 +731,7 @@
   "category": "أذكار السفر",
   "source": "رواه أبو داود والترمذي — وداع المسافر",
   "count": 1,
-  "serial": "athar-tr06-paper-13",
+  "serial": "athar-tr06-paper-14",
   "kind": "dhikr",
   "dhikrCategory": "travel",
   "dhikrId": "tr06"
