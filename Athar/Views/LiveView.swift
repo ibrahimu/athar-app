@@ -38,7 +38,7 @@ struct LiveView: View {
     private var intro: some View {
         HStack(alignment: .top, spacing: 12) {
             IconChip(icon: "dot.radiowaves.left.and.right", tint: tint, size: .md)
-            Text(loc("الحرمان الشريفان من قناتيهما الرسميتين، وإذاعة القرآن الكريم — بثّ حيّ يحتاج اتصالًا بالإنترنت."))
+            Text(loc("بثّ الحرمين الشريفين من قناتيهما الرسميتين، وإذاعة القرآن الكريم — بثّ حيّ يحتاج اتصالًا بالإنترنت."))
                 .font(Theme.display(13))
                 .foregroundStyle(Theme.inkSoft)
                 .fixedSize(horizontal: false, vertical: true)

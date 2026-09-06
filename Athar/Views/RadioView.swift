@@ -24,7 +24,7 @@ struct RadioView: View {
                     NavigationLink { LiveView() } label: {
                         AtharLinkRow(icon: "dot.radiowaves.left.and.right", tint: tint,
                                      title: loc("البث المباشر"),
-                                     subtitle: loc("الحرمان الشريفان من قناتيهما الرسميتين"))
+                                     subtitle: loc("بثّ الحرمين الشريفين من قناتيهما الرسميتين"))
                     }
                     .pressable()
                     .appearStagger(2)

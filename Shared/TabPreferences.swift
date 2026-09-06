@@ -125,7 +125,7 @@ enum AppTab: String, CaseIterable, Identifiable, Codable {
         case .mushaf:     return loc("المصحف كاملًا بالرسم العثماني")
         case .adhkar:     return loc("أذكار اليوم بتخريجها")
         case .prayer:     return loc("مواقيت الصلاة وتنبيهاتها")
-        case .live:       return loc("الحرمان الشريفان وإذاعة القرآن")
+        case .live:       return loc("بثّ الحرمين الشريفين وإذاعة القرآن")
         case .radio:      return loc("بثّ هيئة الإذاعة والتلفزيون الرسمي")
         case .tasbih:     return loc("مسبحة تعدّ لك أورادك")
         case .hajj:       return loc("مناسك العمرة والحج خطوةً خطوة")
