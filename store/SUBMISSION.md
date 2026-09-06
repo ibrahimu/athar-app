@@ -136,5 +136,5 @@ Apple Watch، الختمة الجماعية، الإحصاء الشهري. صو�
 - App Store Connect يرفض الرفع إن كان تطبيق الساعة بلا أيقونة (`CFBundleIconName`) — الكتالوج في `AtharWatch/Assets.xcassets`.
 - أي بناء يحوي تطبيق ساعة يلزمه لقطات Apple Watch (416×496 للسلسلة 11، PNG معتم) قبل «إرسال للمراجعة».
 
-**بعد الموافقة:** نشر مخطط CloudKit (Khatmah وMember) إلى Production من CloudKit Console وإلا تفشل الختمة الجماعية
-في نسخة المتجر؛ وإضافة استحقاق CarPlay حين توافق Apple على الطلب المقدَّم ٥ سبتمبر.
+**مخطط CloudKit** (Khatmah وMember) نُشر إلى Production في ٦ سبتمبر ٢٠٢٦ من `store/cloudkit-schema.ckdb`، فالختمة الجماعية
+جاهزة مع الإصدار. **بعد الموافقة:** إضافة استحقاق CarPlay حين توافق Apple على الطلب المقدَّم ٥ سبتمبر.
