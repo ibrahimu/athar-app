@@ -5,7 +5,7 @@ import CoreText
 // صور المتجر — شغّله من جذر المستودع: swift store/render-store-art.swift
 // كل صورة: عنوان كبير، وصف، شبكة مزايا بأيقونات، وهاتفٌ أو هاتفان في إطار. تُقرأ اللقطات من store_final/1.2.
 let root = FileManager.default.currentDirectoryPath
-let shots = "\(root)/store_final/1.2"
+let shots = "\(root)/store_final/\(ProcessInfo.processInfo.environment["STORE_DIR"] ?? "1.2")"
 let out = "\(shots)/art"
 try? FileManager.default.createDirectory(atPath: out, withIntermediateDirectories: true)
 for f in ["NotoNaskhArabic-Bold", "NotoNaskhArabic-Regular", "NotoNaskhArabic-Medium"] {
@@ -69,6 +69,26 @@ let specs: [Spec] = [
           features: [.init(icon: "paintpalette.fill", text: "12 طابعًا يبدّل اللون والخلفية معًا"), .init(icon: "sparkles", text: "ست خلفيات: نجوم وموج وسادة…"),
                      .init(icon: "circle.lefthalf.filled", text: "فاتح أو داكن أو يتبع الجهاز"), .init(icon: "textformat.size", text: "حجم الخط وخط المصحف بيدك")],
           c1: Color(red: 0.46, green: 0.18, blue: 0.30), c2: Color(red: 0.66, green: 0.30, blue: 0.44)),
+    .init(file: "11", shots: ["20-wallet-pass.png", "19-wallet-list.png"], title: "آياتك وأذكارك في Apple Wallet",
+          subtitle: "آية الكرسي وخواتيم البقرة وسيد الاستغفار وأذكار يومك: 66 بطاقة تُضاف بضغطة",
+          features: [.init(icon: "wallet.pass.fill", text: "66 بطاقة بتصميم أثر الورقي"), .init(icon: "text.book.closed.fill", text: "النصّ كاملًا على وجه البطاقة وظهرها"),
+                     .init(icon: "checkmark.seal.fill", text: "موقَّعة من أثر، بلا حسابات ولا إنترنت"), .init(icon: "square.grid.2x2.fill", text: "أضف مجموعة كاملة بضغطة واحدة")],
+          c1: Color(red: 0.50, green: 0.36, blue: 0.14), c2: Color(red: 0.70, green: 0.53, blue: 0.24)),
+    .init(file: "12", shots: ["22-live.png", "21-radio.png"], title: "الحرمان وإذاعة القرآن مباشرة",
+          subtitle: "الحرم المكي والمسجد النبوي من قناتيهما الرسميتين، وإذاعة القرآن الكريم",
+          features: [.init(icon: "dot.radiowaves.left.and.right", text: "بثّ رسمي متواصل على مدار اليوم"), .init(icon: "lock.fill", text: "يستمر في الخلفية وعلى شاشة القفل"),
+                     .init(icon: "radio.fill", text: "الإذاعة قسم مستقل وبطاقة في «اليوم»"), .init(icon: "rectangle.on.rectangle", text: "الحرمان في شاشة واحدة")],
+          c1: Color(red: 0.08, green: 0.30, blue: 0.40), c2: Color(red: 0.14, green: 0.44, blue: 0.56)),
+    .init(file: "13", shots: ["23-phrases.png", "24-settings-font.png"], title: "عبارات للمشاركة، وخط ثمانية",
+          subtitle: "آيات وأدعية وتهانٍ تنسخها أو تحوّلها صورة ستوري، وخط عربي معاصر للواجهة",
+          features: [.init(icon: "text.quote", text: "84 نصًّا مصنّفًا: الجمعة والصباح والمساء والتهاني"), .init(icon: "photo.on.rectangle.angled", text: "صورة ستوري 1080×1920 بخلفية أثر"),
+                     .init(icon: "textformat", text: "خط ثمانية أو النسخ أو خط النظام"), .init(icon: "slider.horizontal.3", text: "الإعدادات مرتّبة في صفحات واضحة")],
+          c1: Color(red: 0.06, green: 0.34, blue: 0.34), c2: Color(red: 0.12, green: 0.48, blue: 0.46)),
+    .init(file: "14", shots: ["25-mushaf-fit.png", "26-onboarding.png"], title: "الصفحة كاملة على الشاشة",
+          subtitle: "الصفحة كلها بلا تمرير، والآية المختارة كتلة واحدة، وترحيب من أربع خطوات",
+          features: [.init(icon: "rectangle.expand.vertical", text: "الصفحة كاملة بلا تمرير"), .init(icon: "highlighter", text: "تظليل الآية كتلة متصلة"),
+                     .init(icon: "hand.wave.fill", text: "ترحيب: الموقع والتنبيهات والمظهر والخط"), .init(icon: "heart.fill", text: "بطاقة إحسان للصدقة من الرئيسية")],
+          c1: Color(red: 0.06, green: 0.32, blue: 0.26), c2: Color(red: 0.10, green: 0.46, blue: 0.37)),
 ]
 
 let W: CGFloat = 1290, H: CGFloat = 2796
