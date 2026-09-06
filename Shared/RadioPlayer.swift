@@ -231,7 +231,7 @@ final class RadioPlayer: ObservableObject {
         guard let src = source else { return }
         var info: [String: Any] = [:]
         info[MPMediaItemPropertyTitle] = src.title
-        // لا سطر جهة: البثّ مرحَّل عبر radiojar ولم يُتحقَّق من نسبته إلى الهيئة.
+        info[MPMediaItemPropertyArtist] = "هيئة الإذاعة والتلفزيون السعودية"
         info[MPMediaItemPropertyAlbumTitle] = "البث المباشر — أثر"
         info[MPNowPlayingInfoPropertyIsLiveStream] = true
         info[MPNowPlayingInfoPropertyPlaybackRate] = isPlaying ? 1.0 : 0.0

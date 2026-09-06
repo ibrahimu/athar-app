@@ -81,7 +81,7 @@ struct AhkamView: View {
             HStack(alignment: .top, spacing: 14) {
                 IconChip(icon: "list.bullet.clipboard.fill", tint: tint, size: .lg)
                 VStack(alignment: .leading, spacing: 5) {
-                    Text(loc("الأحكام العملية"))
+                    Text(loc("أحكام العبادات"))
                         .font(Theme.display(18, weight: .bold))
                         .foregroundStyle(Theme.ink)
                     Text(note.isEmpty ? loc("أحكام عملية بدليلها") : note)

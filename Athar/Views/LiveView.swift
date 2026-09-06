@@ -48,7 +48,7 @@ struct LiveView: View {
     }
 
     private var footer: some View {
-        Text(loc("مشغّل الفيديو من YouTube (Google) وتسري سياسته منذ تحميله عند فتح القسم، ولا تبقى بياناته بعد إغلاقه؛ والإذاعة تُبثّ عبر radiojar. لا يرسل «أثر» شيئًا عنك."))
+        Text(loc("مشغّل الفيديو من YouTube (Google) وتسري سياسته منذ تحميله عند فتح القسم، ولا تبقى بياناته بعد إغلاقه؛ والإذاعة بثّ هيئة الإذاعة والتلفزيون الرسمي ولا يُفتح إلا حين تضغط تشغيلًا."))
             .font(Theme.display(11))
             .foregroundStyle(Theme.inkFaint)
             .multilineTextAlignment(.center)
@@ -132,7 +132,15 @@ private struct LiveWebView: UIViewRepresentable {
         web.scrollView.backgroundColor = .clear
         web.scrollView.isScrollEnabled = false
         web.scrollView.bounces = false
-        web.load(URLRequest(url: url))
+        // لا يُحمَّل رابط التضمين مباشرةً: YouTube يرفضه بلا مُحيل («خطأ 153 — إعداد المشغّل غير صالح»)،
+        // فيُضمَّن في صفحة صغيرة لها أصلٌ حقيقي (موقع التطبيق) داخل iframe، وتُفعَّل واجهة JS لإيقافه.
+        let src = url.absoluteString + "&enablejsapi=1&origin=https://ibrahimu.github.io"
+        let html = """
+        <!doctype html><html><head><meta name="viewport" content="width=device-width,initial-scale=1">
+        <style>html,body{margin:0;background:transparent;height:100%;overflow:hidden}iframe{position:absolute;inset:0;width:100%;height:100%;border:0}</style>
+        </head><body><iframe id="p" src="\(src)" allow="autoplay; encrypted-media; picture-in-picture" allowfullscreen playsinline></iframe></body></html>
+        """
+        web.loadHTMLString(html, baseURL: URL(string: "https://ibrahimu.github.io/athar-app/"))
         context.coordinator.attach(web)
         return web
     }
@@ -155,7 +163,8 @@ private struct LiveWebView: UIViewRepresentable {
             observer = NotificationCenter.default.addObserver(
                 forName: .atharAudioStarted, object: nil, queue: .main
             ) { [weak self] _ in
-                self?.web?.evaluateJavaScript("document.querySelectorAll('video').forEach(v=>v.pause())", completionHandler: nil)
+                // المشغّل داخل iframe فلا نصل إلى عنصر الفيديو؛ نرسل أمر الإيقاف عبر واجهة YouTube.
+                self?.web?.evaluateJavaScript("document.getElementById('p')?.contentWindow.postMessage(JSON.stringify({event:'command',func:'pauseVideo',args:[]}), '*')", completionHandler: nil)
             }
         }
 

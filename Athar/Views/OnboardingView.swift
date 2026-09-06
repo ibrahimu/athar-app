@@ -169,7 +169,7 @@ struct OnboardingView: View {
                         loc("التلاوة والبث المباشر"), loc("تلاوات لقرّاء مختارين وبثّ مباشر"))
                 SettingsDivider()
                 feature("applewatch", Theme.accent(for: "night"),
-                        loc("Apple Watch والودجات"), loc("المواقيت والأذكار على معصمك وشاشتك الرئيسية"))
+                        loc("الساعة والودجات"), loc("المواقيت والأذكار على معصمك وشاشتك الرئيسية"))
             }
         }
     }

@@ -3,7 +3,7 @@ import Foundation
 // MARK: - مصادر البثّ المباشر
 //
 // قناتا الحرمين الرسميتان (هيئة الإذاعة والتلفزيون السعودية) على YouTube — معرّفاهما مُتحقَّق منهما —
-// وبثّ صوتي للقرآن الكريم عبر radiojar. لا يُفتح أيّ اتصال إلا حين يفتح المستخدم القسم أو يضغط «تشغيل».
+// وبثّ إذاعة القرآن الكريم الرسمي من هيئة الإذاعة والتلفزيون. لا يُفتح أيّ اتصال إلا حين يفتح المستخدم القسم أو يضغط «تشغيل».
 
 struct LiveSource: Identifiable, Hashable {
     enum Kind: Hashable {
@@ -51,13 +51,13 @@ struct LiveSource: Identifiable, Hashable {
         kind: .youtubeChannel("UCROKYPep-UuODNwyipe6JMw"),   // @SaudiSunnahTv الرسمية
         channelName: "السنة النبوية")
 
-    // البثّ مرحَّل على radiojar لا من خوادم الهيئة (ترويسة icy-name لا تُثبت جهةً رسمية)، فلا
-    // يُنسب إلى الهيئة في الواجهة ولا على شاشة القفل حتى يتوفّر عنوان رسمي مُتحقَّق منه.
+    // البثّ الرسمي: عنوان HLS الذي يستخدمه مشغّل «Saudi Radio +» التابع لهيئة الإذاعة والتلفزيون
+    // (radioplus.sba.sa ← api/v1.1/channels/4/player/audio)، تحقّقنا منه في 6 سبتمبر 2026.
     static let radio = LiveSource(
         id: "radio",
         title: "إذاعة القرآن الكريم",
-        subtitle: "بثّ صوتي متواصل عبر radiojar",
-        kind: .radio(URL(string: "https://stream.radiojar.com/0tpy1h0kxtzuv")!),
+        subtitle: "هيئة الإذاعة والتلفزيون السعودية — بثّ رسمي متواصل",
+        kind: .radio(URL(string: "https://live.kwikmotion.com/sbrksaquranradiolive/ksaquranradio/playlist.m3u8")!),
         channelName: "إذاعة القرآن الكريم")
 
     static let all: [LiveSource] = [makkah, madinah, radio]
