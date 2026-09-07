@@ -26,6 +26,8 @@ final class CloudKV {
         "athar.tabs.visible", "athar.home.cards", "athar.home.cards.hidden",
         "athar.theme", "athar.appearance", "athar.bgPattern", "athar.unifyIcons",
         "athar.hadith.favorites", "athar.mushaf.bookmarks", "athar.mushaf.highlights",
+        // التدبّرات تُزامَن كما تُزامَن العلامة والتظليل: ما كتبه القارئ على آيته أولى بالبقاء.
+        "athar.mushaf.notes",
         "athar.mushaf.stopMark", "athar.mushaf.lastRead",
         "athar.athanSound", "athar.preAthanMinutes", "athar.iqamahMinutes",
         "athar.mushaf.theme", "athar.mushaf.readingMode", "athar.mushaf.fontScale", "athar.fontScale",

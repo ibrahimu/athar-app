@@ -260,9 +260,44 @@ struct WalletCardsView: View {
     }
 }
 
+// MARK: - معاينة بطاقة من خارج القسم
+
+/// البطاقة نفسها معروضةً من شاشة الذكر: تُحمَّل من المُحمِّل المشترك (والنتيجة محفوظة
+/// فيه، فلا يُعاد التحقّق من التواقيع)، ثم تُعرض ورقة المعاينة عينها — لا نسخة ثانية
+/// منها تتخلّف عن الأصل كلّما تغيّر.
+struct WalletCardPreview: View {
+    let card: WalletCard
+
+    @State private var pass: PKPass?
+    @State private var isLoading = true
+    @State private var isInWallet = false
+    /// مكتبة محفوظة لا مؤقتة، كما في القسم: تُسأل بعد كل إضافة.
+    private let library = PKPassLibrary()
+
+    var body: some View {
+        WalletCardSheet(card: card, tint: Theme.accent(for: "gold"), pass: pass,
+                        isInWallet: isInWallet, canAdd: PKAddPassesViewController.canAddPasses(),
+                        isLoading: isLoading, onChange: refresh)
+            .task {
+                let loaded = await WalletPassLoader.shared.load()
+                guard !Task.isCancelled else { return }
+                pass = loaded[card.id]
+                isLoading = false
+                refresh()
+            }
+    }
+
+    private func refresh() {
+        guard PKPassLibrary.isPassLibraryAvailable(), let pass else { return }
+        isInWallet = library.containsPass(pass)
+    }
+}
+
 // MARK: - معاينة بطاقة
 
-private struct WalletCardSheet: View {
+/// داخلية لا خاصّة: WalletCardPreview أعلاه يعرضها لشاشة الذكر، فورقةٌ واحدة للبطاقة
+/// في التطبيق كلّه.
+struct WalletCardSheet: View {
     @EnvironmentObject private var store: AtharStore
     @Environment(\.dismiss) private var dismiss
     @Environment(\.layoutDirection) private var direction

@@ -164,7 +164,8 @@ enum AppTab: String, CaseIterable, Identifiable, Codable {
 
 /// ما يظهر في شاشة «اليوم» وبأي ترتيب — «اليوم على كيفي».
 enum HomeCard: String, CaseIterable, Identifiable, Codable {
-    case prayer, radio, stats, suggestion, dailyDhikr, dailyHadith, occasion, friday, ramadan, quickGrid, sections, sadaqah
+    case prayer, radio, continueReading, stats, suggestion, dailyDhikr, dailyHadith, occasion, friday, ramadan,
+         quickGrid, sections, sadaqah
 
     var id: String { rawValue }
 
@@ -172,6 +173,7 @@ enum HomeCard: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .prayer:      return loc("الصلاة القادمة")
         case .radio:       return loc("إذاعة القرآن")
+        case .continueReading: return loc("تابع القراءة")
         case .stats:       return loc("أرقامي")
         case .suggestion:  return loc("وقتها الآن")
         case .dailyDhikr:  return loc("ذكر اليوم")
@@ -189,6 +191,7 @@ enum HomeCard: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .prayer:      return "moon.stars.fill"
         case .radio:       return "radio.fill"
+        case .continueReading: return "book.pages.fill"
         case .stats:       return "chart.bar.fill"
         case .suggestion:  return "clock.badge.checkmark.fill"
         case .dailyDhikr:  return "text.quote"
@@ -203,8 +206,10 @@ enum HomeCard: String, CaseIterable, Identifiable, Codable {
     }
 
     // «الإذاعة» بعد الصلاة مباشرة: زرّ تشغيل في متناول اليد من أول الشاشة.
-    static let defaultOrder: [HomeCard] = [.prayer, .radio, .ramadan, .friday, .stats, .suggestion, .dailyDhikr, .dailyHadith,
-                                           .occasion, .quickGrid, .sections, .sadaqah]
+    // و«تابع القراءة» بعد بطاقتَي الموسم: من فتح التطبيق وله موضعٌ وقف عنده أمسِ
+    // فحاجته إليه قبل أرقامه، ولا تظهر البطاقة أصلًا لمن لم يقرأ بعد.
+    static let defaultOrder: [HomeCard] = [.prayer, .radio, .ramadan, .friday, .continueReading, .stats, .suggestion,
+                                           .dailyDhikr, .dailyHadith, .occasion, .quickGrid, .sections, .sadaqah]
 }
 
 extension AtharStore {

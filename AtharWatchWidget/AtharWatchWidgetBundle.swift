@@ -5,5 +5,7 @@ import SwiftUI
 struct AtharWatchWidgetBundle: WidgetBundle {
     var body: some Widget {
         NextPrayerComplication()
+        DhikrComplication()
+        TasbihComplication()
     }
 }

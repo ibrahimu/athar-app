@@ -12,6 +12,18 @@ import UIKit
 // (لا إلى ما تجمّع في الذاكرة المؤقّتة فيتأخّر عن الهواء). يستمرّ في الخلفية وعلى شاشة القفل
 // كالتلاوة، ولا يتداخل مع مشغّلَي التلاوة والآية.
 
+extension SleepTimer {
+    /// خيارات مؤقّت البثّ. «عند نهاية السورة» لا معنى له لبثٍّ حيٍّ لا ينتهي، فيسقط
+    /// وحده — وما بقي هو مؤقّت التلاوة نفسه لفظًا وسلوكًا.
+    static let liveChoices: [SleepTimer] = [.off, .minutes(15), .minutes(30), .minutes(60)]
+}
+
+extension Notification.Name {
+    /// انطفأ مؤقّت النوم. مشغّل YouTube المضمّن في «البث المباشر» لا يعرف المؤقّت
+    /// كما لا يعرف محرّكات الصوت، فيسمع الخبر ويوقف فيديوه.
+    static let atharSleepTimerFired = Notification.Name("athar.sleepTimerFired")
+}
+
 @MainActor
 final class RadioPlayer: ObservableObject {
     static let shared = RadioPlayer()
@@ -22,8 +34,12 @@ final class RadioPlayer: ObservableObject {
     @Published private(set) var isBuffering = false
     /// نصّ خطأ يُعرض تحت الزرّ؛ يُمسح مع كل محاولة جديدة.
     @Published private(set) var error: String?
+    /// مؤقّت النوم ولحظة انطفائه (للعدّ التنازلي في الواجهة) — كمؤقّت التلاوة.
+    @Published private(set) var sleep: SleepTimer = .off
+    @Published private(set) var sleepEndsAt: Date?
 
     private var player: AVPlayer?
+    private var sleepTask: Task<Void, Never>?
     private var rateTask: Task<Void, Never>?
     private var statusObserver: NSKeyValueObservation?
     private var failObserver: NSObjectProtocol?
@@ -154,6 +170,7 @@ final class RadioPlayer: ObservableObject {
     /// إنهاء كامل: لا اتصال ولا شاشة قفل ولا جلسة صوت.
     func stop() {
         teardown()
+        clearSleep()   // انتهى البثّ بيد صاحبه، فلا مؤقّت ينتظر بثًّا ليس هناك
         source = nil
         isPlaying = false
         isBuffering = false
@@ -167,6 +184,7 @@ final class RadioPlayer: ObservableObject {
     private func stopIfActive() {
         guard source != nil else { return }
         teardown()
+        clearSleep()
         source = nil
         isPlaying = false
         isBuffering = false
@@ -180,6 +198,38 @@ final class RadioPlayer: ObservableObject {
         isBuffering = false
         error = loc("تعذّر الاتصال بالإذاعة. تحقّق من الإنترنت وحاول مجددًا.")
         updateNowPlayingRate()
+    }
+
+    // MARK: مؤقّت النوم
+
+    /// مؤقّت التلاوة نفسه بحرفه: يوقف عند انطفائه ولا يُنهي، فيبقى البثّ على شاشة
+    /// القفل يُستأنف بضغطة صباحًا. ولأنّ فيديو الحرمين ليس لنا نوقفه بالشيفرة،
+    /// نُعلن الانطفاء خبرًا يسمعه مشغّله فيسكت معنا.
+    func setSleep(_ t: SleepTimer) {
+        sleepTask?.cancel(); sleepTask = nil
+        // ما ليس دقائق فهو إطفاء: «عند نهاية السورة» لا نهاية له هنا، فلا يُخزَّن حالةً معلّقة.
+        guard case .minutes(let m) = t else { sleep = .off; sleepEndsAt = nil; return }
+        sleep = t
+        sleepEndsAt = Date().addingTimeInterval(Double(m) * 60)
+        sleepTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(Double(m) * 60 * 1_000_000_000))
+            guard !Task.isCancelled else { return }
+            await MainActor.run {
+                guard let self else { return }
+                self.pause()
+                self.sleep = .off
+                self.sleepEndsAt = nil
+                NotificationCenter.default.post(name: .atharSleepTimerFired, object: nil)
+            }
+        }
+    }
+
+    func cancelSleep() { setSleep(.off) }
+
+    private func clearSleep() {
+        sleepTask?.cancel(); sleepTask = nil
+        sleep = .off
+        sleepEndsAt = nil
     }
 
     private func teardown() {

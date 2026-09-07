@@ -487,10 +487,24 @@ struct HadithDetailView: View {
     /// المعروض الآن — يتبدّل بالسابق/التالي داخل الباب بلا دفع صفحة جديدة.
     @State private var current: Hadith
     @State private var copied = false
+    /// الحديث المفتوح في مصمّم بطاقة الصورة — يُبنى من معرّفه لا من نصّ يُنسخ هنا.
+    @State private var designing: Phrase?
+    /// أيسع هذا المتنُ بطاقةً؟ في الكتاب أحاديث تقارب تسعة آلاف حرف، والبطاقة تصغّر
+    /// خطّها حتى ١٨ ثم تقصّ ما فاض — وقصّ متنٍ ليس شيئًا يُشارَك، فيغيب الزرّ عنه.
+    @State private var fitsCard = false
 
     init(hadith: Hadith) {
         self.hadith = hadith
         _current = State(initialValue: hadith)
+    }
+
+    private var direction: LayoutDirection {
+        AppConfig.arabicOnly ? .rightToLeft : store.appLanguage.layoutDirection
+    }
+
+    /// العبارة من المعرّف: المتن والتخريج يُحلّان من hadith.json، فلا يُكتب لفظٌ هنا.
+    private var storyPhrase: Phrase {
+        Phrase(id: "h-\(current.id)", category: .hadith, source: .hadith(id: current.id))
     }
 
     private var chapter: HadithChapter? { HadithLibrary.chapter(of: current) }
@@ -535,6 +549,22 @@ struct HadithDetailView: View {
                 }
                 .accessibilityLabel(isFavorite ? loc("إزالة من المحفوظة") : loc("حفظ الحديث"))
             }
+        }
+        // القياس بأضيق أشكال البطاقة (الورقة) فلا يظهر الزرّ إلا لمتنٍ تسعه كلّها.
+        // خارج الخيط الرئيس كالبحث: المتن الطويل يُقاس حجمًا بعد حجم قبل أن يُردّ.
+        .task(id: current.id) {
+            let phrase = storyPhrase
+            let fits = await Task.detached(priority: .userInitiated) {
+                StoryCard.fittingFontSize(for: phrase, width: 744, maxHeight: 960) > 18
+            }.value
+            guard !Task.isCancelled else { return }
+            withAnimation(Motion.smooth) { fitsCard = fits }
+        }
+        // المصمّم نفسه الذي يُفتح من «عبارات» — بطاقةٌ واحدة للتطبيق كلّه.
+        .sheet(item: $designing) { phrase in
+            StoryDesignerView(phrase: phrase)
+                .atharSheetChrome()
+                .environment(\.layoutDirection, direction)
         }
     }
 
@@ -582,7 +612,7 @@ struct HadithDetailView: View {
         .animation(Motion.smooth, value: current.id)
     }
 
-    // MARK: حفظ · نسخ · مشاركة
+    // MARK: حفظ · نسخ · مشاركة · بطاقة صورة
 
     private var actionsCard: some View {
         AtharCard(padding: 6) {
@@ -615,6 +645,18 @@ struct HadithDetailView: View {
                     actionLabel(icon: "square.and.arrow.up", text: loc("مشاركة"), on: false)
                 }
                 .buttonStyle(.plain)
+
+                if fitsCard {
+                    cellDivider
+
+                    Button {
+                        Haptics.tap(enabled: store.hapticsEnabled)
+                        designing = storyPhrase
+                    } label: {
+                        actionLabel(icon: "photo", text: loc("بطاقة صورة"), on: false)
+                    }
+                    .buttonStyle(.plain)
+                }
             }
         }
     }

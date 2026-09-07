@@ -72,6 +72,7 @@ struct HomeView: View {
         switch card {
         case .prayer:      prayerStrip
         case .radio:       radioStrip
+        case .continueReading: continueReadingCard
         case .stats:       statsRow
         case .suggestion:  if let suggested { suggestionCard(suggested) }
         case .dailyDhikr:  if let dailyDhikr { dailyCard(dailyDhikr) }
@@ -82,6 +83,42 @@ struct HomeView: View {
         case .quickGrid:   quickGrid
         case .sections:    moreSections
         case .sadaqah:     sadaqahCard
+        }
+    }
+
+    // MARK: تابع القراءة
+
+    /// موضع القارئ من المصحف: علامة «وقوفي» إن وضعها بيده — فهي أوثق من التصفّح —
+    /// وإلا آخر موضع بلغه. ومن لم يفتح المصحف بعد فلا بطاقة له تُذكّره بلا شيء.
+    @ViewBuilder
+    private var continueReadingCard: some View {
+        if let ref = store.stopMark ?? store.lastRead, let surah = Quran.surah(ref.surah) {
+            let marked = store.stopMark != nil
+            // ذهبيّة كبطاقة «وقوفي» في المصحف، وبلون الطابع حين تكون متابعةً تلقائية —
+            // فيعرف القارئ من اللون أوضعها بيده أم بلغها التطبيق عنه.
+            let card = marked ? Theme.accent(for: "gold") : Theme.accent
+            let glyph = marked ? Theme.gold : Theme.accent
+            NavigationLink { SurahReaderView(surahId: ref.surah, scrollTo: ref) } label: {
+                AtharCard(padding: 16, elevation: .e2, tint: card) {
+                    HStack(spacing: 14) {
+                        IconChip(icon: marked ? "pin.fill" : "book.pages.fill", tint: glyph, size: .lg)
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(marked ? loc("myStop") : loc("continueReading"))
+                                .font(Theme.display(12, weight: .semibold))
+                                .foregroundStyle(glyph)
+                            Text(loc("سورة %1$@ · ص %2$@ · الجزء %3$@", surah.name,
+                                     Quran.page(of: ref).counterText, Quran.juz(of: ref).counterText))
+                                .font(Theme.display(16, weight: .semibold))
+                                .foregroundStyle(Theme.ink)
+                        }
+                        Spacer()
+                        Image(systemName: "chevron.forward")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(Theme.inkFaint)
+                    }
+                }
+            }
+            .pressable()
         }
     }
 
@@ -299,13 +336,14 @@ struct HomeView: View {
 
     private var hijriDate: String {
         // أرقام لاتينية كبقية أرقام التطبيق — الأرقام الهندية ٠ تُقرأ نقطةً عند العرض.
-        var cal = Calendar(identifier: .islamicUmmAlQura)
-        cal.locale = Locale(identifier: "ar_SA@numbers=latn")
+        // ويُركَّب السطر تركيبًا ولا يُترك لمنسّقٍ واحد: ضبط المطالع يزيح اليومَ الهجري
+        // وحده، ولو أُزيح التاريخ كلّه لسُمّي اليومُ باسم يومٍ لم يأتِ بعد.
+        let c = Occasions.hijriComponents(now)
         let f = DateFormatter()
-        f.calendar = cal
+        f.calendar = Calendar(identifier: .gregorian)
         f.locale = Locale(identifier: "ar_SA@numbers=latn")
-        f.dateFormat = "EEEE، d MMMM yyyy"
-        return f.string(from: now) + " هـ"
+        f.dateFormat = "EEEE"
+        return "\(f.string(from: now))، \(c.day.counterText) \(Occasions.monthName(c.month)) \(String(c.year)) هـ"
     }
 
     // MARK: Next prayer

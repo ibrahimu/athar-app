@@ -78,25 +78,22 @@ enum Occasions {
               icon: "circle.lefthalf.filled", accent: "calm"),
     ]
 
-    private static var hijri: Calendar {
-        var c = Calendar(identifier: .islamicUmmAlQura)
-        c.timeZone = .current
-        return c
-    }
+    /// الأصل الفلكي بلا إزاحة — لحساب أوائل الأيام والمسافات بينها.
+    private static var hijri: Calendar { Hijri.calendar }
 
-    /// مكوّنات اليوم الهجري (سنة، شهر، يوم).
+    /// مكوّنات اليوم الهجري (سنة، شهر، يوم)، بعد ضبط المطالع — فتقع الأيام البيض
+    /// وعاشوراء وعرفة على ما يوافق تقويم بلد المستخدم لا على الحساب وحده.
     static func hijriComponents(_ date: Date) -> (year: Int, month: Int, day: Int) {
-        let c = hijri.dateComponents([.year, .month, .day], from: date)
+        let c = Hijri.components(date)
         return (c.year ?? 1, c.month ?? 1, c.day ?? 1)
     }
 
     static func date(year: Int, month: Int, day: Int) -> Date? {
-        hijri.date(from: DateComponents(year: year, month: month, day: day))
+        Hijri.date(year: year, month: month, day: day)
     }
 
     static func daysInMonth(year: Int, month: Int) -> Int {
-        guard let d = date(year: year, month: month, day: 1) else { return 30 }
-        return hijri.range(of: .day, in: .month, for: d)?.count ?? 30
+        Hijri.daysInMonth(year: year, month: month)
     }
 
     /// بداية المناسبة القادمة (أو الجارية) لكل مناسبة، مرتّبةً زمنيًا.

@@ -16,10 +16,21 @@ struct SectionsView: View {
             AtharBackground(tint: Theme.accent)
             ScrollView {
                 VStack(alignment: .leading, spacing: 22) {
+                    // البحث في الصدر: من يعرف ما يطلب لا يُكلَّف تصفّح إحدى وعشرين بلاطة
+                    // ليصل إليه — حرفان يبلغانه الآية والحديث والذكر والحكم من مكان واحد.
+                    NavigationLink { GlobalSearchView() } label: {
+                        AtharLinkRow(icon: "magnifyingglass",
+                                     tint: Theme.accent(for: "sea"),
+                                     title: loc("البحث في كل شيء"),
+                                     subtitle: loc("آية أو حديث أو ذكر أو حكم أو اسم — من حقل واحد"))
+                    }
+                    .pressable()
+                    .appearStagger(0)
+
                     ForEach(Array(AppTab.Group.allCases.enumerated()), id: \.element) { i, g in
                         let tabs = AppTab.sections.filter { $0.group == g }
                         if !tabs.isEmpty {
-                            group(title: g.title, tabs: tabs).appearStagger(i)
+                            group(title: g.title, tabs: tabs).appearStagger(i + 1)
                         }
                     }
 
@@ -37,7 +48,7 @@ struct SectionsView: View {
                         }
                         .pressable()
                     }
-                    .appearStagger(AppTab.Group.allCases.count)
+                    .appearStagger(AppTab.Group.allCases.count + 1)
                 }
                 .padding(.horizontal, Theme.gutter)
                 .padding(.top, 6)

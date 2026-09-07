@@ -11,9 +11,30 @@ struct MushafView: View {
     /// نتائج البحث في نصّ المصحف — تُحسب مرّةً واحدة لكل استعلام لا مع كل رسم.
     @State private var hits: [AyahRef] = []
 
+    /// رقمٌ مجرّد كتبه الباحث: مقصده موضعٌ في المصحف لا كلمةٌ في آية —
+    /// «أذكر رقم الصفحة، وما في إلّا أن أقرّب لأرى أقرب صورة ثم أسحب».
+    private var bareNumber: Int? { query.bareNumberValue }
+    /// صفحةٌ قائمة — وما جاوز ٦٠٤ فلا صفّ له، بلا رسالة خطأ تقاطع الكتابة.
+    private var pageJump: Int? {
+        guard let n = bareNumber, n >= 1, n <= Quran.pageCount else { return nil }
+        return n
+    }
+    /// والرقم نفسه قد يكون سورةً — فيُعرَض المقصدان معًا، والصفحة أولًا.
+    private var surahJump: Int? {
+        guard let n = bareNumber, n >= 1, n <= 114 else { return nil }
+        return n
+    }
+    /// وقد يكون جزءًا: كثيرٌ يحفظ موضعه بالجزء لا بالصفحة. الثلاثون أضيق مدًى فتأتي بينهما.
+    private var juzJump: Int? {
+        guard let n = bareNumber, n >= 1, n <= Quran.juzCount else { return nil }
+        return n
+    }
+
     private var filtered: [Surah] {
         let q = query.trimmingCharacters(in: .whitespaces)
         guard !q.isEmpty else { return Quran.surahs }
+        // الرقم المجرّد له صفّاه أعلى الشاشة، فلا تُكرَّر سورته في القائمة تحتهما.
+        guard bareNumber == nil else { return [] }
         let n = q.strippedForSearch
         return Quran.surahs.filter {
             $0.name.strippedForSearch.contains(n)
@@ -38,6 +59,16 @@ struct MushafView: View {
                                 .padding(.top, 2)
                         }
 
+                        // الرقم المجرّد فوق كل شيء: صفحةً أولًا، ثم جزءًا، ثم سورةً إن صلح لها.
+                        if let n = pageJump { pageJumpCard(n) }
+                        if let j = juzJump { juzJumpCard(j) }
+                        if let s = surahJump, let su = Quran.surah(s) {
+                            NavigationLink { SurahReaderView(surahId: s) } label: {
+                                SurahRow(surah: su)
+                            }
+                            .pressable()
+                        }
+
                         ForEach(Array(filtered.enumerated()), id: \.element.id) { i, surah in
                             NavigationLink { SurahReaderView(surahId: surah.id) } label: {
                                 SurahRow(surah: surah)
@@ -58,7 +89,7 @@ struct MushafView: View {
 
                         if query.isEmpty { sourceCredit }
 
-                        if filtered.isEmpty && hits.isEmpty && !query.isEmpty {
+                        if filtered.isEmpty && hits.isEmpty && pageJump == nil && !query.isEmpty {
                             ContentUnavailableView(loc("لا توجد نتائج"), systemImage: "magnifyingglass",
                                                    description: Text(loc("جرّب اسم سورة أو جزءًا من آية")))
                                 .padding(.top, 50)
@@ -76,6 +107,12 @@ struct MushafView: View {
                 // التالي، ثم يجري خارج الخيط الرئيسي مرّةً واحدة لكل استعلام.
                 .task(id: query) {
                     let q = query.trimmingCharacters(in: .whitespaces)
+                    // الرقم المجرّد مقصده الصفحة والسورة، ولا رقم في الرسم العثماني
+                    // يُطابَق — فلا يُمشى به على ٦٢٣٦ آية.
+                    guard bareNumber == nil else {
+                        hits = []
+                        return
+                    }
                     guard q.count >= 3, filtered.isEmpty || q.count >= 4 else {
                         hits = []
                         return
@@ -94,6 +131,49 @@ struct MushafView: View {
             .navigationBarTitleDisplayMode(.inline)
             .searchable(text: $query, prompt: Text(loc("searchMushaf")))
         }
+    }
+
+    // MARK: الانتقال بالرقم
+
+    /// صفّ الصفحة: الرقم عنوانًا، وتحته إلى أين يقع من المصحف — فلا يقفز في العمياء.
+    private func pageJumpCard(_ n: Int) -> some View {
+        jumpCard(icon: "doc.plaintext.fill",
+                 title: loc("الانتقال إلى صفحة %1$@", n.counterText),
+                 ref: Quran.firstAyah(ofPage: n))
+    }
+
+    private func juzJumpCard(_ n: Int) -> some View {
+        jumpCard(icon: "square.stack.3d.up.fill",
+                 title: loc("الانتقال إلى الجزء %1$@", n.counterText),
+                 ref: Quran.firstAyah(ofJuz: n))
+    }
+
+    /// بطاقة مقصدٍ في المصحف: عنوانها ما طُلب، وتحته موضعه — سورةً وجزءًا وصفحة —
+    /// ليتبيّن الطالب قبل أن يذهب أهو الموضع الذي أراد.
+    private func jumpCard(icon: String, title: String, ref: AyahRef) -> some View {
+        NavigationLink { SurahReaderView(surahId: ref.surah, scrollTo: ref) } label: {
+            AtharCard(padding: 16, elevation: .e2, tint: Theme.accent(for: "gold")) {
+                HStack(spacing: 14) {
+                    IconChip(icon: icon, tint: Theme.gold, size: .lg)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(title)
+                            .font(Theme.display(16, weight: .semibold))
+                            .foregroundStyle(Theme.ink)
+                        Text(loc("سورة %1$@ · الجزء %2$@ · صفحة %3$@",
+                                 Quran.surah(ref.surah)?.name ?? "",
+                                 Quran.juz(of: ref).counterText,
+                                 Quran.page(of: ref).counterText))
+                            .font(Theme.display(12))
+                            .foregroundStyle(Theme.inkFaint)
+                    }
+                    Spacer()
+                    Image(systemName: "chevron.forward")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(Theme.inkFaint)
+                }
+            }
+        }
+        .pressable()
     }
 
     // MARK: التلاوة
@@ -219,32 +299,44 @@ struct MushafView: View {
     // MARK: الحفظ والختمة والورد
 
     private var toolsRow: some View {
-        // ثلاث بلاطات لا اثنتان: «الورد اليومي» لم يكن له أيّ مدخل في التطبيق.
-        HStack(spacing: 12) {
-            NavigationLink { HifzView() } label: {
-                toolTile("brain.head.profile", Theme.accent(for: "sea"), loc("memorize"),
-                         hifzSubtitle, badge: !store.dueForReview.isEmpty)
-            }
-            .pressable()
+        // صفّان من بلاطتين لا صفٌّ من أربع: أربعٌ عرضًا تضيق كلّ واحدة عن رقاقتها
+        // فينكسر عنوانها على الشاشات الصغيرة. والصفّ والبلاطة كما كانا.
+        VStack(spacing: 12) {
+            HStack(spacing: 12) {
+                NavigationLink { HifzView() } label: {
+                    toolTile("brain.head.profile", Theme.accent(for: "sea"), loc("memorize"),
+                             hifzSubtitle, badge: !store.dueForReview.isEmpty)
+                }
+                .pressable()
 
-            NavigationLink { KhatmahView() } label: {
-                toolTile("book.closed.fill", Theme.gold, loc("khatmah"),
-                         store.khatmahActive
-                            ? "\(Int((Double(store.khatmahPagesDone) / Double(Quran.pageCount) * 100).rounded()).counterText)٪ — اليوم \(store.khatmahDayIndex.counterText)"
-                            : loc("startKhatmahSub"),
-                         badge: store.khatmahActive && store.khatmahDelta < 0)
+                NavigationLink { KhatmahView() } label: {
+                    toolTile("book.closed.fill", Theme.gold, loc("khatmah"),
+                             store.khatmahActive
+                                ? "\(Int((Double(store.khatmahPagesDone) / Double(Quran.pageCount) * 100).rounded()).counterText)٪ — اليوم \(store.khatmahDayIndex.counterText)"
+                                : loc("startKhatmahSub"),
+                             badge: store.khatmahActive && store.khatmahDelta < 0)
+                }
+                .pressable()
             }
-            .pressable()
+            // تتساوى البلاطات ارتفاعًا وإن التفّ عنوانٌ فرعي على سطرين.
+            .fixedSize(horizontal: false, vertical: true)
 
-            NavigationLink { WirdView() } label: {
-                toolTile("sun.horizon.fill", Theme.accent(for: "dawn"), loc("الورد"),
-                         wirdSubtitle,
-                         badge: store.wirdEnabled && store.wirdDoneToday < store.wirdTarget)
+            HStack(spacing: 12) {
+                NavigationLink { WirdView() } label: {
+                    toolTile("sun.horizon.fill", Theme.accent(for: "dawn"), loc("الورد"),
+                             wirdSubtitle,
+                             badge: store.wirdEnabled && store.wirdDoneToday < store.wirdTarget)
+                }
+                .pressable()
+
+                NavigationLink { NotesView() } label: {
+                    toolTile("square.and.pencil", Theme.accent(for: "dusk"), loc("تدبّراتي"),
+                             notesSubtitle, badge: false)
+                }
+                .pressable()
             }
-            .pressable()
+            .fixedSize(horizontal: false, vertical: true)
         }
-        // تتساوى البلاطات ارتفاعًا وإن التفّ عنوانٌ فرعي على سطرين.
-        .fixedSize(horizontal: false, vertical: true)
     }
 
     /// عنوان بلاطة الحفظ: المستحقّ اليوم أولًا، وإلا المحفوظ. يُفرَد ويُثنّى هنا لأن
@@ -273,6 +365,18 @@ struct MushafView: View {
         case 2:  return done == 0 ? loc("آيتان كل يوم") : loc("واحدة من آيتين")
         default: return done == 0 ? "\(target.ayahCountText) كل يوم"
                                   : "\(done.counterText) من \(target.ayahCountText)"
+        }
+    }
+
+    /// عنوان بلاطة التدبّرات: كم كتب، بتمييز العدد كما في جارتيها.
+    private var notesSubtitle: String {
+        let n = store.notes.count
+        switch n {
+        case 0:      return loc("اكتب ما فُتح لك")
+        case 1:      return loc("تدبّر واحد")
+        case 2:      return loc("تدبّران")
+        case 3...10: return "\(n.counterText) تدبّرات"
+        default:     return "\(n.counterText) تدبّرًا"
         }
     }
 

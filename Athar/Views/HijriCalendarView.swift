@@ -1,4 +1,5 @@
 import SwiftUI
+import WidgetKit
 
 /// التقويم الهجري بحساب أم القرى: شبكة الشهر، واليوم، ومناسبات السنّة القادمة.
 /// لا يُدرج من المناسبات إلا ما له أصل في الكتاب والسنّة (انظر Occasions).
@@ -19,10 +20,10 @@ struct HijriCalendarView: View {
     private var today: (year: Int, month: Int, day: Int) { Occasions.hijriComponents(todayDate) }
     private var isCurrentMonth: Bool { today.year == year && today.month == month }
 
-    /// تقويم أم القرى بمنطقة الجهاز — لأيام الأسبوع ومقارنة الأيام.
+    /// تقويم أم القرى بمنطقة الجهاز — لأسماء أيام الأسبوع ومواقعها في الشبكة،
+    /// وهي لا تتأثّر بضبط المطالع فيُؤخذ الأصل من مصدره الواحد.
     private var hijri: Calendar {
-        var c = Calendar(identifier: .islamicUmmAlQura)
-        c.timeZone = .current
+        var c = Hijri.calendar
         c.locale = Locale(identifier: "ar")
         return c
     }
@@ -33,9 +34,10 @@ struct HijriCalendarView: View {
             ScrollView {
                 VStack(spacing: 18) {
                     monthCard.appearStagger(0)
-                    selectedDayCard.appearStagger(1)
-                    upcomingSection.appearStagger(2)
-                    footer.appearStagger(3)
+                    offsetCard.appearStagger(1)
+                    selectedDayCard.appearStagger(2)
+                    upcomingSection.appearStagger(3)
+                    footer.appearStagger(4)
                 }
                 .padding(.horizontal, Theme.gutter)
                 .padding(.top, 8)
@@ -227,6 +229,96 @@ struct HijriCalendarView: View {
         let t = today
         year = t.year; month = t.month
         selected = Calendar.current.startOfDay(for: Date())
+    }
+
+    // MARK: ضبط المطالع
+
+    /// صفٌّ هادئ لا زرّ بارز: أكثر الناس لا يحتاجه، ومن اختلف تقويمُ بلده عن
+    /// الحساب وجده حيث ينظر — تحت الشهر مباشرة — فعدّل يومًا أو يومين.
+    private var offsetCard: some View {
+        let offset = store.hijriOffset
+        return VStack(spacing: 8) {
+            SettingsCard {
+                // «زائد وناقص» كصفّ ضبط المواقيت بالدقائق — تعديلٌ يدويّ على حسابٍ آليّ.
+                SettingsRow(icon: "plusminus.circle.fill", tint: tint,
+                            title: loc("ضبط التاريخ الهجري"),
+                            subtitle: offsetLabel(offset)) {
+                    HStack(spacing: 0) {
+                        step("minus", enabled: offset > Hijri.bounds.lowerBound) { change(-1) }
+                            .accessibilityLabel(loc("أنقص يومًا"))
+                        Text(offsetText(offset))
+                            .font(.system(size: 15, weight: .semibold, design: .rounded))
+                            .foregroundStyle(offset == 0 ? Theme.inkFaint : Theme.ink)
+                            .monospacedDigit()
+                            .frame(minWidth: 40)
+                            .contentTransition(.numericText())
+                            .animation(Motion.snappy, value: offset)
+                        step("plus", enabled: offset < Hijri.bounds.upperBound) { change(1) }
+                            .accessibilityLabel(loc("زد يومًا"))
+                    }
+                    .background(Capsule().fill(Theme.surfaceAlt))
+                    .overlay(Capsule().strokeBorder(Theme.hairline.opacity(0.5), lineWidth: 0.5))
+                    .accessibilityElement(children: .contain)
+                    .accessibilityValue(offsetLabel(offset))
+                }
+            }
+            // الشرح تحت البطاقة لا في الصفّ: الصفّ ضيّق بالمزلاج، ولو حُشر فيه
+            // لالتفّ على أربعة أسطر وضاق العنوان.
+            HStack(alignment: .top, spacing: 6) {
+                Image(systemName: "info.circle.fill")
+                    .font(.system(size: 10))
+                    .foregroundStyle(Theme.inkFaint)
+                    .padding(.top, 2)
+                    .accessibilityHidden(true)
+                Text(loc("اختلاف المطالع: عدّل يومًا أو يومين ليوافق تقويم بلدك"))
+                    .font(Theme.display(11))
+                    .foregroundStyle(Theme.inkSoft)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding(.horizontal, 6)
+        }
+    }
+
+    private func step(_ icon: String, enabled: Bool, _ action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: icon)
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(enabled ? tint : Theme.inkFaint)
+                // أربعون وأربع: هدف اللمس لا ينزل عنها وإن كان الرمز صغيرًا.
+                .frame(width: 40, height: 44)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(!enabled)
+    }
+
+    /// الشهر المعروض يتبع اليوم: من كان على شهره وأزاح المطالع يومين قد ينتقل
+    /// إلى شهرٍ آخر، فيُساق معه كي لا يبحث عن يومه في شبكةٍ لم يعد فيها.
+    private func change(_ delta: Int) {
+        let wasCurrent = isCurrentMonth
+        withAnimation(Motion.snappy) {
+            store.hijriOffset += delta
+            if wasCurrent { goToday() }
+        }
+        Haptics.tap(enabled: store.hapticsEnabled)
+        // الودجات تقرأ الإزاحة من الدفاتر نفسها، فتُنبَّه لتعيد رسم ما بنَتْه على الأمس.
+        WidgetCenter.shared.reloadAllTimelines()
+    }
+
+    private func offsetText(_ n: Int) -> String {
+        n == 0 ? "0" : (n > 0 ? "+\(n.counterText)" : "−\(abs(n).counterText)")
+    }
+
+    /// ما ينطق به VoiceOver بدل «زائد ١»: تقديمٌ أو تأخيرٌ بلفظ العدد العربي.
+    private func offsetLabel(_ n: Int) -> String {
+        switch n {
+        case 0:  return loc("بلا تعديل")
+        case 1:  return loc("يوم واحد بعد الحساب")
+        case 2:  return loc("يومان بعد الحساب")
+        case -1: return loc("يوم واحد قبل الحساب")
+        default: return loc("يومان قبل الحساب")
+        }
     }
 
     // MARK: اليوم المختار

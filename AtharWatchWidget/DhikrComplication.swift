@@ -1,0 +1,74 @@
+import WidgetKit
+import SwiftUI
+
+// MARK: - مضاعفة الذكر (واجهة الساعة)
+
+struct DhikrComplicationEntry: TimelineEntry {
+    let date: Date
+    let text: String
+    let reference: String
+}
+
+struct DhikrComplicationProvider: TimelineProvider {
+    private func entry(at date: Date) -> DhikrComplicationEntry? {
+        guard let d = WatchWidgetAdhkar.at(date) else { return nil }
+        return .init(date: date, text: d.text, reference: d.reference)
+    }
+    /// لا نخترع ذكرًا حين يعزّ الملف — اسم التطبيق وحده أصدق من نصٍّ مكتوبٍ هنا.
+    private var fallback: DhikrComplicationEntry {
+        .init(date: Date(), text: "أثر", reference: "")
+    }
+    func placeholder(in context: Context) -> DhikrComplicationEntry { entry(at: Date()) ?? fallback }
+    func getSnapshot(in context: Context, completion: @escaping (DhikrComplicationEntry) -> Void) { completion(placeholder(in: context)) }
+    func getTimeline(in context: Context, completion: @escaping (Timeline<DhikrComplicationEntry>) -> Void) {
+        var entries: [DhikrComplicationEntry] = []
+        var cursor = Date()
+        for _ in 0..<8 {
+            guard let e = entry(at: cursor) else { break }
+            entries.append(e)
+            cursor = WatchWidgetAdhkar.nextSlot(after: cursor)
+        }
+        completion(Timeline(entries: entries.isEmpty ? [fallback] : entries, policy: .atEnd))
+    }
+}
+
+struct DhikrComplicationView: View {
+    let entry: DhikrComplicationEntry
+    @Environment(\.widgetFamily) private var family
+
+    var body: some View {
+        switch family {
+        case .accessoryInline:
+            // السطر المفرد يفرضه النظام بخطّه ومقاسه — لا يقبل نسخًا ولا تنسيقًا.
+            Text(entry.text)
+        default: // rectangular
+            VStack(alignment: .leading, spacing: 1) {
+                Text(entry.text)
+                    .font(WatchNaskh.font(13))
+                    .lineLimit(3)
+                    .minimumScaleFactor(0.7)
+                    .multilineTextAlignment(.leading)
+                if !entry.reference.isEmpty {
+                    Text(entry.reference)
+                        .font(WatchNaskh.font(10))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+            }
+            .environment(\.layoutDirection, .rightToLeft)
+        }
+    }
+}
+
+struct DhikrComplication: Widget {
+    private let kind = "AtharWatchDhikr"
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: kind, provider: DhikrComplicationProvider()) { entry in
+            DhikrComplicationView(entry: entry)
+                .containerBackground(for: .widget) { Color.clear }
+        }
+        .configurationDisplayName("ذكر")
+        .description("ذكرٌ يتجدّد كل نصف ساعة على واجهة الساعة.")
+        .supportedFamilies([.accessoryRectangular, .accessoryInline])
+    }
+}

@@ -31,6 +31,60 @@ struct NextPrayerIntent: AppIntent {
     }
 }
 
+/// الصلوات الخمس وحدها تُسجَّل — الشروق ليس صلاة. القيم الخام تطابق `Prayer`
+/// ليكون التحويل مباشرًا بلا جدولٍ ثانٍ يفترق عنه.
+enum PrayerChoice: String, AppEnum {
+    case fajr, dhuhr, asr, maghrib, isha
+
+    static var typeDisplayRepresentation: TypeDisplayRepresentation { "الصلاة" }
+
+    static var caseDisplayRepresentations: [PrayerChoice: DisplayRepresentation] {
+        [
+            .fajr:    "الفجر",
+            .dhuhr:   "الظهر",
+            .asr:     "العصر",
+            .maghrib: "المغرب",
+            .isha:    "العشاء"
+        ]
+    }
+
+    var prayer: Prayer { Prayer(rawValue: rawValue) ?? .fajr }
+}
+
+/// «سجّل صلاة العصر»: يكتب في سجل اليوم بلا فتح التطبيق — من صلّى ثم أراد أن
+/// يقيّدها لا يُقطع عليه ما هو فيه، كزرّ بطاقة الأذان سواء.
+struct LogPrayerIntent: AppIntent {
+    static var title: LocalizedStringResource { "سجّل صلاة" }
+    static var description: IntentDescription { IntentDescription("يسجّل صلاةً في وقتها في سجل اليوم.") }
+    static var openAppWhenRun: Bool { false }
+
+    @Parameter(title: "الصلاة")
+    var prayer: PrayerChoice
+
+    static var parameterSummary: some ParameterSummary {
+        Summary("سجّل \(\.$prayer)")
+    }
+
+    @MainActor
+    func perform() async throws -> some IntentResult & ProvidesDialog {
+        let p = prayer.prayer
+        AtharStore.shared.setPrayerStatus(.onTime, for: p, on: Date())
+        return .result(dialog: IntentDialog(stringLiteral: loc("سُجّلت %1$@ في وقتها — تقبّل الله.", p.title)))
+    }
+}
+
+/// «أين ختمتي»: يجيب «سيري» بلا فتح التطبيق — الجواب من التخزين المحلي وحده.
+struct KhatmahPositionIntent: AppIntent {
+    static var title: LocalizedStringResource { "أين ختمتي" }
+    static var description: IntentDescription { IntentDescription("يخبرك أين بلغت في ختمتك: السورة والصفحة والنسبة.") }
+    static var openAppWhenRun: Bool { false }
+
+    @MainActor
+    func perform() async throws -> some IntentResult & ProvidesDialog {
+        .result(dialog: IntentDialog(stringLiteral: AtharStore.shared.khatmahPositionPhrase()))
+    }
+}
+
 /// أقسام التطبيق التي يمكن فتحها بالصوت — القيم الخام تطابق `AppTab` ليكون التحويل مباشرًا.
 enum SectionChoice: String, AppEnum {
     case mushaf, adhkar, prayer, live, radio, tasbih, hajj, qibla, hifz, recitation,
@@ -111,6 +165,26 @@ struct AtharShortcuts: AppShortcutsProvider {
             ],
             shortTitle: "الصلاة القادمة",
             systemImageName: "moon.stars.fill"
+        )
+        AppShortcut(
+            intent: LogPrayerIntent(),
+            phrases: [
+                "سجّل \(\.$prayer) في \(.applicationName)",
+                "سجّل صلاة \(\.$prayer) في \(.applicationName)",
+                "صلّيت \(\.$prayer) في \(.applicationName)"
+            ],
+            shortTitle: "سجّل صلاة",
+            systemImageName: "checkmark.seal.fill"
+        )
+        AppShortcut(
+            intent: KhatmahPositionIntent(),
+            phrases: [
+                "أين ختمتي في \(.applicationName)",
+                "أين وصلت في \(.applicationName)",
+                "موضع ختمتي في \(.applicationName)"
+            ],
+            shortTitle: "أين ختمتي",
+            systemImageName: "book.closed.fill"
         )
         AppShortcut(
             intent: OpenSectionIntent(),

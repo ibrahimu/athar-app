@@ -23,7 +23,9 @@ struct LiveView: View {
                     }
                     LiveRadioCard(source: .radio, tint: tint, live: Theme.danger)
                         .appearStagger(3)
-                    footer.appearStagger(4)
+                    // المؤقّت للقسم كلّه لا للإذاعة وحدها: انطفاؤه يُسكت الإذاعة ويوقف الفيديو معها.
+                    LiveSleepRow(tint: tint).appearStagger(4)
+                    footer.appearStagger(5)
                 }
                 .padding(.horizontal, Theme.gutter)
                 .padding(.top, 8)
@@ -211,10 +213,14 @@ private struct LiveWebView: UIViewRepresentable {
 
     /// محرّكات الصوت (الإذاعة والتلاوة والآية) لا تعرف صفحة الويب، فتُعلن بدءها إشعارًا
     /// ونوقف نحن الفيديو — وإلا سُمع صوتان معًا وعرضت شاشة القفل الإذاعة بينما YouTube يصدح.
+    /// وكذلك انطفاء مؤقّت النوم: مَن نام على بثّ الحرم لا يوقظه الفيديو يعمل إلى الفجر.
     /// وهو أيضًا من يرصد لمسة المستخدم على المشغّل ليرفع بوابة الهدم.
     final class Coordinator: NSObject, UIGestureRecognizerDelegate {
+        /// المشغّل داخل iframe من أصلٍ آخر فلا نصل إلى عنصر الفيديو؛ نرسل أمر الإيقاف عبر واجهة YouTube.
+        private static let pauseScript = "document.getElementById('p')?.contentWindow.postMessage(JSON.stringify({event:'command',func:'pauseVideo',args:[]}), '*')"
+
         private weak var web: WKWebView?
-        private var observer: NSObjectProtocol?
+        private var observers: [NSObjectProtocol] = []
         /// البوابة تعيش في البطاقة لا هنا، فتبقى معرفتها بعد تسريح هذا المنسّق.
         private let gate: LivePlayerGate
 
@@ -236,12 +242,16 @@ private struct LiveWebView: UIViewRepresentable {
             touch.delegate = self
             web.addGestureRecognizer(touch)
 
-            observer = NotificationCenter.default.addObserver(
-                forName: .atharAudioStarted, object: nil, queue: .main
-            ) { [weak self] _ in
-                // المشغّل داخل iframe فلا نصل إلى عنصر الفيديو؛ نرسل أمر الإيقاف عبر واجهة YouTube.
-                self?.web?.evaluateJavaScript("document.getElementById('p')?.contentWindow.postMessage(JSON.stringify({event:'command',func:'pauseVideo',args:[]}), '*')", completionHandler: nil)
+            let names: [Notification.Name] = [.atharAudioStarted, .atharSleepTimerFired]
+            observers = names.map { name in
+                NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+                    self?.pauseVideo()
+                }
             }
+        }
+
+        private func pauseVideo() {
+            web?.evaluateJavaScript(Self.pauseScript, completionHandler: nil)
         }
 
         @objc private func touched(_ recognizer: UIGestureRecognizer) {
@@ -252,7 +262,8 @@ private struct LiveWebView: UIViewRepresentable {
                                shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool { true }
 
         func detach() {
-            if let o = observer { NotificationCenter.default.removeObserver(o); observer = nil }
+            for o in observers { NotificationCenter.default.removeObserver(o) }
+            observers = []
             web = nil
         }
     }

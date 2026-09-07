@@ -11,10 +11,17 @@ struct DhikrSessionView: View {
     @ObservedObject private var speaker = DhikrSpeaker.shared
     @State private var remaining: [String: Int] = [:]
     @State private var showCompletion = false
+    /// الذكر المفتوح في مصمّم بطاقة الصورة، وبطاقة المحفظة المعروضة — كلاهما يُبنى
+    /// من المعرّف لا من نصّ يُعاد كتابته هنا.
+    @State private var designing: Phrase?
+    @State private var walletPreview: WalletCard?
     /// ورقة الإتمام لم تكن «حاجزة» لقارئ الشاشة: التركيز يبقى على زرّ العدّ خلفها.
     @AccessibilityFocusState private var focusDone: Bool
 
     private var color: Color { Theme.accent(for: category.accent) }
+    private var direction: LayoutDirection {
+        AppConfig.arabicOnly ? .rightToLeft : store.appLanguage.layoutDirection
+    }
     // حارس ضدّ فهرس سالب لو كانت الفئة فارغة (غير ممكن ببيانات مُدرجة، لكن احتياطًا).
     private var current: Dhikr { category.items[max(0, min(index, category.items.count - 1))] }
     private var left: Int { remaining[current.id] ?? current.count }
@@ -72,6 +79,12 @@ struct DhikrSessionView: View {
                 Menu {
                     Button(loc("إعادة العدّ"), systemImage: "arrow.counterclockwise") { resetCounts() }
                     ShareLink(item: shareText) { Label(loc("مشاركة الذكر"), systemImage: "square.and.arrow.up") }
+                    Button(loc("بطاقة صورة"), systemImage: "photo") { designing = dhikrPhrase }
+                    // البطاقة الموقَّعة موجودة في قسم المحفظة؛ نقرّبها إلى الذكر الذي يُقرأ
+                    // الآن بدل أن يبحث عنها بين خمسٍ وستين بطاقة.
+                    if let card = walletCard {
+                        Button(loc("أضف إلى المحفظة"), systemImage: "wallet.pass") { walletPreview = card }
+                    }
                 } label: {
                     Image(systemName: "ellipsis.circle")
                 }
@@ -83,6 +96,17 @@ struct DhikrSessionView: View {
         .onChange(of: index) { _, _ in saveSession(); speaker.stop() }   // لا يُكمل قراءة الذكر السابق على عدّ اللاحق
         .overlay { if showCompletion { completionOverlay } }
         .animation(Motion.smooth, value: showCompletion)
+        .sheet(item: $designing) { phrase in
+            StoryDesignerView(phrase: phrase)
+                .atharSheetChrome()
+                .environment(\.layoutDirection, direction)
+        }
+        .sheet(item: $walletPreview) { card in
+            WalletCardPreview(card: card)
+                .atharSheetChrome()
+                .presentationDetents([.large])
+                .environment(\.layoutDirection, direction)
+        }
     }
 
     // MARK: Pieces
@@ -374,5 +398,27 @@ struct DhikrSessionView: View {
 
     private var shareText: String {
         current.text + (current.hasReference ? "\n\n\(current.reference)" : "") + "\n\nمن تطبيق أثر"
+    }
+
+    // MARK: بطاقة صورة وبطاقة محفظة
+
+    /// المصمّم يبني بطاقته من المعرّف: اللفظ يبقى من adhkar.json حرفًا، ولا يُكتب هنا.
+    private var dhikrPhrase: Phrase {
+        Phrase(id: "d-\(current.id)", category: phraseCategory, source: .dhikr(id: current.id))
+    }
+
+    /// الصنف يصبغ المصمّم لا غير، فنتبع فيه تصنيف مكتبة العبارات نفسه.
+    private var phraseCategory: PhraseCategory {
+        switch category.id {
+        case "morning": return .morning
+        case "evening": return .evening
+        default:        return .dua
+        }
+    }
+
+    /// بطاقة المحفظة لهذا الذكر بعينه — تُطابَق بالفئة والمعرّف معًا، فأذكار
+    /// الصباح والمساء تشترك في ألفاظ ولا تشترك في بطاقاتها.
+    private var walletCard: WalletCard? {
+        WalletCardLibrary.cards.first { $0.dhikrCategory == category.id && $0.dhikrId == current.id }
     }
 }

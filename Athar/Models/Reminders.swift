@@ -16,6 +16,7 @@ enum Reminders {
     static let eveningId = "athar.reminder.evening"
     static let athanPrefix = "athar.athan."
     static let wirdId = "athar.reminder.wird"
+    static let khatmahPrefix = "athar.khatmah."
     static let istighfarPrefix = "athar.istighfar."
     static let qiyamPrefix = "athar.qiyam."
     static let jumuahId = "athar.jumuah"
@@ -50,6 +51,9 @@ enum Reminders {
     private static func pinned(_ date: Date, _ calendar: Calendar) -> DateComponents {
         var comps = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: date)
         comps.timeZone = calendar.timeZone
+        // التقويم يُحمل مع المكوّنات: جهازٌ إقليمه هجريّ يستخرج «١٤ ربيعًا» ثم يطابقها
+        // النظام على تقويمه هو، فيقع الأذان في يومٍ آخر. بذكر التقويم يُطابَق ما استُخرج به.
+        comps.calendar = calendar
         return comps
     }
 
@@ -245,6 +249,49 @@ enum Reminders {
                   minutes: store.wirdReminderMinutes)
     }
 
+    /// تذكير ورد الختمة. بلا موعدٍ للختم يكفي نداءٌ واحد متكرر كتذكير الورد، فعددُ
+    /// صفحات اليوم ثابت. ومع الموعد يُجدوَل كل يوم على حدة — نصيب اليوم يتبدّل مع
+    /// الخطة، فيصل مع النداء عددُه هو لا عبارةٌ عامّة. سبعة أيام سقفًا كالأذان،
+    /// وتتجدّد مع كل فتح، فلا تزاحم الأذان على سقف النظام.
+    private static func scheduleKhatmah(store: AtharStore) {
+        guard store.khatmahReminder, store.khatmahActive,
+              store.khatmahPagesDone < Quran.pageCount else { return }
+        let minutes = store.khatmahReminderMinutes
+
+        guard store.khatmahPlanActive else {
+            add(id: khatmahPrefix + "daily",
+                title: "ورد الختمة",
+                body: "\(AtharStore.pagesText(store.khatmahPagesPerDay)) اليوم تُبقيك على خطتك.",
+                minutes: minutes)
+            return
+        }
+
+        // موعدٌ يوميّ لا تعلّق له بشمس المكان، فتقويم الجهاز لا تقويم المدينة —
+        // كما في حديث اليوم والورد.
+        let calendar = Calendar.current
+        let now = planningDate
+        for dayOffset in 0..<7 {
+            let share = store.khatmahPlanShare(daysFromNow: dayOffset)
+            guard share > 0,
+                  let day = calendar.date(byAdding: .day, value: dayOffset, to: now),
+                  let fire = calendar.date(bySettingHour: minutes / 60, minute: minutes % 60,
+                                           second: 0, of: day),
+                  fire > now else { continue }
+
+            let content = UNMutableNotificationContent()
+            content.title = "ورد الختمة"
+            if let target = store.khatmahTargetDate {
+                content.subtitle = "الختم يوم \(AtharStore.khatmahDateText(target))"
+            }
+            content.body = "\(AtharStore.pagesText(share)) اليوم تبلغ بك ختمتك في موعدها."
+            content.sound = .default
+
+            let comps = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: fire)
+            collect(UNNotificationRequest(identifier: "\(khatmahPrefix)\(dayOffset)", content: content,
+                trigger: UNCalendarNotificationTrigger(dateMatching: comps, repeats: false)))
+        }
+    }
+
     /// تذكير الاستغفار على مدار اليوم — من الفجر إلى العشاء، بلا إزعاج ليلي.
     private static func scheduleIstighfar(store: AtharStore) {
         guard store.istighfarAlerts else { return }
@@ -332,9 +379,12 @@ enum Reminders {
             let hijri = Calendar(identifier: .islamicUmmAlQura)
             var cursor = planningDate
             for i in 0..<3 {
-                guard let eve = hijri.nextDate(after: cursor,
+                guard let raw = hijri.nextDate(after: cursor,
                         matching: DateComponents(day: 12, hour: 20), matchingPolicy: .nextTime)
                 else { break }
+                // بعكس إزاحة المطالع يقع التذكير في اليوم الذي يراه صاحبه ثاني عشرَ لا
+                // في يوم الحساب الفلكيّ: من عدّل تقويمه يومًا فشبكتُه ومناسباتُه وتذكيرُه سواء.
+                let eve = Hijri.unshifted(raw)
                 cursor = eve.addingTimeInterval(86400 * 3)
                 let c = UNMutableNotificationContent()
                 c.title = "الأيام البيض"
@@ -379,6 +429,7 @@ enum Reminders {
         scheduleAdhkar(store: store)
         scheduleAthan(store: store)
         scheduleWird(store: store)
+        scheduleKhatmah(store: store)
         scheduleIstighfar(store: store)
         scheduleQiyam(store: store)
         scheduleSunan(store: store)
@@ -468,6 +519,7 @@ enum Reminders {
     static func rescheduleAthan(store: AtharStore) async { await rescheduleAll(store: store) }
     static func rescheduleHadith(store: AtharStore) async { await rescheduleAll(store: store) }
     static func rescheduleWird(store: AtharStore) async { await rescheduleAll(store: store) }
+    static func rescheduleKhatmah(store: AtharStore) async { await rescheduleAll(store: store) }
     static func rescheduleIstighfar(store: AtharStore) async { await rescheduleAll(store: store) }
     static func rescheduleQiyam(store: AtharStore) async { await rescheduleAll(store: store) }
     static func rescheduleSunan(store: AtharStore) async { await rescheduleAll(store: store) }

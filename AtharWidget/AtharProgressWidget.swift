@@ -1,3 +1,4 @@
+import AppIntents
 import WidgetKit
 import SwiftUI
 
@@ -9,6 +10,8 @@ struct ProgressEntry: TimelineEntry {
     let total: Int
     let completedToday: Int
     let dailyGoal: Int
+    let tasbihCount: Int
+    let tasbihTarget: Int
     let moment: AtharStyle.Moment
 }
 
@@ -21,12 +24,15 @@ struct ProgressProvider: TimelineProvider {
             total: store.totalDhikrCount,
             completedToday: store.completedToday.count,
             dailyGoal: 2, // أذكار الصباح + المساء
+            tasbihCount: store.tasbihCount,
+            tasbihTarget: store.tasbihTarget,
             moment: .resolved(at: date, times: store.prayerTimes(for: date))
         )
     }
 
     func placeholder(in context: Context) -> ProgressEntry {
-        ProgressEntry(date: Date(), streak: 7, total: 1240, completedToday: 1, dailyGoal: 2, moment: .morning)
+        ProgressEntry(date: Date(), streak: 7, total: 1240, completedToday: 1, dailyGoal: 2,
+                      tasbihCount: 19, tasbihTarget: 33, moment: .morning)
     }
 
     func getSnapshot(in context: Context, completion: @escaping (ProgressEntry) -> Void) {
@@ -51,10 +57,13 @@ struct ProgressWidgetView: View {
         return min(1, Double(entry.completedToday) / Double(entry.dailyGoal))
     }
 
+    /// ما مضى من الشوط الجاري — الرقم الذي تعرضه شاشة المسبحة نفسها.
+    private var roundCount: Int { entry.tasbihCount % max(1, entry.tasbihTarget) }
+
     var body: some View {
         switch family {
         case .accessoryInline:
-            Text("أثر · \(streakDays(entry.streak))")
+            Text(loc("أثر · %1$@", streakDays(entry.streak)))
 
         case .accessoryCircular:
             Gauge(value: fraction) {
@@ -67,10 +76,10 @@ struct ProgressWidgetView: View {
 
         case .accessoryRectangular:
             VStack(alignment: .leading, spacing: 2) {
-                Text("أثر اليوم")
+                Text(loc("أثر اليوم"))
                     .font(.system(size: 11, weight: .semibold))
                     .widgetAccentable()
-                Text("\(entry.completedToday.counterText) من \(entry.dailyGoal.counterText) أذكار")
+                Text(loc("%1$@ من %2$@ أذكار", entry.completedToday.counterText, entry.dailyGoal.counterText))
                     .font(.system(size: 13))
                 Text(streakCaption(entry.streak))
                     .font(.system(size: 11))
@@ -79,40 +88,127 @@ struct ProgressWidgetView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .environment(\.layoutDirection, .rightToLeft)
 
+        case .systemSmall:
+            // المربّع الصغير ضيّق عن عمودين، فالحلقة وعنوانها صفٌّ، والمسبحة تحتهما بعرضها.
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 10) {
+                    streakRing(size: 52, numberSize: 19)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(loc("أثرك اليوم"))
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(entry.moment.ink)
+                            .lineLimit(1).minimumScaleFactor(0.8)
+                        Text(loc("%1$@ من %2$@ أذكار", entry.completedToday.counterText, entry.dailyGoal.counterText))
+                            .font(.system(size: 10))
+                            .foregroundStyle(entry.moment.inkSoft)
+                            .lineLimit(2).minimumScaleFactor(0.8)
+                    }
+                }
+                Spacer(minLength: 0)
+                tasbihButton {
+                    HStack(spacing: 7) {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(entry.moment.tint)
+                        Text(loc("سبّح"))
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(entry.moment.ink)
+                        Spacer(minLength: 0)
+                        Text(roundCount.counterText)
+                            .font(.system(size: 16, weight: .bold, design: .rounded))
+                            .foregroundStyle(entry.moment.tint)
+                            .contentTransition(.numericText())
+                    }
+                    .padding(.horizontal, 12)
+                    .frame(maxWidth: .infinity, minHeight: 44)
+                    .background(tasbihShell)
+                }
+            }
+            .environment(\.layoutDirection, .rightToLeft)
+
         default:
             HStack(spacing: 14) {
-                ZStack {
-                    Circle().stroke(entry.moment.ink.opacity(0.16), lineWidth: 9)
-                    let arc = Circle()
-                        .trim(from: 0, to: max(0.02, fraction))
-                        .stroke(AngularGradient(colors: [entry.moment.tint, entry.moment.tint.opacity(0.55), entry.moment.tint],
-                                                center: .center, angle: .degrees(-90)),
-                                style: StrokeStyle(lineWidth: 9, lineCap: .round))
-                        .rotationEffect(.degrees(-90))
-                    arc.blur(radius: 5).opacity(0.35 + 0.4 * fraction)
-                    arc
-                    Text(entry.streak.counterText)
-                        .font(.system(size: 24, weight: .bold))
-                        .foregroundStyle(LinearGradient(colors: [entry.moment.ink, entry.moment.tint],
-                                                        startPoint: .top, endPoint: .bottom))
-                }
-                .frame(width: 74, height: 74)
+                streakRing(size: 74, numberSize: 24)
 
                 VStack(alignment: .leading, spacing: 5) {
-                    Text("أثرك اليوم")
+                    Text(loc("أثرك اليوم"))
                         .font(.system(size: 15, weight: .bold))
                         .foregroundStyle(entry.moment.ink)
-                    Text("\(entry.completedToday.counterText) من \(entry.dailyGoal.counterText) أذكار")
+                    Text(loc("%1$@ من %2$@ أذكار", entry.completedToday.counterText, entry.dailyGoal.counterText))
                         .font(.system(size: 12))
                         .foregroundStyle(entry.moment.inkSoft)
-                    Text("\(entry.total.counterText) ذكر بإذن الله")
+                    Text(loc("%1$@ ذكر بإذن الله", entry.total.counterText))
                         .font(.system(size: 12))
                         .foregroundStyle(entry.moment.tint)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
+
+                tasbihButton {
+                    VStack(spacing: 3) {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(entry.moment.tint)
+                        Text(roundCount.counterText)
+                            .font(.system(size: 22, weight: .bold, design: .rounded))
+                            .foregroundStyle(entry.moment.ink)
+                            .contentTransition(.numericText())
+                            .lineLimit(1).minimumScaleFactor(0.6)
+                        Text(loc("سبّح"))
+                            .font(.system(size: 11, weight: .semibold))
+                            .foregroundStyle(entry.moment.inkSoft)
+                    }
+                    .frame(width: 74, height: 74)
+                    .background(tasbihShell)
+                }
             }
             .environment(\.layoutDirection, .rightToLeft)
         }
+    }
+
+    // MARK: أجزاء
+
+    /// حلقة التتابع: القوس يمتلئ بأذكار اليوم، والرقم في وسطه أيام التتابع.
+    private func streakRing(size: CGFloat, numberSize: CGFloat) -> some View {
+        ZStack {
+            Circle().stroke(entry.moment.ink.opacity(0.16), lineWidth: size > 60 ? 9 : 7)
+            let arc = Circle()
+                .trim(from: 0, to: max(0.02, fraction))
+                .stroke(AngularGradient(colors: [entry.moment.tint, entry.moment.tint.opacity(0.55), entry.moment.tint],
+                                        center: .center, angle: .degrees(-90)),
+                        style: StrokeStyle(lineWidth: size > 60 ? 9 : 7, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+            arc.blur(radius: 5).opacity(0.35 + 0.4 * fraction)
+            arc
+            Text(entry.streak.counterText)
+                .font(.system(size: numberSize, weight: .bold))
+                .foregroundStyle(LinearGradient(colors: [entry.moment.ink, entry.moment.tint],
+                                                startPoint: .top, endPoint: .bottom))
+                .lineLimit(1).minimumScaleFactor(0.6)
+                .padding(.horizontal, 4)
+        }
+        .frame(width: size, height: size)
+        // رقمٌ عارٍ في حلقة: لولا هذا لقرأه الصوتُ «7» لا يدري السامعُ سبعةَ ماذا.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(loc("تتابعك"))
+        .accessibilityValue(streakCaption(entry.streak))
+    }
+
+    /// قِشرة المسبحة: تستطيل كبسولةً في الصفّ وتستدير في المربّع — حدٌّ خافت من لون
+    /// اللحظة يُفرد الزرّ عمّا حوله فيُعرف أنه يُضغط.
+    private var tasbihShell: some View {
+        ZStack {
+            Capsule().fill(entry.moment.ink.opacity(0.10))
+            Capsule().strokeBorder(entry.moment.tint.opacity(0.38), lineWidth: 0.9)
+        }
+    }
+
+    /// المسبحة في مكانها: النيّة تُنفَّذ في العملية نفسها فلا يُفتح التطبيق ولا يُقطع الذكر.
+    private func tasbihButton<Label: View>(@ViewBuilder label: () -> Label) -> some View {
+        Button(intent: TasbihTapIntent(), label: label)
+            .buttonStyle(.plain)
+            .accessibilityLabel(loc("سبّح"))
+            .accessibilityValue(loc("%1$@ من %2$@", roundCount.counterText, entry.tasbihTarget.counterText))
+            .accessibilityHint(loc("اضغط مرّتين للعدّ"))
     }
 }
 
@@ -127,11 +223,11 @@ struct AtharProgressWidget: Widget {
                 .containerBackground(for: .widget) {
                     AtharStyle.Backdrop(moment: entry.moment, rippleScale: 0.8)
                 }
-                // النقر يفتح المسبحة — موضع الزيادة في العدد الذي تعرضه الودجة.
+                // ما حول زرّ المسبحة يفتح المسبحة نفسها — موضع العدّ الذي تعرضه الودجة.
                 .widgetURL(URL(string: "athar://open/tasbih"))
         }
         .configurationDisplayName("أثري")
-        .description("تتابعك اليومي ومجموع أذكارك.")
+        .description("تتابعك اليومي ومجموع أذكارك، ومسبحةٌ تعدّ من مكانها.")
         .supportedFamilies([
             .systemSmall, .systemMedium,
             .accessoryInline, .accessoryCircular, .accessoryRectangular
@@ -144,20 +240,20 @@ struct AtharProgressWidget: Widget {
 /// «يوم واحد»، «يومان»، «٣ أيام»، «١١ يومًا» — لا «12 يوم».
 private func streakDays(_ n: Int) -> String {
     switch n {
-    case 1:      return "يوم واحد"
-    case 2:      return "يومان"
-    case 3...10: return "\(n.counterText) أيام"
-    default:     return "\(n.counterText) يومًا"
+    case 1:      return loc("يوم واحد")
+    case 2:      return loc("يومان")
+    case 3...10: return loc("%1$@ أيام", n.counterText)
+    default:     return loc("%1$@ يومًا", n.counterText)
     }
 }
 
 /// عنوان التتابع في الودجة الكبيرة، بالصفة موافقةً للعدد.
 private func streakCaption(_ n: Int) -> String {
     switch n {
-    case 0:      return "ابدأ تتابعك اليوم"
-    case 1:      return "يوم واحد متتابع"
-    case 2:      return "يومان متتابعان"
-    case 3...10: return "\(n.counterText) أيام متتابعة"
-    default:     return "\(n.counterText) يومًا متتابعًا"
+    case 0:      return loc("ابدأ تتابعك اليوم")
+    case 1:      return loc("يوم واحد متتابع")
+    case 2:      return loc("يومان متتابعان")
+    case 3...10: return loc("%1$@ أيام متتابعة", n.counterText)
+    default:     return loc("%1$@ يومًا متتابعًا", n.counterText)
     }
 }

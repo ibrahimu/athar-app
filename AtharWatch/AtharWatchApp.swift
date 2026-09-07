@@ -163,11 +163,31 @@ struct WatchTasbihPage: View {
     @EnvironmentObject private var store: AtharStore
     @State private var count = 0
     @State private var phraseIndex = 0
+    /// التاج الرقمي مسبحةٌ ثانية: كل عتبة حبّة، والمرساة تحفظ آخر ما عُدّ.
+    @State private var crown: Double = 0
+    @State private var crownAnchor: Double = 0
+    @FocusState private var crownFocused: Bool
 
     private let phrases = ["سُبْحَانَ اللهِ", "الْحَمْدُ لِلهِ", "اللهُ أَكْبَرُ", "أَسْتَغْفِرُ اللهَ", "لَا إِلَهَ إِلَّا اللهُ", "سُبْحَانَ اللهِ وَبِحَمْدِهِ"]
     private let target = 33
 
     private var moment: AtharStyle.Moment { .at(Date(), times: store.prayerTimes()) }
+
+    /// مدخلٌ واحد للعدّ مهما جاء — من الإبهام أو من التاج — فلا يفترق سلوكهما.
+    private func bump(_ n: Int) {
+        guard n > 0 else { return }
+        let before = count
+        count += n
+        // نبضة عند كل حبّة، وأخرى مميّزة عند تمام الجولة ولو قفز التاج عدّة حبّات.
+        let finished = (count / target) != (before / target)
+        WKInterfaceDevice.current().play(finished ? .success : .click)
+        store.tasbihCount += n
+        // ودفتر اليوم يعرف تسبيح الساعة، وإلا بقيت مضاعفة العدّ اليومي صفرًا.
+        store.noteDhikr(n)
+        WatchSyncReceiver.shared.reportTasbih(n)
+        // النقر يخطف التركيز إلى الزرّ، فنردّه ليبقى التاج عادًّا بعده.
+        crownFocused = true
+    }
 
     var body: some View {
         VStack(spacing: 12) {
@@ -179,10 +199,7 @@ struct WatchTasbihPage: View {
 
             // الحلقة كلّها زرّ: نقرة في أي موضع تعدّ، مع نبضة ملموسة.
             Button {
-                count += 1
-                WKInterfaceDevice.current().play(count % target == 0 ? .success : .click)
-                store.tasbihCount += 1
-                WatchSyncReceiver.shared.reportTasbih(1)
+                bump(1)
             } label: {
                 ZStack {
                     Circle().stroke(Color.white.opacity(0.12), lineWidth: 10)
@@ -210,8 +227,8 @@ struct WatchTasbihPage: View {
                 count = 0
                 WKInterfaceDevice.current().play(.retry)
             })
-            .accessibilityLabel("عدّ — الحالي \(count)")
-            .accessibilityHint("ضغطة مطوّلة للتصفير")
+            .accessibilityLabel("عدّ — الحالي \(String(count))")
+            .accessibilityHint("انقر أو أدر التاج الرقمي لتعدّ، وضغطة مطوّلة للتصفير")
 
             Button {
                 phraseIndex = (phraseIndex + 1) % phrases.count
@@ -229,6 +246,22 @@ struct WatchTasbihPage: View {
             .buttonStyle(.plain)
         }
         .padding(.horizontal, 4)
+        // بلا تركيز لا يصل التاج إلى الصفحة أصلًا؛ ونطلبه أول ظهورها.
+        .focusable()
+        .focused($crownFocused)
+        // عتبةٌ لكل حبّة، ونبضة النظام مطفأة لأننا نضرب نبضتنا في bump.
+        .digitalCrownRotation($crown, from: 0, through: 10_000, by: 1,
+                              sensitivity: .medium, isContinuous: false, isHapticFeedbackEnabled: false)
+        .onChange(of: crown) { _, value in
+            let steps = Int((value - crownAnchor).rounded())
+            // إرجاع التاج لا يمحو ذكرًا قيل، ولا يُعاد عدّه حين يعود للأمام.
+            guard steps > 0 else { return }
+            crownAnchor = value
+            bump(steps)
+            // ولا ينفد التاج: قرب سقفه يعود إلى مبدئه بلا أثرٍ في العدّ.
+            if value > 9_900 { crown = 0; crownAnchor = 0 }
+        }
+        .onAppear { crownFocused = true }
         .containerBackground(LinearGradient(colors: moment.gradient, startPoint: .top, endPoint: .bottom), for: .navigation)
     }
 }

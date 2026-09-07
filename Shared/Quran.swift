@@ -96,6 +96,17 @@ enum Quran {
         return AyahRef(surah: starts[i][0], ayah: starts[i][1])
     }
 
+    static let juzCount = 30
+
+    /// أول آية في جزء معيّن (١ إلى ٣٠) — للانتقال بالجزء كما يُنتقل بالصفحة، فكثيرٌ
+    /// يحفظ موضعه بالجزء لا بالرقم.
+    static func firstAyah(ofJuz juz: Int) -> AyahRef {
+        let starts = metaFile?.juzStarts ?? [[1, 1]]
+        let i = min(max(juz, 1), starts.count) - 1
+        guard starts.indices.contains(i), starts[i].count >= 2 else { return AyahRef(surah: 1, ayah: 1) }
+        return AyahRef(surah: starts[i][0], ayah: starts[i][1])
+    }
+
     /// كل آيات صفحة معيّنة من مصحف المدينة.
     static func ayahs(inPage page: Int) -> [AyahRef] {
         let from = firstAyah(ofPage: page)

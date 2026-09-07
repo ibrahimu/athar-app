@@ -35,7 +35,21 @@ struct KhatmahView: View {
         .navigationBarTitleDisplayMode(.inline)
         // تثبيت أساس «ورد اليوم» هنا لا في جسم الواجهة: الكتابة في التخزين
         // أثناء الرسم أثر جانبي يعيد الرسم بلا نهاية.
-        .task { store.refreshKhatmahDayBase() }
+        .task {
+            store.refreshKhatmahDayBase()
+            store.refreshKhatmahPlanDayBase()
+        }
+        // رفض الإذن لا يُترك صامتًا: التذكير يرتدّ موقوفًا ونقول له لماذا، كما في الورد.
+        .alert(loc("الإشعارات موقوفة"), isPresented: $permissionDenied) {
+            Button(loc("فتح الإعدادات")) {
+                if let url = URL(string: UIApplication.openSettingsURLString) {
+                    UIApplication.shared.open(url)
+                }
+            }
+            Button(loc("later"), role: .cancel) {}
+        } message: {
+            Text(loc("لتفعيل التذكير، اسمح للتطبيق بالإشعارات من إعدادات الجهاز."))
+        }
     }
 
     // MARK: الإعداد
@@ -134,6 +148,10 @@ struct KhatmahView: View {
 
             Button {
                 store.startKhatmah(days: days, mode: mode)
+                // ختمةٌ جديدة بمرسًى جديد: موعد الختمة السابقة لو بقي لقِيس تقدّم
+                // اليوم الأول على صفحات ختمةٍ انقضت، فقيل للمبتدئ «متأخّر».
+                store.clearKhatmahTarget()
+                Task { await Reminders.rescheduleKhatmah(store: store) }
                 Haptics.done(enabled: store.hapticsEnabled)
             } label: {
                 Text(loc("ابدأ التحدي"))
@@ -186,8 +204,9 @@ struct KhatmahView: View {
                 todayCard.appearStagger(2)
                 if !store.khatmahMode.slotNames.isEmpty { slots.appearStagger(3) }
                 actions.appearStagger(4)
+                planSection.appearStagger(5)
             }
-            cancelButton.appearStagger(5)
+            cancelButton.appearStagger(6)
         }
     }
 
@@ -218,7 +237,10 @@ struct KhatmahView: View {
                         .contentTransition(.numericText())
                     Text(loc("%1$@ من %2$@ صفحة", store.khatmahPagesDone.counterText, Quran.pageCount.counterText))
                         .font(Theme.display(12)).foregroundStyle(Theme.inkFaint)
-                    Text(loc("اليوم %1$@ من %2$@", store.khatmahDayIndex.counterText, store.khatmahTotalDays.counterText))
+                    // مع الموعد يُعدّ الباقي لا الماضي: «اليوم ٣٠ من ٣٠» يتجمّد عند
+                    // آخر أيام التحدي، وموعدُ الختم قد يمتدّ بعده.
+                    Text(store.khatmahPlanActive ? planDaysLine
+                         : loc("اليوم %1$@ من %2$@", store.khatmahDayIndex.counterText, store.khatmahTotalDays.counterText))
                         .font(Theme.display(11)).foregroundStyle(Theme.inkFaint)
                 }
             }
@@ -227,9 +249,18 @@ struct KhatmahView: View {
         .padding(.top, 6)
     }
 
+    /// سطر الحلقة الثالث حين يكون للختمة موعد — بقيّةُ الطريق لا ما مضى منه.
+    private var planDaysLine: String {
+        store.khatmahPlanOverdue
+            ? loc("انقضى موعد ختمك")
+            : AtharStore.daysLeftText(store.khatmahPlanDaysLeft)
+    }
+
     @ViewBuilder
     private var statusLine: some View {
-        let d = store.khatmahDelta
+        // الحكم من الموعد إن كان له موعد: من قاس تقدّمه بمدّة التحدي وقد نقلها
+        // إلى تاريخٍ آخر قيل له «متأخّر» وهو سائرٌ على خطته الجديدة تمامًا.
+        let d = store.khatmahPlanActive ? store.khatmahPlanDelta : store.khatmahDelta
         // تمييز العدد: صفحة واحدة، صفحتان، ثم جمع القلّة (٣–١٠ صفحات)،
         // ثم المفرد المنصوب (١١ فأكثر صفحة).
         let n = abs(d)
@@ -259,13 +290,28 @@ struct KhatmahView: View {
     /// اليوم — إلى نهاية النطاق المعروض في العنوان. الأساس ثابت لا يتحرّك
     /// مع كل صفحة تُقرأ، فلا يبقى شريط المتأخّر صفرًا، ولا تتبدّل حدود
     /// المواقيت تحت يد القارئ. مصدر واحد لبطاقة اليوم ولتوزيعه حتى لا يفترقا.
+    /// الخطة تقود ورد اليوم ما دام موعدها قائمًا. فإن انقضى الموعد عاد النطاق إلى
+    /// مدّة التحدي: أن يُلقى كلُّ ما بقي على يومٍ واحد تكليفٌ لا خطة، والحكمُ عليه
+    /// بالتأخّر يبقى قائمًا في سطر الحالة فلا يضيع عليه الخبر.
+    private var planLeadsToday: Bool { store.khatmahPlanActive && !store.khatmahPlanOverdue }
+
     private var wardWindow: (base: Int, upper: Int) {
+        if planLeadsToday {
+            let base = store.khatmahPlanDayBasePages
+            return (base, max(base + 1, min(Quran.pageCount, base + store.khatmahPlanShareToday)))
+        }
         let base = store.khatmahDayBasePages
         return (base, max(base + 1, store.khatmahTodayRange.upperBound))
     }
 
+    /// نطاق اليوم المعروض: من الموعد إن كان له موعد، وإلا من مدّة التحدي.
+    /// نطاقٌ واحد للبطاقة وللتوزيع ولزرّ «أتممت الورد» حتى لا تفترق الثلاثة.
+    private var todayRange: ClosedRange<Int> {
+        planLeadsToday ? store.khatmahPlanTodayRange : store.khatmahTodayRange
+    }
+
     private var todayCard: some View {
-        let range = store.khatmahTodayRange
+        let range = todayRange
         let startRef = Quran.firstAyah(ofPage: range.lowerBound)
         let surahName = Quran.surah(startRef.surah)?.name ?? ""
         let juz = Quran.juz(of: startRef)
@@ -310,6 +356,17 @@ struct KhatmahView: View {
             Text(loc("يبدأ من سورة %1$@", surahName))
                 .font(Theme.display(12))
                 .foregroundStyle(Theme.inkSoft)
+
+            // نصيب اليوم بعدده حين يكون للختمة موعد: الأرقام أعلاه حدود صفحات،
+            // وهذا كم يقرأ اليوم — والسؤال الأول في نفس القارئ «كم عليّ اليوم؟».
+            if planLeadsToday, let target = store.khatmahTargetDate {
+                Label(loc("ورد اليوم: %1$@ — تختم يوم %2$@",
+                          AtharStore.pagesText(wardTotal), AtharStore.khatmahDateText(target)),
+                      systemImage: "calendar.badge.clock")
+                    .font(Theme.display(12, weight: .medium))
+                    .foregroundStyle(Theme.accent(for: "gold"))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
 
             // شريط رفيع لتقدّم ورد اليوم
             VStack(alignment: .leading, spacing: 5) {
@@ -407,7 +464,7 @@ struct KhatmahView: View {
             .pressable()
 
             Button {
-                store.khatmahPagesDone = store.khatmahTodayRange.upperBound
+                store.khatmahPagesDone = todayRange.upperBound
                 Haptics.done(enabled: store.hapticsEnabled)
             } label: {
                 Text(loc("أتممت الورد"))
@@ -416,6 +473,148 @@ struct KhatmahView: View {
             }
             .pressable()
         }
+    }
+
+    // MARK: موعد الختم وتذكيره
+
+    @State private var permissionDenied = false
+
+    /// موعدٌ افتراضي حين يُشعل الخيار: آخر أيام التحدي القائم — أقرب ما في ذهنه،
+    /// فلا يبدأ من تاريخ اليوم ثم يُطالَب بستمئة صفحة قبل الغروب.
+    private var suggestedTarget: Date {
+        let left = max(1, store.khatmahTotalDays - store.khatmahDayIndex + 1)
+        let cal = Calendar.current
+        return cal.date(byAdding: .day, value: left - 1, to: cal.startOfDay(for: Date())) ?? Date()
+    }
+
+    /// «آخر رمضان» لا يُعرض إلا إذا كان في مدى ختمةٍ معقولة — عرضُه قبله بأحد
+    /// عشر شهرًا اقتراحٌ لا يُنتفع به.
+    private var ramadanTarget: Date? {
+        guard let day = AtharStore.ramadanLastDay() else { return nil }
+        return (2...120).contains(Occasions.daysUntil(day)) ? day : nil
+    }
+
+    /// تبديل الموعد يعيد الجدولة: نصّ التذكير يحمل نصيب اليوم، فلو بقي كما كان
+    /// نادى بعدد الأمس.
+    private func retarget(_ date: Date) {
+        store.setKhatmahTarget(date)
+        Task { await Reminders.rescheduleKhatmah(store: store) }
+    }
+
+    private var targetBinding: Binding<Date> {
+        Binding(get: { store.khatmahTargetDate ?? suggestedTarget },
+                set: { retarget($0) })
+    }
+
+    private var reminderTimeBinding: Binding<Date> {
+        Binding(
+            get: { Calendar.current.date(bySettingHour: store.khatmahReminderMinutes / 60,
+                                         minute: store.khatmahReminderMinutes % 60,
+                                         second: 0, of: Date()) ?? Date() },
+            set: {
+                let c = Calendar.current.dateComponents([.hour, .minute], from: $0)
+                store.khatmahReminderMinutes = (c.hour ?? 20) * 60 + (c.minute ?? 30)
+                Task { await Reminders.rescheduleKhatmah(store: store) }
+            }
+        )
+    }
+
+    private var planSubtitle: String {
+        guard store.khatmahPlanActive, let target = store.khatmahTargetDate else {
+            return loc("وزّع ما بقي على الأيام حتى تاريخٍ تختاره")
+        }
+        return store.khatmahPlanOverdue
+            ? loc("انقضى موعدك — اختر تاريخًا جديدًا")
+            : loc("تختم يوم %1$@ — %2$@", AtharStore.khatmahDateText(target),
+                  AtharStore.daysLeftText(store.khatmahPlanDaysLeft))
+    }
+
+    /// الموعد والتذكير في بطاقة إعدادات واحدة تحت الأزرار: أدواتٌ تُضبط مرة
+    /// ثم تُنسى، فلا تُزاحم ورد اليوم في أعلى الشاشة.
+    private var planSection: some View {
+        VStack(spacing: 8) {
+            SettingsGroupTitle(text: loc("موعد الختم"), tint: Theme.accent(for: "gold"))
+            SettingsCard {
+                SettingsRow(icon: "calendar", tint: Theme.accent(for: "gold"),
+                            title: loc("أختم في تاريخ"), subtitle: planSubtitle) {
+                    Toggle("", isOn: Binding(
+                        get: { store.khatmahPlanActive },
+                        set: { on in
+                            if on {
+                                retarget(suggestedTarget)
+                            } else {
+                                store.clearKhatmahTarget()
+                                Task { await Reminders.rescheduleKhatmah(store: store) }
+                            }
+                            Haptics.tap(enabled: store.hapticsEnabled)
+                        }
+                    ))
+                    .labelsHidden()
+                    .accessibilityLabel(loc("أختم في تاريخ"))
+                }
+
+                if store.khatmahPlanActive {
+                    SettingsDivider()
+                    SettingsRow(icon: "calendar.badge.clock", tint: Theme.accent, title: loc("تاريخ الختم")) {
+                        DatePicker("", selection: targetBinding,
+                                   in: Calendar.current.startOfDay(for: Date())...,
+                                   displayedComponents: .date)
+                            .labelsHidden()
+                            .accessibilityLabel(loc("تاريخ الختم"))
+                    }
+
+                    if let ramadan = ramadanTarget {
+                        SettingsDivider()
+                        Button {
+                            retarget(ramadan)
+                            Haptics.done(enabled: store.hapticsEnabled)
+                        } label: {
+                            SettingsRow(icon: "moon.stars.fill", tint: Theme.accent(for: "night"),
+                                        title: loc("اجعله آخر رمضان"),
+                                        subtitle: AtharStore.khatmahDateText(ramadan)) {
+                                Image(systemName: "arrow.forward.circle.fill")
+                                    .font(.system(size: 17))
+                                    .foregroundStyle(Theme.accent(for: "night"))
+                                    .accessibilityHidden(true)
+                            }
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityHint(loc("يضبط موعد الختم على آخر يوم من رمضان"))
+                    }
+                }
+
+                SettingsDivider()
+                SettingsRow(icon: "bell.fill", tint: Theme.accent(for: "dusk"), title: loc("تذكير ورد الختمة")) {
+                    Toggle("", isOn: Binding(
+                        get: { store.khatmahReminder },
+                        set: { on in
+                            store.khatmahReminder = on
+                            Task {
+                                if on, await !Reminders.requestAuthorization() {
+                                    store.khatmahReminder = false
+                                    permissionDenied = true
+                                    return
+                                }
+                                await Reminders.rescheduleKhatmah(store: store)
+                            }
+                        }
+                    ))
+                    .labelsHidden()
+                    .accessibilityLabel(loc("تذكير ورد الختمة"))
+                }
+
+                if store.khatmahReminder {
+                    SettingsDivider()
+                    SettingsRow(icon: "clock.fill", tint: Theme.accent(for: "dawn"), title: loc("وقت التذكير")) {
+                        DatePicker("", selection: reminderTimeBinding, displayedComponents: .hourAndMinute)
+                            .labelsHidden()
+                            .accessibilityLabel(loc("وقت التذكير"))
+                    }
+                }
+            }
+        }
+        .animation(Motion.smooth, value: store.khatmahPlanActive)
+        .animation(Motion.smooth, value: store.khatmahReminder)
     }
 
     /// بطاقة الإتمام: تحلّ محلّ ورد اليوم والأزرار عند بلوغ ٦٠٤، وتفتح باب
@@ -438,6 +637,8 @@ struct KhatmahView: View {
 
             Button {
                 store.startKhatmah(days: store.khatmahTotalDays, mode: store.khatmahMode)
+                store.clearKhatmahTarget()
+                Task { await Reminders.rescheduleKhatmah(store: store) }
                 Haptics.done(enabled: store.hapticsEnabled)
             } label: {
                 Text(loc("ابدأ ختمة جديدة"))
@@ -464,6 +665,9 @@ struct KhatmahView: View {
             .confirmationDialog(loc("إنهاء التحدي؟"), isPresented: $confirmEnd, titleVisibility: .visible) {
                 Button(loc("إنهاء وحذف التقدّم"), role: .destructive) {
                     store.cancelKhatmah()
+                    // الموعد وتذكيره يذهبان معها: تنبيهُ ورد لختمةٍ حُذفت نداءٌ في الفراغ.
+                    store.clearKhatmahTarget()
+                    Task { await Reminders.rescheduleKhatmah(store: store) }
                     Haptics.tap(enabled: store.hapticsEnabled)
                 }
                 Button(loc("cancel"), role: .cancel) {}

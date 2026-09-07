@@ -80,6 +80,12 @@ struct SurahReaderView: View {
     @State private var selected: AyahRef? = nil
     @State private var currentRef: AyahRef?
     @State private var lastCountedPage: Int?
+    /// «اذهب إلى صفحة»: القارئ يذكر رقم صفحته، فلا يُكلَّف تقريبَ الصورة وسحبَ
+    /// الصفحات حتى يبلغها.
+    @State private var showGoToPage = false
+    /// الصفحة المطلوبة — يستهلكها القلّاب (أو عرضُ الآيات) ثم تُفرَّغ، فيصحّ
+    /// طلبُ الصفحة نفسها مرّتين بعد أن يُقلّب عنها.
+    @State private var jumpPage: Int?
 
     /// السورة الفاعلة الآن — تتبع موضع القراءة الحيّ لا السورة التي فُتح بها
     /// القارئ، وإلا ارتدّ التبديل بين «صفحة» و«آية آية» إلى أول سورةٍ فُتحت
@@ -87,15 +93,18 @@ struct SurahReaderView: View {
     private var activeSurahId: Int { (currentRef ?? scrollTo)?.surah ?? surahId }
 
     private var surah: Surah? { Quran.surah(activeSurahId) }
+    /// الآيات التي كتب عليها القارئ تدبّرًا — لعلامةٍ خفيفة في هامش الصفحة.
+    private var noted: Set<AyahRef> { Set(store.notedRefs) }
     /// بين العشاء والفجر يُقرأ على ورق الليل إن فعّل المستخدم الوضع الليلي التلقائي.
     private var effectiveTheme: ReadingTheme { store.readingThemeAuto && store.isNightNow() ? .night : store.readingTheme }
     private var palette: ReadingPalette { .of(effectiveTheme) }
 
-    /// ارتفاعات الشريط السفلي: شريط الموضع (خطّ ١٢ + حشو ٩×٢)، وبطاقة المشغّل المصغّر،
-    /// وشريط التلاوة آيةً آية فوقها (مع فجوة ٦). تُحجز أسفل كل أوضاع القراءة، لأن البطاقة
-    /// معتمة تغطّي آخر سطرٍ من الصفحة ورقمَها وزرَّ «سورة التالية». المشغّل وشريط الآية
-    /// يتبعان حجم خطّ النظام، فثابتاهما احتياطٌ أوّلي فقط حتى يُقاس الشريط فعلًا.
-    static let positionBarHeight: CGFloat = 34
+    /// ارتفاعات الشريط السفلي: شريط الموضع (صار زرًّا يفتح «اذهب إلى صفحة»، فهدف
+    /// لمسه ٤٤ نقطة وتحته ٨)، وبطاقة المشغّل المصغّر، وشريط التلاوة آيةً آية فوقها
+    /// (مع فجوة ٦). تُحجز أسفل كل أوضاع القراءة، لأن البطاقة معتمة تغطّي آخر سطرٍ
+    /// من الصفحة ورقمَها وزرَّ «سورة التالية». المشغّل وشريط الآية يتبعان حجم خطّ
+    /// النظام، فثابتاهما احتياطٌ أوّلي فقط حتى يُقاس الشريط فعلًا.
+    static let positionBarHeight: CGFloat = 52
     static let miniPlayerHeight: CGFloat = 86
     static let ayahBarHeight: CGFloat = 62
     /// ارتفاع الشريط السفلي كما قِيس أثناء التلاوة (المشغّل مع شريط الآية إن كان)؛
@@ -139,11 +148,13 @@ struct SurahReaderView: View {
                     scale: store.mushafFontScale,
                     bookmarks: Set(store.bookmarks),
                     highlights: store.highlights,
+                    noted: noted,
                     playing: ayahAudio.current,
                     selected: selected,
                     isDark: effectiveTheme == .night,
                     framed: store.readingMode == .framed,
                     bottomInset: bottomOverlay,
+                    jumpTo: $jumpPage,
                     onTapAyah: { selected = $0 },
                     onPageVisible: { page in
                         let ref = Quran.firstAyah(ofPage: page)
@@ -277,6 +288,13 @@ struct SurahReaderView: View {
             AyahActions(ref: ref).presentationDetents([.medium, .large])
                 .atharSheetChrome()
         }
+        .sheet(isPresented: $showGoToPage) {
+            GoToPageSheet(start: Quran.page(of: currentRef ?? scrollTo ?? AyahRef(surah: surahId, ayah: 1))) { page in
+                jumpPage = page
+            }
+            .presentationDetents([.height(460), .large])
+            .atharSheetChrome()
+        }
         // خلفية الشريط بلون الورق وظاهرة: بلا خلفيةٍ ظاهرة لا يقود toolbarColorScheme
         // شريطَ الحالة، فتُرسم الساعة والبطارية بيضاء على ورقٍ كريمي حين يكون
         // التطبيق داكنًا. الشكل لا يتغيّر، وشريط الحالة يتبع سِمة القراءة.
@@ -332,6 +350,7 @@ struct SurahReaderView: View {
                                  scale: store.mushafFontScale,
                                  bookmarks: Set(store.bookmarks),
                                  highlights: store.highlights,
+                                 noted: noted,
                                  playing: ayahAudio.current,
                                  selected: selected,
                                  isDark: effectiveTheme == .night,
@@ -361,35 +380,57 @@ struct SurahReaderView: View {
                     }
                 }
             }
+            // «اذهب إلى صفحة» في عرض الآيات: أول آية الصفحة تُصيّر السورةَ الفاعلة،
+            // ثم تُبنى القائمة عليها — فيُمهَل رصّها قبل القفز، كما في الظهور أعلاه.
+            .onChange(of: jumpPage) { _, page in
+                guard let page else { return }
+                let ref = Quran.firstAyah(ofPage: page)
+                currentRef = ref
+                jumpPage = nil
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+                    withAnimation(Motion.smooth) { proxy.scrollTo(ref.ayah, anchor: .center) }
+                }
+            }
         }
     }
 
-    /// شريط الموضع: الصفحة والجزء ونسبة التقدّم في المصحف كله.
+    /// شريط الموضع: الصفحة والجزء ونسبة التقدّم في المصحف كله — وزرٌّ يفتح
+    /// «اذهب إلى صفحة»، فالموضع المعروض هو نفسه الموضع الذي يُقصد تبديله.
     private var positionBar: some View {
         let ref = currentRef ?? AyahRef(surah: surahId, ayah: 1)
         let page = Quran.page(of: ref)
         let juz = Quran.juz(of: ref)
         let pct = Int((Double(page) / Double(Quran.pageCount) * 100).rounded())
-        return HStack(spacing: Theme.Space.sm) {
-            Text(loc("الجزء %1$@", juz.counterText))
-                .foregroundStyle(palette.accent)
-            posDivider
-            Text(loc("صفحة %1$@ من %2$@", page.counterText, Quran.pageCount.counterText))
-            posDivider
-            Text("\(pct.counterText)٪")
+        return Button {
+            Haptics.tap(enabled: store.hapticsEnabled)
+            showGoToPage = true
+        } label: {
+            HStack(spacing: Theme.Space.sm) {
+                Text(loc("الجزء %1$@", juz.counterText))
+                    .foregroundStyle(palette.accent)
+                posDivider
+                Text(loc("صفحة %1$@ من %2$@", page.counterText, Quran.pageCount.counterText))
+                posDivider
+                Text("\(pct.counterText)٪")
+            }
+            .font(.system(size: 12, weight: .medium, design: .rounded))
+            // الحبر الثاني لا الخافت: هذا موضع القارئ لا زخرفة، فلا بدّ أن يُقرأ.
+            .foregroundStyle(palette.secondary)
+            .monospacedDigit()
+            .padding(.horizontal, Theme.Space.lg).padding(.vertical, 9)
+            .background(
+                Capsule().fill(
+                    LinearGradient(colors: [palette.paper.opacity(0.98), palette.paper.opacity(0.9)],
+                                   startPoint: .top, endPoint: .bottom))
+            )
+            .overlay(Capsule().strokeBorder(palette.hairline, lineWidth: 1))
+            .atharElevation(.e1)
+            // الكبسولة ٣٠ نقطة رسمًا؛ يُوسَّع هدف اللمس إلى ٤٤ دون تكبيرها.
+            .tapTarget()
         }
-        .font(.system(size: 12, weight: .medium, design: .rounded))
-        // الحبر الثاني لا الخافت: هذا موضع القارئ لا زخرفة، فلا بدّ أن يُقرأ.
-        .foregroundStyle(palette.secondary)
-        .monospacedDigit()
-        .padding(.horizontal, Theme.Space.lg).padding(.vertical, 9)
-        .background(
-            Capsule().fill(
-                LinearGradient(colors: [palette.paper.opacity(0.98), palette.paper.opacity(0.9)],
-                               startPoint: .top, endPoint: .bottom))
-        )
-        .overlay(Capsule().strokeBorder(palette.hairline, lineWidth: 1))
-        .atharElevation(.e1)
+        .pressable()
+        .accessibilityLabel(loc("الجزء %1$@ · صفحة %2$@ من %3$@", juz.counterText, page.counterText, Quran.pageCount.counterText))
+        .accessibilityHint(loc("يفتح الانتقال إلى صفحة"))
         .padding(.bottom, 8)
         .animation(Motion.snappy, value: page)
     }
@@ -488,6 +529,8 @@ struct MushafPager: View {
     let scale: Double
     let bookmarks: Set<AyahRef>
     let highlights: [String: String]
+    /// الآيات التي لصاحب المصحف عليها تدبّر — تُعلَّم بعلامةٍ لا تحجب حرفًا.
+    var noted: Set<AyahRef> = []
     /// الآية الجارية في التلاوة آيةً آية — تُظلَّل بلون الطابع.
     var playing: AyahRef? = nil
     /// الآية التي نقرها القارئ (ورقة الخيارات مفتوحة عليها) — تُبرَز فوق كل تظليل.
@@ -496,6 +539,8 @@ struct MushafPager: View {
     var framed: Bool = false
     /// ارتفاع ما يعلو حافّة الصفحة السفلية (شريط الموضع، أو المشغّل حين تجري التلاوة).
     var bottomInset: CGFloat = 0
+    /// صفحةٌ طُلب الانتقال إليها من «اذهب إلى صفحة» — تُفرَّغ فور بلوغها.
+    @Binding var jumpTo: Int?
     let onTapAyah: (AyahRef) -> Void
     let onPageVisible: (Int) -> Void
 
@@ -508,6 +553,7 @@ struct MushafPager: View {
                     ForEach(1...Quran.pageCount, id: \.self) { page in
                         MushafPageContent(page: page, palette: palette, scale: scale,
                                           bookmarks: bookmarks, highlights: highlights,
+                                          noted: noted,
                                           playing: playing, selected: selected,
                                           isDark: isDark, framed: framed,
                                           bottomInset: bottomInset, onTapAyah: onTapAyah)
@@ -528,6 +574,14 @@ struct MushafPager: View {
             .onChange(of: current) { _, page in
                 if let page { onPageVisible(page) }
             }
+            // القفزة كالفتح تمامًا: بلا حركةٍ تمرّ على مئات الصفحات — الوصول
+            // مقصود لا رحلة. وتغيّر `current` يبلّغ القارئ بالموضع الجديد.
+            .onChange(of: jumpTo) { _, page in
+                guard let page else { return }
+                proxy.scrollTo(page, anchor: .center)
+                current = page
+                jumpTo = nil
+            }
         }
     }
 }
@@ -539,6 +593,8 @@ private struct MushafPageContent: View {
     let scale: Double
     let bookmarks: Set<AyahRef>
     let highlights: [String: String]
+    /// آيات لها تدبّر مكتوب — علامةٌ صغيرة عند ميداليتها لا غير.
+    var noted: Set<AyahRef> = []
     var playing: AyahRef? = nil
     /// الآية المنقورة — تُبرَز فوق تظليل التلاوة وألوان القارئ.
     var selected: AyahRef? = nil
@@ -700,7 +756,7 @@ private struct MushafPageContent: View {
                         VStack {
                             ForEach(run, id: \.id) { ref in
                                 Button(Quran.text(ref) ?? "") { onTapAyah(ref) }
-                                    .accessibilityLabel(loc("%1$@ — الآية %2$@", Quran.text(ref) ?? "", ref.ayah.counterText))
+                                    .accessibilityLabel(ayahLabel(ref))
                                     .accessibilityHint(loc("يفتح خيارات الآية"))
                             }
                         }
@@ -719,6 +775,13 @@ private struct MushafPageContent: View {
                     .overlay(Capsule().strokeBorder(palette.hairline.opacity(0.6), lineWidth: 0.5))
                     .accessibilityLabel(loc("صفحة %1$@", page.counterText))
             }
+    }
+
+    /// وصف الآية لقارئ الشاشة: نصّها ورقمها، وتُذكر ورقة التدبّر كلامًا لأنها
+    /// في الصفحة رسمٌ لا يُقرأ.
+    private func ayahLabel(_ ref: AyahRef) -> String {
+        let base = loc("%1$@ — الآية %2$@", Quran.text(ref) ?? "", ref.ayah.counterText)
+        return noted.contains(ref) ? loc("%1$@ · لك تدبّر هنا", base) : base
     }
 
     /// فاتحة سورة تبدأ في هذه الصفحة: إطار مزخرف بالاسم ثم البسملة.
@@ -886,6 +949,17 @@ private struct MushafPageContent: View {
                                         .font(.system(size: 8))
                                         .foregroundStyle(palette.accent)
                                         .offset(x: -2, y: -3)
+                                }
+                            }
+                            // ورقةٌ صغيرة عند ذيل الميدالية تقول «هنا لك كلام» —
+                            // خافتة لا تزاحم حرفًا، وقارئ الشاشة يسمعها في وصف الآية.
+                            .overlay(alignment: .bottomTrailing) {
+                                if noted.contains(t.ref) {
+                                    Image(systemName: "leaf.fill")
+                                        .font(.system(size: 7))
+                                        .foregroundStyle(palette.accent.opacity(0.75))
+                                        .offset(x: 2, y: 3)
+                                        .accessibilityHidden(true)
                                 }
                             }
                     }
@@ -1128,6 +1202,154 @@ struct ReaderControls: View {
     }
 }
 
+// MARK: - اذهب إلى صفحة
+
+/// «أذكر رقم الصفحة، وما في إلّا أن أقرّب لأرى أقرب صورة ثم أسحب» — فصار الرقم
+/// نفسه بابًا: يُكتب أو يُجَرّ، ويُقال له إلى أين يمضي قبل أن يمضي.
+struct GoToPageSheet: View {
+    let start: Int
+    let onGo: (Int) -> Void
+
+    @EnvironmentObject private var store: AtharStore
+    @Environment(\.dismiss) private var dismiss
+    @State private var text = ""
+    @FocusState private var typing: Bool
+    @State private var mode: JumpMode = .page
+
+    /// بأيّهما يذكر القارئ موضعه: بالصفحة أو بالجزء. وكلاهما ينتهي إلى صفحة،
+    /// فالقارئ لا يعرف إلا الصفحات.
+    enum JumpMode: String, CaseIterable, Identifiable {
+        case page, juz
+        var id: String { rawValue }
+        var title: String { self == .page ? loc("صفحة") : loc("جزء") }
+        var bound: Int { self == .page ? Quran.pageCount : Quran.juzCount }
+        /// الصفحة المقصودة من الرقم المكتوب — وأوّل الجزء صفحةٌ كسائرها.
+        func page(_ n: Int) -> Int { self == .page ? n : Quran.page(of: Quran.firstAyah(ofJuz: n)) }
+    }
+
+    /// ما في الحقل رقمًا قائمًا في مداه — وما خرج عنه فلا وجهة له.
+    private var number: Int? {
+        guard let n = text.bareNumberValue, (1...mode.bound).contains(n) else { return nil }
+        return n
+    }
+
+    /// الصفحة التي سيقف عندها القارئ فعلًا.
+    private var page: Int? { number.map(mode.page) }
+
+    /// المنزلق لا يقبل الفراغ: يقف على المكتوب إن صحّ، وإلا على موضع القارئ.
+    private var slider: Binding<Double> {
+        Binding(get: { Double(number ?? (mode == .page ? start : Quran.juz(of: Quran.firstAyah(ofPage: start)))) },
+                set: { text = String(Int($0.rounded())) })
+    }
+
+    var body: some View {
+        ZStack {
+            AtharBackground(tint: Theme.gold)
+            ScrollView {
+                VStack(spacing: Theme.Space.lg) {
+                    Text(loc("اذهب إلى موضع"))
+                        .font(Theme.display(19, weight: .bold))
+                        .foregroundStyle(Theme.ink)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .accessibilityAddTraits(.isHeader)
+
+                    // بالصفحة أو بالجزء: كلاهما موضعٌ يُحفظ، ومن حفظ جزءه لا يلزمه أن يحسب صفحته.
+                    Picker("", selection: $mode) {
+                        ForEach(JumpMode.allCases) { Text($0.title).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .accessibilityLabel(loc("اذهب إلى موضع"))
+
+                    // الأرقام الغربية في الواجهة كلّها؛ ولوحةُ الأرقام العربية تُخرج
+                    // الهندية فتُقرأ كما هي وتُردّ غربيةً إلى الحقل.
+                    TextField("", text: $text)
+                        .keyboardType(.numberPad)
+                        .multilineTextAlignment(.center)
+                        .font(.system(size: 34, weight: .semibold, design: .rounded))
+                        .foregroundStyle(Theme.ink)
+                        .monospacedDigit()
+                        .focused($typing)
+                        .padding(.vertical, 12)
+                        .background(RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous)
+                            .fill(Theme.surfaceAlt))
+                        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous)
+                            .strokeBorder(Theme.hairline.opacity(0.6), lineWidth: 0.5))
+                        .accessibilityLabel(mode == .page ? loc("رقم الصفحة") : loc("رقم الجزء"))
+
+                    Slider(value: slider, in: 1...Double(mode.bound), step: 1)
+                        .tint(Theme.accent)
+                        .accessibilityLabel(mode == .page ? loc("رقم الصفحة") : loc("رقم الجزء"))
+                        .accessibilityValue(loc("%1$@ %2$@ من %3$@", mode.title,
+                                                (number ?? start).counterText, mode.bound.counterText))
+
+                    destination
+
+                    Button {
+                        guard let p = page else { return }
+                        Haptics.done(enabled: store.hapticsEnabled)
+                        onGo(p)
+                        dismiss()
+                    } label: {
+                        Text(loc("اذهب"))
+                            .font(Theme.display(16, weight: .semibold))
+                            .gradientButton(Theme.accentGradient, glow: Theme.accent)
+                    }
+                    .pressable()
+                    .disabled(page == nil)
+                    .opacity(page == nil ? 0.45 : 1)
+
+                    Spacer(minLength: 0)
+                }
+                .padding(.top, Theme.Space.xl)
+                .padding(.horizontal, 22)
+                .padding(.bottom, 18)
+                .readableWidth(520)
+            }
+            .scrollIndicators(.hidden)
+        }
+        .animation(Motion.snappy, value: page)
+        // الحقل هو مقصود الورقة، فيُفتح على لوحة المفاتيح — بعد استقرارها كي ترتفع.
+        .task {
+            text = String(start)
+            try? await Task.sleep(for: .milliseconds(350))
+            typing = true
+        }
+        .environment(\.layoutDirection, AppConfig.arabicOnly ? .rightToLeft : store.appLanguage.layoutDirection)
+    }
+
+    /// إلى أين تمضي هذه الصفحة — سورتها وجزؤها قبل القفز لا بعده.
+    @ViewBuilder
+    private var destination: some View {
+        if let p = page {
+            let ref = Quran.firstAyah(ofPage: p)
+            HStack(spacing: Theme.Space.sm) {
+                IconChip(icon: "doc.plaintext.fill", tint: Theme.gold, size: .sm)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(loc("سورة %1$@", Quran.surah(ref.surah)?.name ?? ""))
+                        .font(Theme.display(15, weight: .semibold))
+                        .foregroundStyle(Theme.ink)
+                    // في وضع الجزء تُذكر صفحته أيضًا: المقصد واحد وإن اختلف مدخله.
+                    Text(loc("الجزء %1$@ · صفحة %2$@ · تبدأ بالآية %3$@",
+                             Quran.juz(of: ref).counterText, p.counterText, ref.ayah.counterText))
+                        .font(Theme.display(12))
+                        .foregroundStyle(Theme.inkFaint)
+                }
+                Spacer(minLength: 4)
+            }
+            .padding(12)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous).fill(Theme.surfaceAlt))
+            .accessibilityElement(children: .combine)
+        } else {
+            Text(loc("اكتب رقمًا بين %1$@ و%2$@", 1.counterText, mode.bound.counterText))
+                .font(Theme.display(12))
+                .foregroundStyle(Theme.inkFaint)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+}
+
 // MARK: - إجراءات الآية
 
 struct AyahActions: View {
@@ -1152,10 +1374,18 @@ struct AyahActions: View {
     @Environment(\.dismiss) private var dismiss
     @State private var showTafsir = false
     @State private var showTasmi = false
+    @State private var showNote = false
     @State private var shareImage: UIImage?
 
     private var text: String { Quran.text(ref) ?? "" }
     private var surahName: String { Quran.surah(ref.surah)?.name ?? "" }
+
+    /// طرفٌ من التدبّر في الصفّ: يخبر بوجوده ولا يعرضه كلّه — موضعه المحرّر.
+    private var noteGlimpse: String? {
+        guard let n = store.note(for: ref) else { return nil }
+        let line = NotesView.firstLine(n)
+        return line.count > 60 ? String(line.prefix(60)) + "…" : line
+    }
 
     /// «وقفتُ هنا» — زرّ ذهبيّ بارز (متدرّج حين يُوضَع، ناعم حين يُرفَع).
     @ViewBuilder
@@ -1356,6 +1586,19 @@ struct AyahActions: View {
                         .buttonStyle(.plain)
 
                         SettingsDivider()
+                        // التدبّر بجوار العلامة والتظليل: كلّها أثرٌ يتركه القارئ على آيته.
+                        Button {
+                            Haptics.tap(enabled: store.hapticsEnabled)
+                            showNote = true
+                        } label: {
+                            SettingsRow(icon: "square.and.pencil",
+                                        tint: Theme.accent(for: "dusk"),
+                                        title: noteGlimpse == nil ? loc("اكتب تدبّرك") : loc("تدبّرك في هذه الآية"),
+                                        subtitle: noteGlimpse ?? loc("ملاحظة خاصة تبقى في جهازك"))
+                        }
+                        .buttonStyle(.plain)
+
+                        SettingsDivider()
                         if store.card(for: ref) != nil {
                             // المضافة سلفًا تُزال من هنا: كان الصف يُعطَّل فلا مخرج من الحفظ
                             // في التطبيق كلّه، ولا حتى «تصفير الإحصائيات» يمسّ البطاقات.
@@ -1423,6 +1666,11 @@ struct AyahActions: View {
                 .presentationDetents([.large])
                 .atharSheetChrome()
         }
+        .sheet(isPresented: $showNote) {
+            AyahNoteEditor(ref: ref)
+                .presentationDetents([.medium, .large])
+                .atharSheetChrome()
+        }
         .sheet(isPresented: $showTasmi) {
             NavigationStack {
                 TasmiView(refs: [ref])
@@ -1446,6 +1694,8 @@ struct AyahListPage: View {
     let scale: Double
     let bookmarks: Set<AyahRef>
     let highlights: [String: String]
+    /// آيات لها تدبّر مكتوب — ورقة صغيرة في حاشية البطاقة.
+    var noted: Set<AyahRef> = []
     var playing: AyahRef? = nil
     /// الآية المنقورة — بطاقتها تُبرَز فوق تظليل التلاوة والألوان.
     var selected: AyahRef? = nil
@@ -1458,56 +1708,80 @@ struct AyahListPage: View {
     var body: some View {
         LazyVStack(spacing: 12) {
             ForEach(1...(surah?.ayahCount ?? 1), id: \.self) { n in
-                let ref = AyahRef(surah: surahId, ayah: n)
-                let hl = highlights[ref.id].flatMap(HighlightColor.init(rawValue:))
-
-                HStack(alignment: .top, spacing: 12) {
-                    AyahMedallion(number: n, size: 30 * min(scale, 1.3), tint: palette.accent)
-                        .padding(.top, 4)
-
-                    VStack(alignment: .leading, spacing: 6) {
-                        Text(Quran.text(ref) ?? "")
-                            .font(Theme.dhikrFont(size: 23, scale: scale))
-                            .foregroundStyle(palette.ink)
-                            .lineSpacing(14 * scale)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-
-                        if Quran.isSajdah(ref) {
-                            Label(loc("موضع سجدة"), systemImage: "figure.and.child.holdinghands")
-                                .font(Theme.display(11, weight: .medium))
-                                .foregroundStyle(palette.accent)
-                        }
-                    }
-
-                    if bookmarks.contains(ref) {
-                        Image(systemName: "bookmark.fill")
-                            .font(.system(size: 11))
-                            .foregroundStyle(palette.accent)
-                            .padding(.top, 6)
-                    }
-                }
-                .padding(14)
-                .background(
-                    RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous)
-                        .fill(ref == selected ? palette.accent.opacity(0.22)
-                              : ref == playing ? palette.accent.opacity(0.16)
-                              : (hl?.color(dark: isDark) ?? palette.ink.opacity(0.03)))
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous)
-                        .strokeBorder(palette.hairline.opacity(0.6), lineWidth: 0.5)
-                )
-                .contentShape(Rectangle())
-                .onTapGesture { onTapAyah(ref) }
-                // البطاقة عنصر واحد لقارئ الشاشة بسمة زرّ، لا ميدالية ونصّ وعلامة متفرّقة.
-                .accessibilityElement(children: .combine)
-                .accessibilityAddTraits(.isButton)
-                .accessibilityHint(loc("يفتح خيارات الآية"))
-                .onAppear { onVisible(ref) }
+                card(AyahRef(surah: surahId, ayah: n))
             }
         }
         .padding(.top, 8)
         .animation(Motion.snappy, value: selected)
+    }
+
+    /// بطاقة الآية مفردةً في دالّة: الجسم الواحد الطويل أعجز المُحلِّل عن تحديد نوعه
+    /// حين زادته ورقةُ التدبّر شرطًا.
+    private func card(_ ref: AyahRef) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            AyahMedallion(number: ref.ayah, size: 30 * min(scale, 1.3), tint: palette.accent)
+                .padding(.top, 4)
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text(Quran.text(ref) ?? "")
+                    .font(Theme.dhikrFont(size: 23, scale: scale))
+                    .foregroundStyle(palette.ink)
+                    .lineSpacing(14 * scale)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                if Quran.isSajdah(ref) {
+                    Label(loc("موضع سجدة"), systemImage: "figure.and.child.holdinghands")
+                        .font(Theme.display(11, weight: .medium))
+                        .foregroundStyle(palette.accent)
+                }
+            }
+
+            marks(ref)
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous)
+                .fill(fill(ref))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous)
+                .strokeBorder(palette.hairline.opacity(0.6), lineWidth: 0.5)
+        )
+        .contentShape(Rectangle())
+        .onTapGesture { onTapAyah(ref) }
+        // البطاقة عنصر واحد لقارئ الشاشة بسمة زرّ، لا ميدالية ونصّ وعلامة متفرّقة.
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityValue(noted.contains(ref) ? loc("لك تدبّر هنا") : "")
+        .accessibilityHint(loc("يفتح خيارات الآية"))
+        .onAppear { onVisible(ref) }
+    }
+
+    /// علامات الحاشية: علامة القارئ، وورقة تدبّره — رسمٌ للعين وحدها، وقارئ الشاشة
+    /// يسمع «لك تدبّر هنا» قيمةً للبطاقة.
+    @ViewBuilder
+    private func marks(_ ref: AyahRef) -> some View {
+        if bookmarks.contains(ref) {
+            Image(systemName: "bookmark.fill")
+                .font(.system(size: 11))
+                .foregroundStyle(palette.accent)
+                .padding(.top, 6)
+        }
+        if noted.contains(ref) {
+            Image(systemName: "leaf.fill")
+                .font(.system(size: 10))
+                .foregroundStyle(palette.accent.opacity(0.75))
+                .padding(.top, 7)
+                .accessibilityHidden(true)
+        }
+    }
+
+    /// لون بطاقة الآية: المنقورة أولًا، ثم الجارية في التلاوة، ثم تظليل القارئ.
+    private func fill(_ ref: AyahRef) -> Color {
+        if ref == selected { return palette.accent.opacity(0.22) }
+        if ref == playing { return palette.accent.opacity(0.16) }
+        return highlights[ref.id].flatMap(HighlightColor.init(rawValue:))?.color(dark: isDark)
+            ?? palette.ink.opacity(0.03)
     }
 }
 

@@ -71,6 +71,7 @@ extension AtharStore {
         static let wirdEnabled   = "athar.wird.enabled"
         static let wirdMinutes   = "athar.wird.reminderMinutes"
         static let highlights    = "athar.mushaf.highlights"
+        static let notes         = "athar.mushaf.notes"
         static let readingMode   = "athar.mushaf.readingMode"
         static let khatmahDays   = "athar.khatmah.totalDays"
         static let khatmahStart  = "athar.khatmah.startDay"
@@ -191,6 +192,44 @@ extension AtharStore {
 
     var highlightedRefs: [AyahRef] {
         highlights.keys.compactMap { key in
+            let p = key.split(separator: ":")
+            guard p.count == 2, let s = Int(p[0]), let a = Int(p[1]) else { return nil }
+            return AyahRef(surah: s, ayah: a)
+        }.sorted()
+    }
+
+    // MARK: تدبّراتي
+
+    /// ما كتبه القارئ على الآية لنفسه. المفتاح مفتاح التظليل عينه («سورة:آية»)
+    /// حتى يجتمع للآية الواحدة لونُها وتدبّرها على مرجعٍ واحد لا مرجعين.
+    var notes: [String: String] {
+        get {
+            guard let d = defaults.data(forKey: MKey.notes),
+                  let v = try? JSONDecoder().decode([String: String].self, from: d) else { return [:] }
+            return v
+        }
+        set {
+            if let d = try? JSONEncoder().encode(newValue) { defaults.set(d, forKey: MKey.notes) }
+            objectWillChange.send()
+        }
+    }
+
+    func note(for ref: AyahRef) -> String? {
+        guard let t = notes[ref.id]?.trimmingCharacters(in: .whitespacesAndNewlines), !t.isEmpty else { return nil }
+        return t
+    }
+
+    /// الفراغ محوٌ: «حفظٌ» على حقلٍ أُفرغ إزالةٌ لا تدبّرٌ من بياض.
+    func setNote(_ text: String?, for ref: AyahRef) {
+        let t = (text ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        var all = notes
+        if t.isEmpty { all.removeValue(forKey: ref.id) } else { all[ref.id] = t }
+        notes = all
+    }
+
+    /// المكتوب عليها بترتيب المصحف — لا بترتيب القاموس المتقلّب من فتحةٍ إلى فتحة.
+    var notedRefs: [AyahRef] {
+        notes.keys.compactMap { key in
             let p = key.split(separator: ":")
             guard p.count == 2, let s = Int(p[0]), let a = Int(p[1]) else { return nil }
             return AyahRef(surah: s, ayah: a)
@@ -521,5 +560,23 @@ extension AtharStore {
     var fitPage: Bool {
         get { defaults.object(forKey: Self.fitPageKey) as? Bool ?? true }
         set { defaults.set(newValue, forKey: Self.fitPageKey); objectWillChange.send() }
+    }
+}
+
+// MARK: - رقمٌ مجرّد كما يكتبه القارئ
+
+extension String {
+    /// «٦٠٤» و«604» سواء: لوحة المفاتيح العربية تُخرج الأرقام الهندية، فلو قِيست
+    /// بـ Int(_:) وحدها لسقط ما كتبه القارئ بلوحته. وما خالطه حرفٌ فليس رقمًا
+    /// مجرّدًا — «آية 5» بحثٌ في النص لا انتقالٌ إلى صفحة.
+    var bareNumberValue: Int? {
+        let t = trimmingCharacters(in: .whitespaces)
+        guard !t.isEmpty, t.count <= 5 else { return nil }
+        var digits = ""
+        for ch in t {
+            guard let v = ch.wholeNumberValue, (0...9).contains(v) else { return nil }
+            digits.append(String(v))
+        }
+        return Int(digits)
     }
 }

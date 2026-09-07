@@ -7,51 +7,65 @@ struct DhikrEntry: TimelineEntry {
     let date: Date
     let dhikr: Dhikr
     let categoryTitle: String
+    /// معرّف الباب حين يختاره صاحب الودجة — به تفتح على بابه لا على رأس الأذكار.
+    let categoryId: String?
     let moment: AtharStyle.Moment
+
+    /// من الودجة إلى موضعها من التطبيق: الباب المختار إن كان، وإلا الأذكار جملةً.
+    var url: URL? {
+        URL(string: categoryId.map { "athar://open/adhkar/\($0)" } ?? "athar://open/adhkar")
+    }
 }
 
-struct DhikrProvider: TimelineProvider {
+struct DhikrProvider: AppIntentTimelineProvider {
     /// Rotation pool: short, self-contained adhkar that read well small.
-    private var pool: [Dhikr] {
-        let short = AdhkarLibrary.shortItems
-        return short.isEmpty ? AdhkarLibrary.allItems : short
+    /// وفي الباب المختار: قصاره وحدها بميزان المكتبة نفسه — فإن لم يكن فيه قصير عُرض على طوله.
+    private func pool(for section: DhikrSectionChoice) -> [Dhikr] {
+        guard let category = section.category else {
+            let short = AdhkarLibrary.shortItems
+            return short.isEmpty ? AdhkarLibrary.allItems : short
+        }
+        let ids = Set(category.items.map(\.id))
+        let short = AdhkarLibrary.shortItems.filter { ids.contains($0.id) }
+        return short.isEmpty ? category.items : short
     }
 
-    private func dhikr(at date: Date) -> Dhikr {
-        guard !pool.isEmpty else {
+    private func dhikr(at date: Date, section: DhikrSectionChoice) -> Dhikr {
+        let items = pool(for: section)
+        guard !items.isEmpty else {
             return Dhikr(id: "fallback", text: "سُبْحَانَ اللهِ وَبِحَمْدِهِ",
                          count: 1, reference: "متفق عليه", virtue: "")
         }
         // New dhikr every 30 minutes, stable across widget reloads.
         let slot = Int(date.timeIntervalSince1970 / 1800)
-        return pool[abs(slot) % pool.count]
+        return items[abs(slot) % items.count]
     }
 
     private func category(for dhikr: Dhikr) -> String {
         AdhkarLibrary.categories.first { $0.items.contains(where: { $0.id == dhikr.id }) }?.title ?? "أثر"
     }
 
+    private func entry(at date: Date, section: DhikrSectionChoice) -> DhikrEntry {
+        let d = dhikr(at: date, section: section)
+        return DhikrEntry(date: date, dhikr: d,
+                          categoryTitle: section.category?.title ?? category(for: d),
+                          categoryId: section.category?.id,
+                          moment: .resolved(at: date, times: AtharStore.shared.prayerTimes(for: date)))
+    }
+
     func placeholder(in context: Context) -> DhikrEntry {
-        let d = dhikr(at: Date())
-        return DhikrEntry(date: Date(), dhikr: d, categoryTitle: category(for: d),
-                          moment: .resolved(at: Date(), times: AtharStore.shared.prayerTimes()))
+        entry(at: Date(), section: .auto)
     }
 
-    func getSnapshot(in context: Context, completion: @escaping (DhikrEntry) -> Void) {
-        completion(placeholder(in: context))
+    func snapshot(for configuration: DhikrWidgetIntent, in context: Context) async -> DhikrEntry {
+        entry(at: Date(), section: configuration.section)
     }
 
-    func getTimeline(in context: Context, completion: @escaping (Timeline<DhikrEntry>) -> Void) {
-        var entries: [DhikrEntry] = []
+    func timeline(for configuration: DhikrWidgetIntent, in context: Context) async -> Timeline<DhikrEntry> {
         let now = Date()
         // Twelve half-hour slots — six hours of content per refresh.
-        for offset in 0..<12 {
-            let date = now.addingTimeInterval(Double(offset) * 1800)
-            let d = dhikr(at: date)
-            entries.append(DhikrEntry(date: date, dhikr: d, categoryTitle: category(for: d),
-                                      moment: .resolved(at: date, times: AtharStore.shared.prayerTimes(for: date))))
-        }
-        completion(Timeline(entries: entries, policy: .atEnd))
+        let entries = (0..<12).map { entry(at: now.addingTimeInterval(Double($0) * 1800), section: configuration.section) }
+        return Timeline(entries: entries, policy: .atEnd)
     }
 }
 
@@ -71,7 +85,7 @@ struct DhikrWidgetView: View {
                 AccessoryWidgetBackground()
                 VStack(spacing: 1) {
                     Image(systemName: "sparkles").font(.system(size: 11, weight: .semibold))
-                    Text("ذِكر").font(.system(size: 11, weight: .semibold))
+                    Text(loc("ذِكر")).font(.system(size: 11, weight: .semibold))
                 }
             }
 
@@ -137,16 +151,16 @@ struct DhikrWidget: Widget {
     private let kind = "AtharDhikrWidget"
 
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: kind, provider: DhikrProvider()) { entry in
+        AppIntentConfiguration(kind: kind, intent: DhikrWidgetIntent.self, provider: DhikrProvider()) { entry in
             DhikrWidgetView(entry: entry)
                 .containerBackground(for: .widget) {
                     AtharStyle.Backdrop(moment: entry.moment, rippleScale: 0.75)
                 }
-                // إلى الأذكار جملةً لا إلى باب الذكر المعروض: الرابط لا يعرف إلا التبويبات.
-                .widgetURL(URL(string: "athar://open/adhkar"))
+                // إلى الباب المختار حين يُختار، وإلا فإلى الأذكار جملةً كما كانت.
+                .widgetURL(entry.url)
         }
         .configurationDisplayName("ذِكر")
-        .description("ذكر يتجدّد على مدار اليوم — على الشاشة الرئيسية أو شاشة القفل.")
+        .description("ذكر يتجدّد على مدار اليوم — من الأبواب كلّها أو من بابٍ تختاره.")
         .supportedFamilies([
             .systemSmall, .systemMedium, .systemLarge,
             .accessoryInline, .accessoryCircular, .accessoryRectangular

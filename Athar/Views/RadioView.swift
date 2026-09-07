@@ -20,14 +20,15 @@ struct RadioView: View {
             ScrollView {
                 VStack(spacing: 18) {
                     player.appearStagger(0)
-                    note.appearStagger(1)
+                    LiveSleepRow(tint: tint).appearStagger(1)
+                    note.appearStagger(2)
                     NavigationLink { LiveView() } label: {
                         AtharLinkRow(icon: "dot.radiowaves.left.and.right", tint: tint,
                                      title: loc("البث المباشر"),
                                      subtitle: loc("بثّ الحرمين الشريفين من قناتيهما الرسميتين"))
                     }
                     .pressable()
-                    .appearStagger(2)
+                    .appearStagger(3)
                 }
                 .padding(.horizontal, Theme.gutter)
                 .padding(.top, 8)
@@ -168,6 +169,142 @@ struct RadioView: View {
             Spacer(minLength: 0)
         }
         .padding(.horizontal, 4)
+    }
+}
+
+// MARK: - مؤقّت نوم البثّ
+
+/// صفّ المؤقّت وعدّه التنازلي — واحدٌ لشاشتَي الإذاعة والبثّ المباشر، فلا تفترق
+/// صياغتهما ولا نبضة عدّادهما. يُعرض والبثّ ساكن أيضًا: المؤقّت لا يحتاج بثًّا جاريًا
+/// ليُضبط، كمؤقّت التلاوة الذي يُضبط قبل اختيار السورة.
+struct LiveSleepRow: View {
+    var tint: Color
+    @EnvironmentObject private var store: AtharStore
+    @ObservedObject private var radio = RadioPlayer.shared
+    @State private var showSleep = false
+
+    private var direction: LayoutDirection {
+        AppConfig.arabicOnly ? .rightToLeft : store.appLanguage.layoutDirection
+    }
+
+    var body: some View {
+        VStack(spacing: 10) {
+            SettingsCard {
+                Button {
+                    Haptics.tap(enabled: store.hapticsEnabled)
+                    showSleep = true
+                } label: {
+                    SettingsRow(icon: "moon.zzz.fill", tint: tint,
+                                title: loc("مؤقّت النوم"),
+                                subtitle: loc("يتوقّف البثّ وحده في الوقت الذي تختاره")) {
+                        HStack(spacing: 7) {
+                            SettingsValue(text: radio.sleep.isOn ? loc("مفعَّل") : loc("مطفأ"))
+                            Image(systemName: "chevron.forward")
+                                .font(.system(size: 12, weight: .semibold))
+                                .foregroundStyle(Theme.inkFaint)
+                        }
+                    }
+                }
+                .buttonStyle(.plain)
+                .accessibilityValue(radio.sleep.title)
+                .accessibilityHint(loc("اختيار وقت إيقاف البثّ"))
+            }
+            if radio.sleep.isOn { banner }
+        }
+        .animation(Motion.smooth, value: radio.sleep)
+        .sheet(isPresented: $showSleep) {
+            LiveSleepTimerSheet()
+                // أربعة صفوف لا تملأ شاشة، والمقاس الكبير متاحٌ لمن كبّر خطّه.
+                .presentationDetents([.medium, .large])
+                .atharSheetChrome()
+                .environment(\.layoutDirection, direction)
+        }
+    }
+
+    /// العدّ التنازلي يحيا داخل الشريط وحده: بلا مؤقّت يعمل كل ثانية والمؤقّت مطفأ.
+    private var banner: some View {
+        TimelineView(.periodic(from: .now, by: 1)) { context in
+            HStack(spacing: 9) {
+                Image(systemName: "moon.zzz.fill")
+                    .font(.system(size: 12))
+                    .foregroundStyle(tint)
+                    .accessibilityHidden(true)
+                Text(loc("سيتوقّف البثّ بعد %1$@.", remaining(at: context.date)))
+                    .font(Theme.display(12))
+                    .foregroundStyle(Theme.inkSoft)
+                Spacer(minLength: 4)
+                Button(loc("إلغاء")) {
+                    Haptics.tap(enabled: store.hapticsEnabled)
+                    radio.cancelSleep()
+                }
+                .font(Theme.display(12, weight: .medium))
+                .foregroundStyle(tint)
+                .tapTarget()
+            }
+            .padding(.horizontal, 13).padding(.vertical, 10)
+            .background(RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous)
+                .fill(tint.opacity(0.08)))
+        }
+    }
+
+    private func remaining(at date: Date) -> String {
+        guard let end = radio.sleepEndsAt else { return "" }
+        return max(0, end.timeIntervalSince(date)).clockText
+    }
+}
+
+/// ورقة مؤقّت البثّ — نظيرة ورقة مؤقّت التلاوة صفًّا بصفّ، بخياراتها الأربعة.
+struct LiveSleepTimerSheet: View {
+    @EnvironmentObject private var store: AtharStore
+    @ObservedObject private var radio = RadioPlayer.shared
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                AtharBackground(tint: Theme.accent, motif: false)
+                ScrollView {
+                    VStack(spacing: 12) {
+                        Text(loc("يتوقّف البثّ وحده، فتنام على ذِكر."))
+                            .font(Theme.display(12))
+                            .foregroundStyle(Theme.inkFaint)
+                            .multilineTextAlignment(.center)
+                            .padding(.top, 4)
+                        SettingsCard {
+                            ForEach(Array(SleepTimer.liveChoices.enumerated()), id: \.element.id) { i, t in
+                                Button {
+                                    Haptics.tap(enabled: store.hapticsEnabled)
+                                    radio.setSleep(t)
+                                    dismiss()
+                                } label: {
+                                    HStack(spacing: 12) {
+                                        Image(systemName: radio.sleep == t ? "checkmark.circle.fill" : "circle")
+                                            .font(.system(size: 17))
+                                            .foregroundStyle(radio.sleep == t ? Theme.accent : Theme.hairline)
+                                        Text(t.title)
+                                            .font(Theme.display(15, weight: radio.sleep == t ? .semibold : .regular))
+                                            .foregroundStyle(Theme.ink)
+                                        Spacer()
+                                    }
+                                    .padding(.horizontal, 14).padding(.vertical, 12)
+                                    .contentShape(Rectangle())
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityAddTraits(radio.sleep == t ? .isSelected : [])
+                                if i < SleepTimer.liveChoices.count - 1 { SettingsDivider(inset: 46) }
+                            }
+                        }
+                    }
+                    .padding(.horizontal, Theme.gutter)
+                    .padding(.bottom, 20)
+                    .readableWidth(520)
+                }
+                .scrollIndicators(.hidden)
+            }
+            .navigationTitle(loc("مؤقّت النوم"))
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { ToolbarItem(placement: .confirmationAction) { Button(loc("تم")) { dismiss() } } }
+        }
     }
 }
 

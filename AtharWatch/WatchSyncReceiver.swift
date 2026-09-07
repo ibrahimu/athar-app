@@ -1,5 +1,6 @@
 import Foundation
 import WatchConnectivity
+import WidgetKit
 
 /// يستقبل إعدادات المواقيت من الهاتف ويطبّقها على مخزن الساعة.
 final class WatchSyncReceiver: NSObject, WCSessionDelegate {
@@ -35,7 +36,11 @@ final class WatchSyncReceiver: NSObject, WCSessionDelegate {
     }
 
     private func flush() {
-        guard pendingDelta > 0, WCSession.isSupported(), WCSession.default.activationState == .activated else { return }
+        guard pendingDelta > 0 else { return }
+        // ما إن يهدأ العدّ حتى تلحق به مضاعفة اليوم على الواجهة — لا مع كل حبّة.
+        // المفتاح نفسه المسجَّل في TasbihComplication.
+        WidgetCenter.shared.reloadTimelines(ofKind: "AtharWatchTasbih")
+        guard WCSession.isSupported(), WCSession.default.activationState == .activated else { return }
         WCSession.default.transferUserInfo(["tasbihDelta": pendingDelta, "at": Date().timeIntervalSince1970])
         pendingDelta = 0
     }
