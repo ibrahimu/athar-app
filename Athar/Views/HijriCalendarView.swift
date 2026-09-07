@@ -304,6 +304,9 @@ struct HijriCalendarView: View {
         Haptics.tap(enabled: store.hapticsEnabled)
         // الودجات تقرأ الإزاحة من الدفاتر نفسها، فتُنبَّه لتعيد رسم ما بنَتْه على الأمس.
         WidgetCenter.shared.reloadAllTimelines()
+        // والتنبيهات المعلّقة بُنيت على التقويم القديم: الأيام البيض وصيام الاثنين والخميس
+        // مجدولةٌ بتواريخ ما عادت تطابق ما يراه. فتُعاد جدولتها على التقويم الجديد.
+        Task { await Reminders.rescheduleAll(store: store) }
     }
 
     private func offsetText(_ n: Int) -> String {

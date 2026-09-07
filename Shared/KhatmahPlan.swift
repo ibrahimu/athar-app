@@ -181,7 +181,10 @@ extension AtharStore {
 
     /// التاريخ الهجري بأرقام لاتينية كبقية أرقام التطبيق — «٠» الهندية تُقرأ
     /// نقطةً عند العرض فتلتبس بعلامة لا برقم.
-    static func khatmahDateText(_ date: Date) -> String {
+    /// تاريخ الختم كما يراه صاحبه في تقويم التطبيق: بإزاحة المطالع، وإلا خالف الموعدُ
+    /// المعروضُ في البطاقة شبكةَ التقويم في الشاشة المجاورة بيومٍ أو يومين.
+    static func khatmahDateText(_ raw: Date) -> String {
+        let date = Hijri.shifted(raw)
         var cal = Calendar(identifier: .islamicUmmAlQura)
         cal.locale = Locale(identifier: "ar_SA@numbers=latn")
         let f = DateFormatter()

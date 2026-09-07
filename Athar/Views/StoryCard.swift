@@ -87,7 +87,7 @@ struct StoryCard: View {
         Self.fittingFontSize(for: phrase, font: design.font, width: textWidth, maxHeight: textMaxHeight)
     }
 
-    static func fittingFontSize(for phrase: Phrase, font: AppFont = AppFont.current,
+    nonisolated static func fittingFontSize(for phrase: Phrase, font: AppFont = AppFont.current,
                                 width: CGFloat = 888, maxHeight: CGFloat = 1100) -> CGFloat {
         let name: String
         if phrase.isSacred { name = "NotoNaskhArabic-Regular" }

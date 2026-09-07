@@ -553,9 +553,13 @@ struct HadithDetailView: View {
         // القياس بأضيق أشكال البطاقة (الورقة) فلا يظهر الزرّ إلا لمتنٍ تسعه كلّها.
         // خارج الخيط الرئيس كالبحث: المتن الطويل يُقاس حجمًا بعد حجم قبل أن يُردّ.
         .task(id: current.id) {
+            // الحكم يخصّ متنه هو: لولا تصفيره لبقي حكمُ الحديث السابق قائمًا ثوانيَ
+            // على حديثٍ جديد، فيُعرض الزرّ لمتنٍ لا تسعه البطاقة فيخرج مقصوصًا.
+            fitsCard = false
             let phrase = storyPhrase
+            let font = AppFont.current
             let fits = await Task.detached(priority: .userInitiated) {
-                StoryCard.fittingFontSize(for: phrase, width: 744, maxHeight: 960) > 18
+                StoryCard.fittingFontSize(for: phrase, font: font, width: 744, maxHeight: 960) > 18
             }.value
             guard !Task.isCancelled else { return }
             withAnimation(Motion.smooth) { fitsCard = fits }

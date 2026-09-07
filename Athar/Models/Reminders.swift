@@ -258,10 +258,17 @@ enum Reminders {
               store.khatmahPagesDone < Quran.pageCount else { return }
         let minutes = store.khatmahReminderMinutes
 
-        guard store.khatmahPlanActive else {
+        // خطةٌ مضى موعدها لا تعطي نصيبًا ليومٍ من أيامها، فلو تُرك الأمر إليها لصمت التذكير
+        // أبدًا والمفتاح مرفوع — ولا يدري صاحبه لِمَ انقطع النداء. فيُرجَع إلى النداء اليوميّ
+        // حتى يمدّ موعده أو يُتمّ ما بقي.
+        let hasShare = (0..<7).contains { store.khatmahPlanShare(daysFromNow: $0) > 0 }
+        guard store.khatmahPlanActive, hasShare else {
+            let overdue = store.khatmahPlanActive
             add(id: khatmahPrefix + "daily",
                 title: "ورد الختمة",
-                body: "\(AtharStore.pagesText(store.khatmahPagesPerDay)) اليوم تُبقيك على خطتك.",
+                body: overdue
+                    ? "مضى موعد ختمتك وبقي منها شيء — تابع وردك أو مدّد الموعد."
+                    : "\(AtharStore.pagesText(store.khatmahPagesPerDay)) اليوم تُبقيك على خطتك.",
                 minutes: minutes)
             return
         }
@@ -286,7 +293,8 @@ enum Reminders {
             content.body = "\(AtharStore.pagesText(share)) اليوم تبلغ بك ختمتك في موعدها."
             content.sound = .default
 
-            let comps = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: fire)
+            var comps = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: fire)
+            comps.calendar = calendar   // كما في pinned: المكوّنات تُطابَق بتقويم استخراجها
             collect(UNNotificationRequest(identifier: "\(khatmahPrefix)\(dayOffset)", content: content,
                 trigger: UNCalendarNotificationTrigger(dateMatching: comps, repeats: false)))
         }

@@ -14,6 +14,8 @@ struct GlobalSearchView: View {
     /// جارٍ البحث: النتائج لا تصل فورًا (إمهالُ ربع ثانية ثم مسحٌ خارج الخيط الرئيسي)،
     /// فبغير هذه العلامة تبدو الشاشة وكأنها لم تجد شيئًا وهي لم تبحث بعد.
     @State private var searching = false
+    /// المجموعات المكشوفة بعناوينها — تُصفَّر مع كل استعلام جديد فلا يرث بحثٌ كشفَ ما قبله.
+    @State private var expanded: Set<String> = []
 
     /// خمسٌ من كل مجموعة — قدرُ ما يُقرأ بنظرة، وما وراءه تفتحه «المزيد».
     private static let cap = 5
@@ -53,6 +55,8 @@ struct GlobalSearchView: View {
             // ثم يجري خارج الخيط الرئيسي مرّةً واحدة لكل استعلام. (كـ MushafView تمامًا.)
             .task(id: query) {
                 let q = trimmed
+                // استعلامٌ جديد يطوي ما كُشف قبله: الكشف كان لنتائج ذهبت.
+                expanded = []
                 guard q.count >= 2 else {
                     results = GlobalSearchResults()
                     searching = false
@@ -83,8 +87,6 @@ struct GlobalSearchView: View {
               more: loc("المزيد من السور")) { surah in
             NavigationLink { SurahReaderView(surahId: surah.id) } label: { SurahRow(surah: surah) }
                 .pressable()
-        } destination: {
-            MushafView(embedded: true)
         }
     }
 
@@ -95,8 +97,6 @@ struct GlobalSearchView: View {
                 SearchHitRow(ref: ref, query: query)
             }
             .pressable()
-        } destination: {
-            MushafView(embedded: true)
         }
     }
 
@@ -110,8 +110,6 @@ struct GlobalSearchView: View {
                            footnote: hit.dhikr.hasReference ? hit.dhikr.reference : nil)
             }
             .pressable()
-        } destination: {
-            AdhkarIndexView(embedded: true)
         }
     }
 
@@ -125,8 +123,6 @@ struct GlobalSearchView: View {
                            footnote: hadith.citation)
             }
             .pressable()
-        } destination: {
-            HadithView()
         }
     }
 
@@ -135,8 +131,6 @@ struct GlobalSearchView: View {
               more: loc("المزيد من الأسماء")) { name in
             NavigationLink { NameDetailView(name: name) } label: { nameRow(name) }
                 .pressable()
-        } destination: {
-            NamesView()
         }
     }
 
@@ -149,29 +143,16 @@ struct GlobalSearchView: View {
                 ahkamRow(hit)
             }
             .pressable()
-        } destination: {
-            AhkamView()
         }
     }
 
-    /// «المزيد» هنا ترجع ولا تدفع: شبكةُ الأقسام هي الشاشة التي فُتح منها هذا البحث،
-    /// فدفعُ نسخةٍ ثانية منها فوقه يبني مكدّسًا لا معنى له ولا رجعة منه بضغطة.
-    @ViewBuilder
+    /// الأقسام كسائر المجموعات: تُكشف في مكانها. وكانت «المزيد» ترجع إلى الشبكة —
+    /// فتضيع النتائج كلّها لمن أراد قسمًا واحدًا زائدًا.
     private var sectionsGroup: some View {
-        let bucket = results.sections
-        if !bucket.isEmpty {
-            let tint = Theme.accent(for: "dawn")
-            VStack(alignment: .leading, spacing: 10) {
-                SectionHeader(title: loc("الأقسام"), tint: tint)
-                ForEach(bucket.shown) { tab in
-                    NavigationLink { SectionDestination(tab: tab) } label: { tabRow(tab) }
-                        .pressable()
-                }
-                if bucket.hasMore {
-                    Button { dismiss() } label: { moreRow(loc("المزيد من الأقسام"), tint: tint) }
-                        .buttonStyle(.plain)
-                }
-            }
+        group(loc("الأقسام"), tint: Theme.accent(for: "dawn"), bucket: results.sections,
+              more: loc("المزيد من الأقسام")) { tab in
+            NavigationLink { SectionDestination(tab: tab) } label: { tabRow(tab) }
+                .pressable()
         }
     }
 
@@ -179,32 +160,45 @@ struct GlobalSearchView: View {
 
     /// رأسٌ ونتائجُه و«المزيد» — قالبٌ واحد لسبع مجموعات، فلا يختلف إيقاعها ولا مسافاتها.
     @ViewBuilder
-    private func group<T: Identifiable, Row: View, Dest: View>(
+    private func group<T: Identifiable, Row: View>(
         _ title: String,
         tint: Color,
         bucket: SearchBucket<T>,
         more: String,
-        @ViewBuilder row: @escaping (T) -> Row,
-        @ViewBuilder destination: @escaping () -> Dest
+        @ViewBuilder row: @escaping (T) -> Row
     ) -> some View {
         if !bucket.isEmpty {
+            let open = expanded.contains(title)
             VStack(alignment: .leading, spacing: 10) {
                 SectionHeader(title: title, tint: tint)
-                ForEach(bucket.shown) { item in row(item) }
+                ForEach(bucket.shown(expanded: open)) { item in row(item) }
                 if bucket.hasMore {
-                    NavigationLink { destination() } label: { moreRow(more, tint: tint) }
-                        .buttonStyle(.plain)
+                    // الكشف في مكانه: الاستعلام باقٍ والنتائج تحته، ولا يُدفع الباحث إلى فهرسٍ يبدأ من أوّله.
+                    Button {
+                        withAnimation(Motion.smooth) {
+                            if open { expanded.remove(title) } else { expanded.insert(title) }
+                        }
+                    } label: {
+                        moreRow(open ? loc("عرض أقلّ") : more, tint: tint, open: open)
+                    }
+                    .buttonStyle(.plain)
+                }
+                if open, bucket.beyondDepth > 0 {
+                    Text(loc("ومثلها %1$@ — ضيّق كلمة البحث لتصل إليها.", bucket.beyondDepth.counterText))
+                        .font(Theme.display(11))
+                        .foregroundStyle(Theme.inkFaint)
+                        .padding(.horizontal, 8)
                 }
             }
         }
     }
 
-    private func moreRow(_ title: String, tint: Color) -> some View {
+    private func moreRow(_ title: String, tint: Color, open: Bool = false) -> some View {
         HStack(spacing: 6) {
             Text(title)
                 .font(Theme.display(14, weight: .semibold))
                 .foregroundStyle(tint)
-            Image(systemName: "chevron.forward")
+            Image(systemName: open ? "chevron.up" : "chevron.down")
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(tint.opacity(0.7))
             Spacer(minLength: 0)
@@ -355,22 +349,36 @@ struct GlobalSearchView: View {
 // MARK: - حصيلة البحث
 
 /// حصيلة مجموعة: ما يُعرض منها وعددها كلّه — فـ«المزيد» لا تظهر إلا ووراءها شيء.
+/// نتائج مجموعةٍ واحدة: ما يُعرض أوّلًا، وما يُكشف عند «المزيد» في الشاشة نفسها،
+/// والعدد كلّه. تُحفظ الزيادة هنا لا في شاشةٍ أخرى: «المزيد» كان يدفع الفهرس عاريًا
+/// من الاستعلام، فيجد الباحثُ نفسه في أوّل القائمة يبحث من جديد.
 private struct SearchBucket<T> {
-    var shown: [T] = []
+    /// ما استُبقي للكشف — لا كلّ ما وُجد: مئات الصفوف في شاشة واحدة ثقيلة بلا فائدة.
+    static var depth: Int { 40 }
+
+    var items: [T] = []
+    var cap: Int = 5
     var total: Int = 0
 
     init() {}
     init(_ all: [T], cap: Int) {
-        shown = Array(all.prefix(cap))
-        total = all.count
+        self.items = Array(all.prefix(Self.depth))
+        self.cap = cap
+        self.total = all.count
     }
-    init(shown: [T], total: Int) {
-        self.shown = shown
+    init(shown: [T], total: Int, cap: Int = 5) {
+        self.items = shown
+        self.cap = cap
         self.total = total
     }
 
-    var isEmpty: Bool { shown.isEmpty }
-    var hasMore: Bool { total > shown.count }
+    var shown: [T] { Array(items.prefix(cap)) }
+    func shown(expanded: Bool) -> [T] { expanded ? items : shown }
+
+    var isEmpty: Bool { items.isEmpty }
+    var hasMore: Bool { items.count > cap }
+    /// ما وراء العمق لا يُكشف هنا: يُقال عدده ليضيّق الباحث كلمته.
+    var beyondDepth: Int { max(0, total - items.count) }
 }
 
 /// ذكرٌ مع قسمه — القسم هو ما تُفتح به الجلسة، والذكر وحده لا يعرف أهله.
@@ -413,9 +421,18 @@ private struct GlobalSearchResults {
 /// مفتاح المطابقة: تطبيع «أثر» نفسه (بلا تشكيل، والهمزات ألفًا، والتاء المربوطة هاءً)،
 /// ثم توحيد الفراغات — فنصوص الأذكار فيها أسطر جديدة يقطعها المستخدم بمسافة واحدة —
 /// وخفضُ اللاتيني ليجد «Al-Fatihah» من كتب «fatiha».
+/// مفتاح المطابقة: تجريدٌ من التشكيل ثم إسقاط ما ليس حرفًا ولا رقمًا غربيًّا —
+/// نصوص الأذكار تتخلّلها أرقام الآيات الهندية وأقواسها وعلامات الترقيم، فلو بقيت
+/// لانقطعت العبارة عند أوّل قوسٍ وفشل بحثُ من كتبها متّصلة.
 private func matchKey(_ s: String) -> String {
-    ArabicMatch.normalize(s)
+    let cleaned = ArabicMatch.normalize(s)
         .lowercased()
+        .map { ch -> Character in
+            if ch.isLetter { return ch }
+            if ch.isNumber, ch.isASCII { return ch }
+            return " "
+        }
+    return String(cleaned)
         .split(whereSeparator: { $0.isWhitespace })
         .joined(separator: " ")
 }

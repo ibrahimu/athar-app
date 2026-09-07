@@ -132,6 +132,7 @@ final class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
             || identifier.hasPrefix(Reminders.coverageId) { return .prayer }
         if identifier.hasPrefix(Reminders.morningId) || identifier.hasPrefix(Reminders.eveningId) { return .adhkar }
         if identifier.hasPrefix(Reminders.wirdId) { return .wird }
+        if identifier.hasPrefix(Reminders.khatmahPrefix) { return .khatmah }
         if identifier.hasPrefix(Reminders.hadithPrefix) { return .hadith }
         if identifier.hasPrefix(Reminders.istighfarPrefix) { return .tasbih }
         if identifier.hasPrefix(Reminders.jumuahId)
