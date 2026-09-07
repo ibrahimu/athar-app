@@ -127,6 +127,8 @@ struct AtharProgressWidget: Widget {
                 .containerBackground(for: .widget) {
                     AtharStyle.Backdrop(moment: entry.moment, rippleScale: 0.8)
                 }
+                // النقر يفتح المسبحة — موضع الزيادة في العدد الذي تعرضه الودجة.
+                .widgetURL(URL(string: "athar://open/tasbih"))
         }
         .configurationDisplayName("أثري")
         .description("تتابعك اليومي ومجموع أذكارك.")

@@ -273,6 +273,8 @@ struct PrayerWidget: Widget {
         StaticConfiguration(kind: kind, provider: PrayerProvider()) { entry in
             PrayerWidgetView(entry: entry)
                 .containerBackground(for: .widget) { AtharStyle.Backdrop(moment: entry.moment) }
+                // نقرةٌ على الودجة تُنزل صاحبها على المواقيت، لا على آخر شاشة فارقها.
+                .widgetURL(URL(string: "athar://open/prayer"))
         }
         .configurationDisplayName("أوقات الصلاة")
         .description("الصلاة القادمة والوقت المتبقي لها — على الشاشة الرئيسية أو شاشة القفل.")

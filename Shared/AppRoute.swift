@@ -39,6 +39,10 @@ enum AppRoute: Equatable, Identifiable {
         guard path.first == "open", path.count >= 2 else { return nil }
         if let t = AppTab(rawValue: path[1]) { self = .tab(t); return }
         if path[1] == "surah", path.count >= 3, let n = Int(path[2]) { self = .surah(n); return }
+        // الوجهات الدقيقة التي يعرفها الجذر أصلًا من Spotlight: قسم أذكار بعينه واسمٌ بعينه —
+        // فتحملها الودجة أيضًا بدل أن تُنزل المستخدم على رأس التبويب ليبحث عمّا كان يراه.
+        if path[1] == "adhkar", path.count >= 3 { self = .adhkar(path[2]); return }
+        if path[1] == "name", path.count >= 3, let n = Int(path[2]) { self = .name(n); return }
         return nil
     }
 }

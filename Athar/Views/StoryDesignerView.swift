@@ -122,7 +122,19 @@ struct StoryDesignerView: View {
         .shadow(color: .black.opacity(0.18), radius: 16, y: 8)
         .padding(.top, 4)
         .animation(Motion.smooth, value: design)
-        .accessibilityLabel(loc("معاينة البطاقة"))
+        // البطاقة صورةٌ تُصيَّر، لا نصٌّ يُقرأ: تُطوى في عنصر واحد يسمّي ما اختير فيها،
+        // وإلا سمع مستعمل VoiceOver العبارةَ مكرّرةً بلا خبر عن الشكل واللون.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(previewLabel)
+    }
+
+    /// وصف المعاينة: ما لا يُرى يُقال. الملصق بلا خلفية فلا نقش له ولا لون بطاقة.
+    private var previewLabel: String {
+        design.isSticker
+            ? loc("معاينة البطاقة — الشكل %1$@، لون النص %2$@، الخط %3$@",
+                  design.layout.title, design.stickerInk.title, design.font.title)
+            : loc("معاينة البطاقة — الشكل %1$@، اللون %2$@، النقش %3$@، الخط %4$@",
+                  design.layout.title, design.theme.title, design.pattern.title, design.font.title)
     }
 
     // MARK: النص الخاص
@@ -163,6 +175,9 @@ struct StoryDesignerView: View {
             }
             .scrollIndicators(.hidden)
             .contentMargins(.horizontal, 1)
+            // صفّ الرقائق مجموعةٌ واحدة باسمها، فلا تتناثر خياراتها بلا سياق يجمعها.
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel(loc("الشكل"))
             if design.isSticker {
                 Text(loc("نصّ وحده بلا خلفية — يُحفظ PNG شفّافًا، فأضفه ملصقًا فوق صورتك."))
                     .font(Theme.display(11))
@@ -182,6 +197,8 @@ struct StoryDesignerView: View {
                     chip(ink.title, selected: design.stickerInk == ink) { design.stickerInk = ink }
                 }
             }
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel(loc("لون النص"))
         }
     }
 
@@ -230,6 +247,8 @@ struct StoryDesignerView: View {
             }
             .scrollIndicators(.hidden)
             .contentMargins(.horizontal, 1)
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel(loc("اللون"))
         }
     }
 
@@ -250,6 +269,8 @@ struct StoryDesignerView: View {
             }
             .scrollIndicators(.hidden)
             .contentMargins(.horizontal, 1)
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel(loc("النقش"))
         }
     }
 
@@ -266,6 +287,8 @@ struct StoryDesignerView: View {
                     }
                 }
             }
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel(loc("الخط"))
             if base.isSacred {
                 Text(loc("القرآن والحديث والذكر بخط النسخ دائمًا؛ الخط هنا للتوقيع."))
                     .font(Theme.display(11))
@@ -330,7 +353,12 @@ struct StoryDesignerView: View {
             Haptics.tap(enabled: store.hapticsEnabled)
         } label: {
             HStack(spacing: 6) {
-                if let icon { Image(systemName: icon).font(.system(size: 12, weight: .semibold)) }
+                // الرمز زينةٌ إلى جانب الاسم؛ لولا إخفاؤه لسبق اسمُه النصَّ في القراءة.
+                if let icon {
+                    Image(systemName: icon)
+                        .font(.system(size: 12, weight: .semibold))
+                        .accessibilityHidden(true)
+                }
                 Text(title).font(font ?? Theme.display(13, weight: .semibold))
             }
             .foregroundStyle(selected ? Theme.onAccent : Theme.inkSoft)

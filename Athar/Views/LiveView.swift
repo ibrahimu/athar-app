@@ -1,8 +1,10 @@
 import SwiftUI
 import WebKit
+import UIKit
 
 /// البثّ المباشر: قناتا الحرمين الرسميتان (مشغّل YouTube المضمّن) وإذاعة القرآن الكريم صوتًا.
-/// لا يُفتح اتصال إلا بفتح هذا القسم (المشغّلان) أو بضغطة «تشغيل» (الإذاعة).
+/// لا يُفتح اتصال إلا بفتح هذا القسم (المشغّلان) أو بضغطة «تشغيل» (الإذاعة)،
+/// ويُهدم المشغّل بمغادرة الشاشة ما لم يكن المستخدم قد شرع في مشاهدته.
 struct LiveView: View {
     @EnvironmentObject private var store: AtharStore
     var isRootTab = false
@@ -78,12 +80,24 @@ private struct LivePill: View {
 
 // MARK: - بطاقة فيديو
 
+/// بوابة الهدم: هل شرع المستخدم يشاهد؟ رابط التضمين بلا تشغيل تلقائي، فلا يبدأ البثّ إلا
+/// بلمسةٍ داخل المشغّل — واللمسة وحدها هي الفارق بين مشغّلٍ خامل يُهدم وبثٍّ يسمعه صاحبه
+/// فلا يُقطع. لا تُنشر التغيّرات: هذه معرفةٌ للهدم لا للعرض، ونشرها يعيد رسم البطاقة بلا داعٍ.
+private final class LivePlayerGate: ObservableObject {
+    var engaged = false
+}
+
 private struct LiveVideoCard: View {
     let source: LiveSource
     var tint: Color
     var live: Color
     /// رابط التضمين بعد استخراج معرّف البثّ الجاري (أو تضمين القناة إن تعذّر).
     @State private var embed: URL?
+    /// الشاشة معروضة الآن؟ نحتاجه لنعيد بناء المشغّل عند العودة من الخلفية،
+    /// ولا نبنيه لشاشةٍ غادرها المستخدم.
+    @State private var visible = false
+    @StateObject private var gate = LivePlayerGate()
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         AtharCard(padding: 14, tint: tint) {
@@ -105,32 +119,59 @@ private struct LiveVideoCard: View {
                 ZStack {
                     RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous).fill(Color.black)
                     if let url = embed {
-                        LiveWebView(url: url)
+                        LiveWebView(url: url, gate: gate)
                     } else {
                         ProgressView().tint(.white)
                     }
                 }
                 .aspectRatio(16 / 9, contentMode: .fit)
                 .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous))
-                .task {
-                    guard embed == nil, case .youtubeChannel(let channel) = source.kind else { return }
-                    if let id = await LiveSource.resolveLiveVideoId(channel: channel), let u = LiveSource.embedURL(videoId: id) { embed = u }
-                    else { embed = source.embedURL }
-                }
+                .task { await load() }
                 Text(loc("المصدر: قناة %1$@ الرسمية على YouTube", source.channelName))
                     .font(Theme.display(11))
                     .foregroundStyle(Theme.inkFaint)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .onAppear { visible = true }
+        // مشغّل YouTube لا يعلم أنّ الشاشة غُودرت: يبقى حيًّا وراءها يخزّن البثّ، وقد يُبقي
+        // التطبيق يعمل في الخلفية (وضع الصوت مفتوح من أجل الإذاعة). فنهدم ما لم يشرع
+        // المستخدم في مشاهدته — أمّا بثّ يسمعه فلا يقطعه خروجٌ من الشاشة ولا انتقالٌ إلى الخلفية.
+        .onDisappear {
+            visible = false
+            releaseIfIdle()
+        }
+        .onChange(of: scenePhase) { _, phase in
+            switch phase {
+            case .background: releaseIfIdle()
+            // هُدم المشغّل ونحن في الخلفية، فلولا إعادة بنائه لعاد المستخدم إلى دوّارة انتظار لا تنتهي.
+            case .active: if visible, embed == nil { Task { await load() } }
+            default: break
+            }
+        }
+    }
+
+    /// يُستخرج معرّف البثّ الجاري ثم يُبنى المشغّل — مرّة واحدة ما دام قائمًا.
+    private func load() async {
+        guard embed == nil, case .youtubeChannel(let channel) = source.kind else { return }
+        gate.engaged = false   // مشغّل جديد لم تُلمَس شاشته بعد
+        if let id = await LiveSource.resolveLiveVideoId(channel: channel), let u = LiveSource.embedURL(videoId: id) { embed = u }
+        else { embed = source.embedURL }
+    }
+
+    /// إفراغ الحالة يسرّح WKWebView (dismantleUIView) فينقطع تنزيله وتُغلق عملية محتواه.
+    private func releaseIfIdle() {
+        guard !gate.engaged, embed != nil else { return }
+        embed = nil
     }
 }
 
 /// مشغّل YouTube المضمّن: يُحمَّل الرابط مرة واحدة عند الإنشاء، ويعمل داخل البطاقة بلا ملء الشاشة الإجباري.
 private struct LiveWebView: UIViewRepresentable {
     let url: URL
+    let gate: LivePlayerGate
 
-    func makeCoordinator() -> Coordinator { Coordinator() }
+    func makeCoordinator() -> Coordinator { Coordinator(gate: gate) }
 
     func makeUIView(context: Context) -> WKWebView {
         let config = WKWebViewConfiguration()
@@ -162,16 +203,39 @@ private struct LiveWebView: UIViewRepresentable {
 
     static func dismantleUIView(_ uiView: WKWebView, coordinator: Coordinator) {
         coordinator.detach()
+        // التسريح وحده لا يوقف ما بدأ: نقطع التحميل ونفرغ الصفحة، فيموت المشغّل داخلها
+        // ولا تبقى عملية المحتوى تنزّل بثًّا لا أحد يراه.
+        uiView.stopLoading()
+        uiView.loadHTMLString("", baseURL: nil)
     }
 
     /// محرّكات الصوت (الإذاعة والتلاوة والآية) لا تعرف صفحة الويب، فتُعلن بدءها إشعارًا
     /// ونوقف نحن الفيديو — وإلا سُمع صوتان معًا وعرضت شاشة القفل الإذاعة بينما YouTube يصدح.
-    final class Coordinator {
+    /// وهو أيضًا من يرصد لمسة المستخدم على المشغّل ليرفع بوابة الهدم.
+    final class Coordinator: NSObject, UIGestureRecognizerDelegate {
         private weak var web: WKWebView?
         private var observer: NSObjectProtocol?
+        /// البوابة تعيش في البطاقة لا هنا، فتبقى معرفتها بعد تسريح هذا المنسّق.
+        private let gate: LivePlayerGate
+
+        init(gate: LivePlayerGate) {
+            self.gate = gate
+            super.init()
+        }
 
         func attach(_ web: WKWebView) {
             self.web = web
+            // المشغّل داخل iframe من أصلٍ آخر فلا نقرأ حالته؛ واللمسة أصدق ما نملك:
+            // لا تشغيل تلقائي، فمن لمس فقد شرع يشاهد. مُميِّز ضغطٍ بلا مدّة يلتقط اللمسة
+            // من أوّلها ولا يبتلعها عن الصفحة، فيبقى المشغّل يستجيب كما هو.
+            let touch = UILongPressGestureRecognizer(target: self, action: #selector(touched))
+            touch.minimumPressDuration = 0
+            touch.cancelsTouchesInView = false
+            touch.delaysTouchesBegan = false
+            touch.delaysTouchesEnded = false
+            touch.delegate = self
+            web.addGestureRecognizer(touch)
+
             observer = NotificationCenter.default.addObserver(
                 forName: .atharAudioStarted, object: nil, queue: .main
             ) { [weak self] _ in
@@ -179,6 +243,13 @@ private struct LiveWebView: UIViewRepresentable {
                 self?.web?.evaluateJavaScript("document.getElementById('p')?.contentWindow.postMessage(JSON.stringify({event:'command',func:'pauseVideo',args:[]}), '*')", completionHandler: nil)
             }
         }
+
+        @objc private func touched(_ recognizer: UIGestureRecognizer) {
+            if recognizer.state == .began { gate.engaged = true }
+        }
+
+        func gestureRecognizer(_ recognizer: UIGestureRecognizer,
+                               shouldRecognizeSimultaneouslyWith other: UIGestureRecognizer) -> Bool { true }
 
         func detach() {
             if let o = observer { NotificationCenter.default.removeObserver(o); observer = nil }

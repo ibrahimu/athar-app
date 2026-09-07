@@ -71,6 +71,8 @@ struct TasbihView: View {
                             .shadow(color: selected ? Theme.accent.opacity(0.25) : .clear, radius: 6, y: 3)
                     }
                     .buttonStyle(.plain)
+                    // الرقاقة نحو ٣٩ نقطة بحشوتها؛ تُرفع منطقة لمسها إلى ٤٤ والكبسولة على حالها.
+                    .tapTarget()
                     .accessibilityAddTraits(selected ? .isSelected : [])
                 }
             }
@@ -133,6 +135,13 @@ struct TasbihView: View {
             .contentShape(Circle())
         }
         .buttonStyle(.plain)
+        // من دون هذه، يُدمج ما في الدائرة فيُقرأ «العبارة، رقم، الهدف 33» بلا رابط
+        // بينها. الذكر هو الاسم، والعدّ قيمةٌ تُحدَّث وحدها في كل ضغطة.
+        .accessibilityLabel(store.tasbihPhrase)
+        .accessibilityValue(loc("%1$@ من %2$@",
+                                (store.tasbihCount % store.tasbihTarget).counterText,
+                                store.tasbihTarget.counterText))
+        .accessibilityHint(loc("اضغط مرّتين للعدّ"))
     }
 
     private var targetPicker: some View {
@@ -219,6 +228,12 @@ struct TasbihView: View {
         if store.tasbihCount % store.tasbihTarget == 0 {
             Haptics.done(enabled: store.hapticsEnabled)
             WidgetCenter.shared.reloadAllTimelines()
+            // بلوغ الهدف يُعلَن كما يُعلمه الاهتزاز والوميض: القيمة وحدها تعود إلى
+            // الصفر فلا يُدرك السامعُ أنه أتمّ شوطًا، بل يحسبه عدًّا ضاع.
+            AccessibilityNotification.Announcement(
+                loc("بلغتَ الهدف %1$@ — الأشواط %2$@",
+                    store.tasbihTarget.counterText, rounds.counterText)
+            ).post()
             // مكافأة الإتمام: وميض واحد يزهر ثم يتلاشى
             bloomToken += 1
             bloom = true

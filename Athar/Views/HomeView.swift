@@ -1,5 +1,4 @@
 import SwiftUI
-import WidgetKit
 
 struct HomeView: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
@@ -61,7 +60,9 @@ struct HomeView: View {
             }
         }
         .onReceive(ticker) { now = $0 }
-        .onAppear { WidgetCenter.shared.reloadAllTimelines() }
+        // ولا إعادة تحميل للودجات هنا: الجذر (AtharApp) يعيدها عند الانتقال إلى الخلفية —
+        // وهي اللحظة التي تُرى فيها الودجات — فكان نداؤها مع كل ظهورٍ لـ«اليوم» تكرارًا
+        // يوقظ إضافة الودجة مع كل تبديل تبويب ورجوعٍ من قسم.
     }
 
     // MARK: بطاقات اليوم

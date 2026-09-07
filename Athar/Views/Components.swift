@@ -282,11 +282,15 @@ struct SectionHeader: View {
             Text(title)
                 .font(Theme.display(19, weight: .bold))
                 .foregroundStyle(Theme.ink)
+                // سمة العنوان تُتيح القفز بين الأقسام بمسحة واحدة بدل المرور على كل صفّ.
+                .accessibilityAddTraits(.isHeader)
             Spacer()
             if let action {
                 Button(actionTitle, action: action)
                     .font(Theme.display(14, weight: .medium))
                     .foregroundStyle(tint)
+                    // «الكل» سطرٌ نحيل لا يبلغ ثلثي هدف اللمس؛ تُوسَّع منطقته دون تكبير نصّه.
+                    .tapTarget()
             }
         }
     }
@@ -299,6 +303,17 @@ extension View {
     func readableWidth(_ max: CGFloat = 680) -> some View {
         frame(maxWidth: max)
             .frame(maxWidth: .infinity)
+    }
+}
+
+// MARK: - هدف اللمس
+
+extension View {
+    /// يرفع منطقة اللمس إلى ٤٤ نقطة (أدنى ما يطاله الإصبع) من غير أن يمسّ ما يُرسم
+    /// داخلها — فالأزرار النصّية الصغيرة تبقى بمظهرها ويصير الخطأ فيها أندر.
+    func tapTarget(_ minHeight: CGFloat = 44) -> some View {
+        frame(minHeight: minHeight)
+            .contentShape(Rectangle())
     }
 }
 
@@ -359,6 +374,8 @@ struct SettingsGroupTitle: View {
             Text(text)
                 .font(Theme.display(12, weight: .semibold))
                 .foregroundStyle(tint.opacity(0.85))
+                // عنوان المجموعة عنوانٌ حقيقة: يقفز إليه VoiceOver بدل تصفّح الصفوف صفًّا صفًّا.
+                .accessibilityAddTraits(.isHeader)
         }
         .padding(.horizontal, 6)
         .padding(.bottom, 2)
@@ -415,6 +432,9 @@ struct IconChip: View {
             .foregroundStyle(tint)
             .frame(width: size.rawValue, height: size.rawValue)
             .background(Circle().fill(tint.opacity(0.13)))
+            // الرقاقة زينة الصفّ لا معناه: من دون هذا يقرأ VoiceOver اسم الرمز
+            // («text.book.closed.fill») قبل العنوان، وهو لغوٌ لا يفيد السامع.
+            .accessibilityHidden(true)
     }
 }
 
@@ -556,10 +576,14 @@ struct SettingsChoiceList<T: SettingsChoice>: View {
                                 dismiss()
                             } label: {
                                 HStack(alignment: .top, spacing: 12) {
+                                    // الدائرة الفارغة كانت بلون الحدّ الشعري (نحو ١٫٣:١ على الورق)
+                                    // فلا تكاد تُرى؛ الحبر الخافت يُظهر الخيار غير المختار.
+                                    // وهي مخفيّة عن قارئ الشاشة لأن الصفّ نفسه يحمل سمة «مختار».
                                     Image(systemName: selection == option ? "checkmark.circle.fill" : "circle")
                                         .font(.system(size: 18))
-                                        .foregroundStyle(selection == option ? Theme.accent : Theme.hairline)
+                                        .foregroundStyle(selection == option ? Theme.accent : Theme.inkFaint)
                                         .padding(.top, 1)
+                                        .accessibilityHidden(true)
 
                                     VStack(alignment: .leading, spacing: 3) {
                                         Text(option.title)
@@ -578,6 +602,7 @@ struct SettingsChoiceList<T: SettingsChoice>: View {
                                 .contentShape(Rectangle())
                             }
                             .buttonStyle(.plain)
+                            .accessibilityAddTraits(selection == option ? .isSelected : [])
 
                             if i < options.count - 1 { SettingsDivider() }
                         }

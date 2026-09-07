@@ -11,7 +11,10 @@ struct PrayerView: View {
     @State private var showCityPicker = false
     @Environment(\.layoutDirection) private var layoutDirection
 
-    private let ticker = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+    /// النبضة تُبطل الشاشة كلها — البطل والقوس وقائمة المواقيت ونافذة القيام — فكانت تُعاد
+    /// رسمًا ستّين مرة في الدقيقة من أجل سطرٍ واحد. العدّ التنازلي صار نصًّا يسوقه النظام
+    /// بنفسه (Text(timerInterval:))، وما بقي تكفيه دقّة الدقيقة، فصارت النبضة دقيقة.
+    private let ticker = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
 
     init(embedded: Bool = false, store: AtharStore) {
         self.embedded = embedded
@@ -77,6 +80,16 @@ struct PrayerView: View {
             }
         }
         .onReceive(ticker) { now = $0 }
+        // الدقيقة لا تكفي لحظة الأذان: ننام إلى وقت الصلاة القادمة بعينه ثم نوقظ الشاشة،
+        // فتنتقل إلى الصلاة التالية في حينها لا بعد دقيقةٍ من فواتها.
+        .task(id: upcoming?.date) {
+            guard let due = upcoming?.date else { return }
+            let wait = due.timeIntervalSinceNow + 0.5
+            guard wait > 0 else { return }
+            try? await Task.sleep(for: .seconds(wait))
+            guard !Task.isCancelled else { return }
+            now = Date()
+        }
     }
 
     // MARK: Countdown
@@ -137,23 +150,22 @@ struct PrayerView: View {
             Image(systemName: "hourglass")
                 .font(.system(size: 11, weight: .semibold))
                 .foregroundStyle(tint)
-            Text(remaining(to: next))
-                .font(.system(size: 15, weight: .medium, design: .rounded))
-                .foregroundStyle(Theme.inkSoft)
-                .monospacedDigit()
+            HStack(spacing: 4) {
+                Text(loc("بعد"))
+                // العدّ يسوقه النظام في موضعه بلا إبطال شجرة العرض — نسق النشاط الحيّ نفسه
+                // في AtharWidget. وأخذ min احتياطًا: «الآن» تتأخّر عن وقت الصلاة بين
+                // نبضتَي الدقيقة، ومدًى مقلوب الطرفين يُسقط التطبيق.
+                Text(timerInterval: min(now, next)...next, countsDown: true)
+                    .environment(\.locale, Locale(identifier: "ar_SA@numbers=latn"))
+                    .monospacedDigit()
+            }
+            .font(.system(size: 15, weight: .medium, design: .rounded))
+            .foregroundStyle(Theme.inkSoft)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
         .background(Capsule().fill(tint.opacity(0.12)))
         .overlay(Capsule().strokeBorder(tint.opacity(0.20), lineWidth: 0.5))
-    }
-
-    private func remaining(to date: Date) -> String {
-        let seconds = max(0, Int(date.timeIntervalSince(now)))
-        let h = seconds / 3600, m = (seconds % 3600) / 60, s = seconds % 60
-        return h > 0
-            ? String(format: loc("بعد %d:%02d:%02d"), h, m, s)
-            : String(format: loc("بعد %d:%02d"), m, s)
     }
 
     // MARK: Day arc — شريط اليوم

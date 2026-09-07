@@ -133,6 +133,8 @@ struct KhatmahWidget: Widget {
                 .containerBackground(for: .widget) {
                     AtharStyle.Backdrop(moment: entry.moment, rippleScale: 0.8)
                 }
+                // النقر يفتح الختمة نفسها — من الورد إلى صفحته في خطوة واحدة.
+                .widgetURL(URL(string: "athar://open/khatmah"))
         }
         .configurationDisplayName("ختمة القرآن")
         .description("تقدّمك في الختمة وورد اليوم — على الشاشة الرئيسية أو شاشة القفل.")

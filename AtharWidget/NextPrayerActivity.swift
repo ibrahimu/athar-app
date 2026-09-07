@@ -5,6 +5,10 @@ import ActivityKit
 
 // MARK: - النشاط الحيّ: الصلاة القادمة
 
+/// وجهة النقر: شاشة المواقيت. يوضع على بطاقة شاشة القفل وعلى مناطق الجزيرة الموسّعة،
+/// وتَرِثه الهيئتان المضغوطة والصغرى — فمن نقر العدّ التنازلي وجد ما كان يعدّه.
+private let prayerLink = URL(string: "athar://open/prayer")
+
 /// الصلاة القادمة بعدٍّ تنازلي في Dynamic Island وشاشة القفل.
 /// الألوان من هوية الويدجت (AtharStyle) لا من طابع التطبيق: لوحة لحظة اليوم نفسها التي
 /// تلبسها ويدجتات الشاشة الرئيسية، محمولةً في حالة النشاط وقت طلبه — فلا يظهر الويدجت
@@ -32,6 +36,7 @@ struct NextPrayerActivity: Widget {
                             .lineLimit(1)
                     }
                     .padding(.top, 4)
+                    .widgetURL(prayerLink)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
                     Group {
@@ -50,6 +55,7 @@ struct NextPrayerActivity: Widget {
                     .multilineTextAlignment(.trailing)
                     .frame(width: 82, alignment: .trailing)
                     .padding(.top, 4)
+                    .widgetURL(prayerLink)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
                     VStack(spacing: 6) {
@@ -71,6 +77,7 @@ struct NextPrayerActivity: Widget {
                         .environment(\.layoutDirection, .rightToLeft)
                     }
                     .padding(.top, 2)
+                    .widgetURL(prayerLink)
                 }
             } compactLeading: {
                 Image(systemName: look.icon)
@@ -168,6 +175,7 @@ private struct NextPrayerLockScreenView: View {
         // بطاقة شاشة القفل امتدادًا لبطاقة الشاشة الرئيسية. الحلقات أصغر كما في الويدجت الصغير.
         .background(AtharStyle.Backdrop(moment: look.moment, rippleScale: 0.75))
         .environment(\.layoutDirection, .rightToLeft)
+        .widgetURL(prayerLink)
     }
 }
 

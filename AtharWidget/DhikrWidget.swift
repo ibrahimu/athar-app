@@ -142,6 +142,8 @@ struct DhikrWidget: Widget {
                 .containerBackground(for: .widget) {
                     AtharStyle.Backdrop(moment: entry.moment, rippleScale: 0.75)
                 }
+                // إلى الأذكار جملةً لا إلى باب الذكر المعروض: الرابط لا يعرف إلا التبويبات.
+                .widgetURL(URL(string: "athar://open/adhkar"))
         }
         .configurationDisplayName("ذِكر")
         .description("ذكر يتجدّد على مدار اليوم — على الشاشة الرئيسية أو شاشة القفل.")

@@ -148,15 +148,20 @@ enum Theme {
 
     /// خط الواجهة: يتبع اختيار المستخدم (AppFont.current) لا النص الشرعي —
     /// dhikrFont وnaskhFont أعلاه تبقيان على النسخ مهما تغيّر هذا.
-    static func display(_ size: CGFloat, weight: Font.Weight = .semibold) -> Font {
-        AppFont.current.font(size: scaled(size), weight: weight)
+    /// `cap` لتجاوز السقف التلقائي في موضع بعينه لا غير.
+    static func display(_ size: CGFloat, weight: Font.Weight = .semibold, cap: CGFloat? = nil) -> Font {
+        AppFont.current.font(size: scaled(size, cap: cap), weight: weight)
     }
 
-    /// يتبع حجم خطّ النظام (Dynamic Type) كما تفعل خطوط النسخ، بسقف ١٫٣٥
-    /// حتى لا تنفجر البطاقات الضيّقة عند أحجام الإتاحة الكبيرة جدًا.
-    static func scaled(_ size: CGFloat) -> CGFloat {
+    /// يتبع حجم خطّ النظام (Dynamic Type) كما تفعل خطوط النسخ، بسقفٍ يمنع
+    /// انفجار البطاقات الضيّقة. والسقف طبقتان لأن الخانتين مختلفتان:
+    /// ما دون ١٤ زخرفُ واجهة (رقائق، حواشٍ، أرقام صغيرة) يسكن أطرًا ثابتة
+    /// فينكسر إن تضاعف؛ وما فوقه نصٌّ يُقرأ (عناوين الصفوف والأزرار والمتن)
+    /// فيلزمه أن يبلغ أحجام الإتاحة الكبرى، وسقفُ ١٫٣٥ عليه كان يُبطلها كلّها.
+    static func scaled(_ size: CGFloat, cap: CGFloat? = nil) -> CGFloat {
         #if canImport(UIKit)
-        return min(UIFontMetrics(forTextStyle: .body).scaledValue(for: size), size * 1.35)
+        let limit = cap ?? (size < 14 ? 1.35 : 1.9)
+        return min(UIFontMetrics(forTextStyle: .body).scaledValue(for: size), size * limit)
         #else
         return size
         #endif
