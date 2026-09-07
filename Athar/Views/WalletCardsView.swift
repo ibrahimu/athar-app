@@ -17,6 +17,8 @@ struct WalletCardsView: View {
     @State private var addRequest: AddPassesRequest?
     /// ما بقي من بطاقات «مراجعة» تُعرض واحدةً واحدة بعد إغلاق كل ورقة.
     @State private var reviewQueue: [PKPass] = []
+    /// البطاقة المعروضة الآن في ورقة النظام — بها نعرف بعد الإغلاق أأُضيفت أم أُلغيت.
+    @State private var presented: PKPass?
     @State private var isAddingAll = false
     @State private var walletUnavailable = false
     @State private var passes: [String: PKPass] = [:]
@@ -228,6 +230,7 @@ struct WalletCardsView: View {
     /// الذي يعمل لبطاقة واحدة. التنبيه فقط حين يرفض النظام حتى البطاقة الواحدة.
     private func present(_ list: [PKPass]) {
         if let request = AddPassesRequest(passes: list) {
+            presented = list.count == 1 ? list.first : nil
             addRequest = request
         } else if list.count > 1, let first = list.first {
             reviewQueue = Array(list.dropFirst())
@@ -238,11 +241,22 @@ struct WalletCardsView: View {
         }
     }
 
-    /// بعد إغلاق ورقة النظام: تحديث الختم، ثم التالي من طابور المراجعة إن بقي شيء.
+    /// بعد إغلاق ورقة النظام: تحديث الختم، ثم التالي من طابور المراجعة إن بقي شيء —
+    /// ما لم يكن المستخدم قد ألغى. «إلغاء» في ورقة النظام لا يصل إلينا خبرًا، فنستدلّ عليه
+    /// بأن البطاقة المعروضة لم تدخل المحفظة؛ وحينها يُفرَغ الطابور بدل ملاحقته ببقية البطاقات.
+    /// القراءة بعد مهلة قصيرة لأن passd قد يلتزم بالإضافة بعد إغلاق الورقة بلحظة.
     private func presentNextReview() {
+        let shown = presented
+        presented = nil
         refresh()
         guard !reviewQueue.isEmpty else { return }
-        present([reviewQueue.removeFirst()])
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(400))
+            refresh()
+            if let shown, !library.containsPass(shown) { reviewQueue = []; return }
+            guard !reviewQueue.isEmpty else { return }
+            present([reviewQueue.removeFirst()])
+        }
     }
 }
 

@@ -72,10 +72,12 @@ struct OnboardingView: View {
         }
         // مغادرة خطوة الأذان توقف الاستماع: لا يبقى أذان يعمل خلف خطوة أخرى.
         .onChange(of: step) { _, _ in preview.stop() }
-        // الخلفية توقف الاستماع؛ والعودة إلى المقدّمة تعيد قراءة الإذن — ربّما سمح به من إعدادات الجهاز.
+        // الخلفية وحدها توقف الاستماع — لا «غير نشط» العابر (مركز التحكّم، إشعار، مكالمة)،
+        // وإلا انقطع الأذان لمجرّد سحبةٍ من أعلى الشاشة. والعودة تعيد قراءة الإذن:
+        // ربّما سمح به من إعدادات الجهاز.
         .onChange(of: scenePhase) { _, phase in
-            if phase != .active { preview.stopIfBackgrounded() }
-            else if step == .athan { refreshNotifStatus() }
+            if phase == .background { preview.stopIfBackgrounded() }
+            else if phase == .active, step == .athan { refreshNotifStatus() }
         }
         // دخول خطوة الأذان يقرأ الإذن الذي حسمته خطوة التذكيرات للتوّ (أو لم تحسمه).
         .task(id: step) { if step == .athan { refreshNotifStatus() } }

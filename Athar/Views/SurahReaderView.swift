@@ -75,6 +75,8 @@ struct SurahReaderView: View {
     @StateObject private var audio = Recitation.shared
     @StateObject private var ayahAudio = AyahAudio.shared
     @State private var showControls = false
+    /// هل القارئ معروضٌ فعلًا؟ (لا يكفي بقاؤه حيًّا في تبويب غير مختار)
+    @State private var isShown = false
     @State private var selected: AyahRef? = nil
     @State private var currentRef: AyahRef?
     @State private var lastCountedPage: Int?
@@ -284,10 +286,12 @@ struct SurahReaderView: View {
         // القارئ يُمسك المصحف دقائق دون لمس — لا تنطفئ الشاشة عليه.
         .onAppear {
             ReaderWake.enter()
+            isShown = true
             syncScheme()
         }
         .onDisappear {
             ReaderWake.exit()
+            isShown = false
             store.readerScheme = .none
             // تلاوة الآية بالآية تخصّ المصحف المفتوح: بلا هذا استمرّ الصوت بعد الخروج بلا زرّ يوقفه.
             ayahAudio.stop()
@@ -302,7 +306,10 @@ struct SurahReaderView: View {
         .onChange(of: scenePhase) { _, phase in if phase == .active { syncScheme() } }
     }
 
+    /// القارئ في تبويب غير مختار يبقى حيًّا في شجرة TabView، فيصله تبدّل المشهد أيضًا —
+    /// لولا حارس الظهور لفرض ورقه على التطبيق كلّه عند كل عودة من الخلفية وهو غير معروض.
     private func syncScheme() {
+        guard isShown else { return }
         store.readerScheme = effectiveTheme == .night ? .dark : .light
     }
 

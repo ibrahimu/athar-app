@@ -31,7 +31,9 @@ extension AtharStyle.Moment {
         case .noon:      return "noon"
         case .afternoon: return "afternoon"
         case .sunset:    return "sunset"
-        case .theme:     return "theme"
+        // اسم الطابع جزءٌ من المفتاح: حالة النشاط لا تتبدّل بتبديل الطابع وحده، فيبقى النشاط
+        // القائم بلونه القديم حتى الأذان التالي. بالمفتاح المركّب تتبدّل الحالة فيُعاد رسمه.
+        case .theme:     return "theme:" + AtharStore.shared.appTheme.rawValue
         }
     }
 
@@ -43,8 +45,8 @@ extension AtharStyle.Moment {
         case "noon":      self = .noon
         case "afternoon": self = .afternoon
         case "sunset":    self = .sunset
-        case "theme":     self = .theme
-        default:          return nil
+        // «theme» وحدها من إصدارٍ سابق، و«theme:<الطابع>» من هذا.
+        default:          if activityKey.hasPrefix("theme") { self = .theme } else { return nil }
         }
     }
 }
