@@ -33,3 +33,19 @@ struct TasbihTapIntent: AppIntent {
         return .result()
     }
 }
+
+/// تصفير عدّاد المسبحة من الودجة — كزرّ «إعادة العدّ» في الشاشة سواءً:
+/// العدّاد وحده يعود صفرًا، ويبقى مجموع الأذكار وأيام التتابع على حالهما،
+/// فما مضى من ذكرٍ لا يُمحى بضغطة.
+struct TasbihResetIntent: AppIntent {
+    static var title: LocalizedStringResource { "تصفير المسبحة" }
+    static var description: IntentDescription { IntentDescription("يعيد عدّاد المسبحة إلى الصفر بلا فتح التطبيق.") }
+    static var openAppWhenRun: Bool { false }
+
+    @MainActor
+    func perform() async throws -> some IntentResult {
+        AtharStore.shared.tasbihCount = 0
+        WidgetCenter.shared.reloadAllTimelines()
+        return .result()
+    }
+}

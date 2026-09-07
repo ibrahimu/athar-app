@@ -105,23 +105,28 @@ struct ProgressWidgetView: View {
                     }
                 }
                 Spacer(minLength: 0)
-                tasbihButton {
-                    HStack(spacing: 7) {
-                        Image(systemName: "plus.circle.fill")
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(entry.moment.tint)
-                        Text(loc("سبّح"))
-                            .font(.system(size: 13, weight: .semibold))
-                            .foregroundStyle(entry.moment.ink)
-                        Spacer(minLength: 0)
-                        Text(roundCount.counterText)
-                            .font(.system(size: 16, weight: .bold, design: .rounded))
-                            .foregroundStyle(entry.moment.tint)
-                            .contentTransition(.numericText())
+                HStack(spacing: 6) {
+                    tasbihButton {
+                        HStack(spacing: 7) {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(entry.moment.tint)
+                            Text(loc("سبّح"))
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(entry.moment.ink)
+                            Spacer(minLength: 0)
+                            // «من ٣٣» تُبيّن أن العدّ شوطٌ لا رقمٌ مبهم يزيد بلا غاية.
+                            Text(loc("%1$@ من %2$@", roundCount.counterText, entry.tasbihTarget.counterText))
+                                .font(.system(size: 14, weight: .bold, design: .rounded))
+                                .foregroundStyle(entry.moment.tint)
+                                .contentTransition(.numericText())
+                                .lineLimit(1).minimumScaleFactor(0.7)
+                        }
+                        .padding(.horizontal, 12)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .background(tasbihShell)
                     }
-                    .padding(.horizontal, 12)
-                    .frame(maxWidth: .infinity, minHeight: 44)
-                    .background(tasbihShell)
+                    resetButton(side: 44)
                 }
             }
             .environment(\.layoutDirection, .rightToLeft)
@@ -143,22 +148,25 @@ struct ProgressWidgetView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-                tasbihButton {
-                    VStack(spacing: 3) {
-                        Image(systemName: "plus.circle.fill")
-                            .font(.system(size: 15, weight: .semibold))
-                            .foregroundStyle(entry.moment.tint)
-                        Text(roundCount.counterText)
-                            .font(.system(size: 22, weight: .bold, design: .rounded))
-                            .foregroundStyle(entry.moment.ink)
-                            .contentTransition(.numericText())
-                            .lineLimit(1).minimumScaleFactor(0.6)
-                        Text(loc("سبّح"))
-                            .font(.system(size: 11, weight: .semibold))
-                            .foregroundStyle(entry.moment.inkSoft)
+                VStack(spacing: 6) {
+                    tasbihButton {
+                        VStack(spacing: 3) {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundStyle(entry.moment.tint)
+                            Text(loc("%1$@ من %2$@", roundCount.counterText, entry.tasbihTarget.counterText))
+                                .font(.system(size: 18, weight: .bold, design: .rounded))
+                                .foregroundStyle(entry.moment.ink)
+                                .contentTransition(.numericText())
+                                .lineLimit(1).minimumScaleFactor(0.6)
+                            Text(loc("سبّح"))
+                                .font(.system(size: 11, weight: .semibold))
+                                .foregroundStyle(entry.moment.inkSoft)
+                        }
+                        .frame(width: 74, height: 74)
+                        .background(tasbihShell)
                     }
-                    .frame(width: 74, height: 74)
-                    .background(tasbihShell)
+                    resetButton(side: 30)
                 }
             }
             .environment(\.layoutDirection, .rightToLeft)
@@ -179,12 +187,19 @@ struct ProgressWidgetView: View {
                 .rotationEffect(.degrees(-90))
             arc.blur(radius: 5).opacity(0.35 + 0.4 * fraction)
             arc
-            Text(entry.streak.counterText)
-                .font(.system(size: numberSize, weight: .bold))
-                .foregroundStyle(LinearGradient(colors: [entry.moment.ink, entry.moment.tint],
-                                                startPoint: .top, endPoint: .bottom))
-                .lineLimit(1).minimumScaleFactor(0.6)
-                .padding(.horizontal, 4)
+            // رقمٌ فوق كلمته: «٢» عاريةً في حلقةٍ فوق سطر «٠ من ٢ أذكار» يقرؤها الناظر
+            // ذكرين لا يومين — فتُسمّى أيامًا تحتها بحرفٍ صغير.
+            VStack(spacing: -1) {
+                Text(entry.streak.counterText)
+                    .font(.system(size: numberSize, weight: .bold))
+                    .foregroundStyle(LinearGradient(colors: [entry.moment.ink, entry.moment.tint],
+                                                    startPoint: .top, endPoint: .bottom))
+                    .lineLimit(1).minimumScaleFactor(0.6)
+                Text(entry.streak == 1 ? loc("يوم") : loc("أيام"))
+                    .font(.system(size: max(8, numberSize * 0.42), weight: .semibold))
+                    .foregroundStyle(entry.moment.inkSoft)
+            }
+            .padding(.horizontal, 4)
         }
         .frame(width: size, height: size)
         // رقمٌ عارٍ في حلقة: لولا هذا لقرأه الصوتُ «7» لا يدري السامعُ سبعةَ ماذا.
@@ -200,6 +215,21 @@ struct ProgressWidgetView: View {
             Capsule().fill(entry.moment.ink.opacity(0.10))
             Capsule().strokeBorder(entry.moment.tint.opacity(0.38), lineWidth: 0.9)
         }
+    }
+
+    /// تصفير العدّاد من الودجة: كان لا سبيل إليه إلا بفتح المسبحة، فيقف الرقم عند صاحبه
+    /// لا يدري كيف يبدأ من جديد. يصفّر ما يصفّره زرّ الشاشة سواءً — العدّاد وحده،
+    /// لا المجموع ولا التتابع.
+    private func resetButton(side: CGFloat) -> some View {
+        Button(intent: TasbihResetIntent()) {
+            Image(systemName: "arrow.counterclockwise")
+                .font(.system(size: side > 36 ? 15 : 12, weight: .semibold))
+                .foregroundStyle(entry.moment.inkSoft)
+                .frame(width: side, height: side)
+                .background(tasbihShell)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(loc("تصفير العدّاد"))
     }
 
     /// المسبحة في مكانها: النيّة تُنفَّذ في العملية نفسها فلا يُفتح التطبيق ولا يُقطع الذكر.

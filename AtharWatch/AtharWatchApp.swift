@@ -17,7 +17,8 @@ struct AtharWatchApp: App {
     }
 }
 
-/// ثلاث صفحات رأسية: الصلاة القادمة، المسبحة، ذكر اليوم — ولون الخلفية يتبع وقت اليوم.
+/// ثلاث صفحات رأسية: الصلاة القادمة، المسبحة، ذكر اليوم — ولون الخلفية يتبع «لون الويدجت»
+/// الذي اختاره في الهاتف، وإلا فوقتَ اليوم.
 struct WatchRootView: View {
     var body: some View {
         // كل صفحة في مكدّسها: خلفية containerBackground لا تُرسم إلا داخل NavigationStack.
@@ -62,7 +63,7 @@ struct WatchPrayerPage: View {
     private let ticker = Timer.publish(every: 30, on: .main, in: .common).autoconnect()
 
     private var times: PrayerTimes? { store.prayerTimes(for: now) }
-    private var moment: AtharStyle.Moment { .at(now, times: times) }
+    private var moment: AtharStyle.Moment { .resolved(at: now, times: times) }
 
     /// الصلاة القادمة والتي قبلها — لحساب حلقة التقدّم بينهما.
     private var window: (prev: Date, next: Date, prayer: Prayer)? {
@@ -171,7 +172,7 @@ struct WatchTasbihPage: View {
     private let phrases = ["سُبْحَانَ اللهِ", "الْحَمْدُ لِلهِ", "اللهُ أَكْبَرُ", "أَسْتَغْفِرُ اللهَ", "لَا إِلَهَ إِلَّا اللهُ", "سُبْحَانَ اللهِ وَبِحَمْدِهِ"]
     private let target = 33
 
-    private var moment: AtharStyle.Moment { .at(Date(), times: store.prayerTimes()) }
+    private var moment: AtharStyle.Moment { .resolved(at: Date(), times: store.prayerTimes()) }
 
     /// مدخلٌ واحد للعدّ مهما جاء — من الإبهام أو من التاج — فلا يفترق سلوكهما.
     private func bump(_ n: Int) {
@@ -278,7 +279,7 @@ struct WatchDhikrPage: View {
         let slot = Int(Date().timeIntervalSince1970 / 1800) + offset
         return pool[abs(slot) % pool.count]
     }
-    private var moment: AtharStyle.Moment { .at(Date(), times: store.prayerTimes()) }
+    private var moment: AtharStyle.Moment { .resolved(at: Date(), times: store.prayerTimes()) }
 
     var body: some View {
         ScrollView {

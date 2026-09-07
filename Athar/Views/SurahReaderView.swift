@@ -116,9 +116,11 @@ struct SurahReaderView: View {
         if measuredReserve > 0 { return measuredReserve }
         return (audio.surah == nil ? 0 : Self.miniPlayerHeight) + (ayahAudio.isActive ? Self.ayahBarHeight : 0)
     }
-    /// ما يعلو حافّة الصفحة من الأسفل: المشغّل إن جرت التلاوة، وإلا شريط الموضع —
-    /// فتُحسب ملاءمة الصفحة على ما يُرى فعلًا، ولا يختفي آخر سطرٍ تحت الكبسولة.
-    private var bottomOverlay: CGFloat { bottomReserve > 0 ? bottomReserve : Self.positionBarHeight }
+    /// ما تُحسب عليه ملاءمة الصفحة: شريط الموضع وحده، لا المشغّل.
+    /// كان المشغّل يدخل في الحساب، فإذا شُغّلت التلاوة ضاق المتاح فأُعيدت الملاءمة، فصغُر
+    /// الخطّ وأُعيد توزيع السطور تحت عين القارئ — فيضيع موضعه بلا ذنب. الصفحة الآن ثابتة
+    /// كما هي، والمشغّل يعلوها؛ وما غطّاه يُبلغ بتمريرةٍ يسيرة (انظر scrollDisabled أدناه).
+    private var bottomOverlay: CGFloat { Self.positionBarHeight }
 
     /// رقم السورة الظاهرة الآن — يتغيّر أثناء تقليب الصفحات عبر حدود السور.
     private var visibleSurahId: Int {
@@ -132,8 +134,23 @@ struct SurahReaderView: View {
 
     @Environment(\.horizontalSizeClass) private var sizeClass
     /// لوحة التفسير الجانبية على الشاشات العريضة (iPad): تتبع الآية المختارة أو موضع القراءة.
-    @State private var sidePanel = false
+    /// حالها من المخزن لا من حالٍ خاصّ بالشاشة: هي وجهٌ من وجوه الشاشة العريضة
+    /// يختاره القارئ من الضوابط، فلو كان لزرّ الشريط حالٌ وللضوابط حالٌ لاختلفا عليه.
+    private var sidePanel: Bool { store.mushafSpread == .tafsir }
     private var panelRef: AyahRef { selected ?? currentRef ?? scrollTo ?? AyahRef(surah: surahId, ayah: 1) }
+
+    /// عَرضتان متقابلتان: الشاشة العريضة وحدها تحملهما، والهاتف لا يسع إلا واحدة.
+    private var twoPages: Bool { sizeClass == .regular && store.mushafSpread == .two }
+
+    /// ما يُحتسب ببلوغ صفحة: تقدّم الختمة، وعدّ الصفحات، وكهف الجمعة. صفحتا
+    /// العَرضة تُحتسبان كلتاهما بالترتيب — وإلا وقفت الختمة عند العرض المزدوج
+    /// لأنها لا تتقدّم إلا صفحةً صفحة.
+    private func countPage(_ page: Int) {
+        store.noteReaderPage(page)          // الختمة تتقدّم بالقراءة
+        if lastCountedPage != page { lastCountedPage = page; store.notePageRead() }
+        // تُحتسب الكهف عند بلوغ آخر صفحتها لا عند فتح أولها.
+        if page == 304, Calendar.current.component(.weekday, from: Date()) == 6 { store.noteKahfRead() }
+    }
 
     /// المصحف نفسه بأوضاعه الثلاثة.
     private var readerCore: some View {
@@ -153,18 +170,21 @@ struct SurahReaderView: View {
                     selected: selected,
                     isDark: effectiveTheme == .night,
                     framed: store.readingMode == .framed,
+                    spread: twoPages,
                     bottomInset: bottomOverlay,
+                    playerOverlay: max(0, bottomReserve - Self.positionBarHeight),
                     jumpTo: $jumpPage,
                     onTapAyah: { selected = $0 },
                     onPageVisible: { page in
                         let ref = Quran.firstAyah(ofPage: page)
                         store.lastRead = ref
-                        store.noteReaderPage(page)          // الختمة تتقدّم بالقراءة
-                        if lastCountedPage != page { lastCountedPage = page; store.notePageRead() }
-                        // تُحتسب الكهف عند بلوغ آخر صفحتها لا عند فتح أولها.
-                        if page == 304, Calendar.current.component(.weekday, from: Date()) == 6 { store.noteKahfRead() }
+                        countPage(page)
                         currentRef = ref
-                    })
+                    },
+                    onFacingPage: { countPage($0) })
+                    // تبديل العَرضة يبني القلّاب من جديد: هويّة كل بطاقةٍ تصير
+                    // هويّة عَرضةٍ لا صفحة، فلولا ذلك بقي على موضعٍ لا وجود له.
+                    .id(twoPages)
             } else {
                 ayahModeBody
             }
@@ -235,7 +255,8 @@ struct SurahReaderView: View {
             }
             if sizeClass == .regular {
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button { withAnimation(Motion.snappy) { sidePanel.toggle() } } label: {
+                    // الزرّ يكتب في المخزن كما تكتب الضوابط: طريقان إلى خيارٍ واحد.
+                    Button { withAnimation(Motion.snappy) { store.mushafSpread = sidePanel ? .one : .tafsir } } label: {
                         Image(systemName: sidePanel ? "sidebar.trailing" : "sidebar.trailing")
                             .symbolVariant(sidePanel ? .fill : .none)
                     }
@@ -281,7 +302,9 @@ struct SurahReaderView: View {
         .sheet(isPresented: $showControls) {
             // ارتفاعٌ ثانٍ كبير: معاينة البسملة تكبر مع المكبِّر وحجم النظام،
             // فلولاه انقطعت سِمة الصفحة أسفل الورقة ولم يبلغها القارئ.
-            ReaderControls().presentationDetents([.height(430), .large])
+            // سعة الشاشة تُمرَّر من القارئ: الورقة على الآيباد تُعرض ضيّقة فيقول
+            // صنف حجمها «مضغوط»، فلو سألتْه لسقط خيار الشاشة العريضة عن الآيباد.
+            ReaderControls(wide: sizeClass == .regular).presentationDetents([.height(430), .large])
                 .atharSheetChrome()
         }
         .sheet(item: $selected) { ref in
@@ -537,28 +560,43 @@ struct MushafPager: View {
     var selected: AyahRef? = nil
     let isDark: Bool
     var framed: Bool = false
-    /// ارتفاع ما يعلو حافّة الصفحة السفلية (شريط الموضع، أو المشغّل حين تجري التلاوة).
+    /// صفحتان متقابلتان تُقلَّبان معًا كالمصحف حين يُفتح — للشاشة العريضة وحدها.
+    var spread: Bool = false
+    /// ارتفاع ما يعلو حافّة الصفحة السفلية — شريط الموضع وحده، فهو الثابت.
     var bottomInset: CGFloat = 0
+    /// وما زاده المشغّل عليه حين تجري التلاوة: فسحةٌ وتمرير لا إعادةَ ملاءمة.
+    var playerOverlay: CGFloat = 0
     /// صفحةٌ طُلب الانتقال إليها من «اذهب إلى صفحة» — تُفرَّغ فور بلوغها.
     @Binding var jumpTo: Int?
     let onTapAyah: (AyahRef) -> Void
     let onPageVisible: (Int) -> Void
+    /// الصفحة المقابلة في العَرضة: تُحتسب قراءةً ولا تُزحزح موضع القارئ عن
+    /// أولى الصفحتين — فالعين تبدأ باليمنى وإن كانت الأخرى مفتوحة معها.
+    var onFacingPage: (Int) -> Void = { _ in }
 
     @State private var current: Int?
+
+    /// مبادئ العَرضات: كلٌّ تبدأ بصفحة وترية (١ مع ٢، ٣ مع ٤) كالمصحف المطبوع.
+    /// والوقوف عند ٦٠٣ يضمن لكل مبدأٍ مقابلةً، فلا تبقى صفحةٌ وحدها. ثابتة
+    /// تُحسب مرّة: الجسم يُعاد تقويمه مع كل صفحةٍ تُقلَّب.
+    private static let spreadStarts = Array(stride(from: 1, through: Quran.pageCount - 1, by: 2))
 
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView(.horizontal) {
                 LazyHStack(spacing: 0) {
-                    ForEach(1...Quran.pageCount, id: \.self) { page in
-                        MushafPageContent(page: page, palette: palette, scale: scale,
-                                          bookmarks: bookmarks, highlights: highlights,
-                                          noted: noted,
-                                          playing: playing, selected: selected,
-                                          isDark: isDark, framed: framed,
-                                          bottomInset: bottomInset, onTapAyah: onTapAyah)
-                            .containerRelativeFrame(.horizontal)
-                            .id(page)
+                    if spread {
+                        ForEach(Self.spreadStarts, id: \.self) { first in
+                            spreadLeaf(first)
+                                .containerRelativeFrame(.horizontal)
+                                .id(first)
+                        }
+                    } else {
+                        ForEach(1...Quran.pageCount, id: \.self) { page in
+                            pageView(page)
+                                .containerRelativeFrame(.horizontal)
+                                .id(page)
+                        }
                     }
                 }
                 .scrollTargetLayout()
@@ -567,22 +605,72 @@ struct MushafPager: View {
             .scrollPosition(id: $current)
             .scrollIndicators(.hidden)
             .onAppear {
-                proxy.scrollTo(startPage, anchor: .center)
-                current = startPage
-                onPageVisible(startPage)
+                let target = leaf(of: startPage)
+                proxy.scrollTo(target, anchor: .center)
+                current = target
+                report(target)
             }
             .onChange(of: current) { _, page in
-                if let page { onPageVisible(page) }
+                if let page { report(page) }
             }
             // القفزة كالفتح تمامًا: بلا حركةٍ تمرّ على مئات الصفحات — الوصول
             // مقصود لا رحلة. وتغيّر `current` يبلّغ القارئ بالموضع الجديد.
             .onChange(of: jumpTo) { _, page in
                 guard let page else { return }
-                proxy.scrollTo(page, anchor: .center)
-                current = page
+                // المطلوبة قد تكون شفعيّة، والعَرضة تُعرف بأولى صفحتيها — فيُقفز
+                // إلى عَرضتها لا إلى هويّةٍ لا وجود لها في العرض المزدوج.
+                let target = leaf(of: page)
+                proxy.scrollTo(target, anchor: .center)
+                current = target
                 jumpTo = nil
             }
         }
+    }
+
+    /// أولى صفحتَي العَرضة التي تقع فيها الصفحة — وهي نفسها في الصفحة المفردة.
+    private func leaf(of page: Int) -> Int {
+        guard spread else { return page }
+        return page.isMultiple(of: 2) ? max(1, page - 1) : page
+    }
+
+    /// الوقوف على عَرضةٍ بلوغٌ لصفحتيها معًا، والترتيب لازم: الختمة لا تتقدّم
+    /// إلا صفحةً بعد صفحة، فلو أُهملت المقابلة وقفت عند أول عَرضة.
+    private func report(_ page: Int) {
+        onPageVisible(page)
+        if spread { onFacingPage(min(Quran.pageCount, page + 1)) }
+    }
+
+    /// صفحةٌ واحدة كما تُرسم دائمًا — تبنيها العَرضة والصفحة المفردة جميعًا،
+    /// فلا يُنسخ رسمُ الصفحة مرّتين.
+    private func pageView(_ page: Int) -> some View {
+        MushafPageContent(page: page, palette: palette, scale: scale,
+                          bookmarks: bookmarks, highlights: highlights,
+                          noted: noted,
+                          playing: playing, selected: selected,
+                          isDark: isDark, framed: framed,
+                          bottomInset: bottomInset, playerOverlay: playerOverlay,
+                          onTapAyah: onTapAyah)
+    }
+
+    /// عَرضة: الأولى يمينًا وتاليتها يسارًا — الترتيب من اتجاه البيئة، والتطبيق عربي.
+    /// وكل صفحة تقيس ملاءمتها داخل نصفها وحده لأن لكلٍّ قارئَ هندسةٍ خاصًّا بها،
+    /// فيُصغَّر خطّها على نصف العرض لا على العرض كلّه ولا يفيض النصّ.
+    private func spreadLeaf(_ first: Int) -> some View {
+        HStack(spacing: 0) {
+            pageView(first)
+            gutter
+            pageView(first + 1)
+        }
+    }
+
+    /// ثنية المصحف بين الصفحتين — خيطٌ خافت يفصل ولا يقطع، ينتهي حيث ينتهي
+    /// النصّ فلا يمضي تحت الشريط السفلي.
+    private var gutter: some View {
+        Rectangle()
+            .fill(palette.hairline)
+            .frame(width: 1)
+            .padding(.top, 22)
+            .padding(.bottom, bottomInset + 22)
     }
 }
 
@@ -601,6 +689,10 @@ private struct MushafPageContent: View {
     let isDark: Bool
     var framed: Bool = false
     var bottomInset: CGFloat = 0
+    /// ما يعلو الصفحة من شريط التلاوة زائدًا على شريط الموضع. لا يدخل في حساب الملاءمة
+    /// (فلا يُعاد ضبط الخطّ عند تشغيل القارئ)، وإنما يُفسح له أسفل المحتوى ويُطلَق التمرير
+    /// بقدره — فيبلغ القارئ ما غطّاه الشريط بتمريرةٍ يسيرة بدل أن تتبدّل صفحته كلّها.
+    var playerOverlay: CGFloat = 0
     let onTapAyah: (AyahRef) -> Void
 
     // MARK: ملاءمة الصفحة للشاشة
@@ -686,7 +778,9 @@ private struct MushafPageContent: View {
         // داخلةً، ويبقى لصفحةٍ لا تنزل عن أقصى تصغير.
         GeometryReader { geo in
             let bottomPad = bottomInset + Self.breathing
+            // المتاح يُحسب على شريط الموضع وحده؛ والمشغّل يُفسح له بالحشو لا بالحساب.
             let available = max(0, geo.size.height - verticalInsets - bottomPad)
+            let contentPad = bottomPad + playerOverlay
             ScrollView {
                 if framed {
                     measuredStack
@@ -697,19 +791,20 @@ private struct MushafPageContent: View {
                         .background(MushafFrame(palette: palette))
                         .padding(.horizontal, 12)
                         .padding(.top, Self.framedOuterTop)
-                        .padding(.bottom, bottomPad)
+                        .padding(.bottom, contentPad)
                         .readableWidth(700)
                 } else {
                     measuredStack
                         .frame(minHeight: available, alignment: .top)
                         .padding(.horizontal, 20)
                         .padding(.top, Self.plainTop)
-                        .padding(.bottom, bottomPad)
+                        .padding(.bottom, contentPad)
                         .readableWidth(700)
                 }
             }
             .scrollIndicators(.hidden)
-            .scrollDisabled(store.fitPage && !overflows)
+            // التمرير يُطلَق ما دام المشغّل يعلو الصفحة، وإلا حُجب آخر سطرٍ خلفه بلا سبيل إليه.
+            .scrollDisabled(store.fitPage && !overflows && playerOverlay == 0)
             .onPreferenceChange(PageHeightKey.self) { h in
                 measured = h
                 refit(measured: h, available: available)
@@ -1026,6 +1121,10 @@ private struct BottomBarHeightKey: PreferenceKey {
 // MARK: - ضوابط القراءة
 
 struct ReaderControls: View {
+    /// أعريضةٌ شاشةُ القارئ؟ يُمرَّر من القارئ نفسه لا يُسأل عنه هنا — الورقة
+    /// تُعرض ضيّقة على الآيباد فيقول صنف حجمها «مضغوط» وهي فوق شاشةٍ عريضة.
+    let wide: Bool
+
     @EnvironmentObject private var store: AtharStore
     @Environment(\.dismiss) private var dismiss
 
@@ -1086,6 +1185,21 @@ struct ReaderControls: View {
                                 .accessibilityAddTraits(on ? .isSelected : [])
                             }
                         }
+                        // الشاشة العريضة تحمل أكثر من صفحة: صفحتين متقابلتين كالمصحف
+                        // حين يُفتح، أو صفحةً والتفسير إلى جانبها. وفي «آية آية» تمريرٌ
+                        // متصل لا صفحات، فلا موضع للخيار.
+                        if wide, store.readingMode != .ayah {
+                            Picker("", selection: spreadChoice) {
+                                ForEach(MushafSpread.allCases) { Text($0.title).tag($0) }
+                            }
+                            .pickerStyle(.segmented)
+                            .labelsHidden()
+                            .accessibilityLabel(loc("عرض الشاشة العريضة"))
+
+                            Text(loc("صفحتان تُقلَّبان معًا كالمصحف حين يُفتح، أو صفحة وتفسيرها إلى جانبها."))
+                                .font(Theme.display(11)).foregroundStyle(Theme.inkFaint)
+                        }
+
                         // في وضعَي الصفحة: تصغيرٌ تلقائي حتى تظهر الصفحة كاملةً بلا تمرير
                         // كالمصحف المطبوع. لا معنى له في «آية آية» فيُخفى هناك.
                         if store.readingMode != .ayah {
@@ -1156,6 +1270,12 @@ struct ReaderControls: View {
                 .padding(.bottom, 18)
             }
         }
+    }
+
+    /// اختيار الشاشة العريضة — تُحسّ نقرتُه كما تُحسّ رقائق وضع العرض المجاورة.
+    private var spreadChoice: Binding<MushafSpread> {
+        Binding(get: { store.mushafSpread },
+                set: { store.mushafSpread = $0; Haptics.tap(enabled: store.hapticsEnabled) })
     }
 
     private func bump(_ d: Double) {

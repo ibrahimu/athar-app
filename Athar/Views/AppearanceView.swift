@@ -7,6 +7,9 @@ struct AppearanceView: View {
     @EnvironmentObject private var store: AtharStore
     @State private var editing = false
     @State private var editingCards = false
+    /// الأيقونة الحاضرة تُقرأ من النظام عند الظهور — انظر AppIconManager.
+    @State private var appIcon: AppIconChoice = .original
+    @State private var iconFailed = false
 
     /// ما تُفتح عليه الشاشة: «الأقسام» تفتحها على بطاقات اليوم مباشرة.
     enum Focus { case none, homeCards }
@@ -22,6 +25,7 @@ struct AppearanceView: View {
                     tabBar
                 } else {
                     themes
+                    appIconPicker
                     widgetPalettePicker
                     iconStylePicker
                     backgroundPicker
@@ -39,7 +43,12 @@ struct AppearanceView: View {
         // الخلفية خلف ScrollView لا حوله في ZStack، فيبقى هو جذر الشاشة الذي
         // يكتشفه شريط العنوان ويعامل حافته العلوية عند التمرير تحته.
         .background { AtharBackground() }
-        .onAppear { if focus == .homeCards { proxy.scrollTo("homeCards", anchor: .top) } }
+        .onAppear {
+            if focus == .homeCards { proxy.scrollTo("homeCards", anchor: .top) }
+            // لا نخزّن الأيقونة عندنا: نسأل النظام عنها كلّما فُتحت الشاشة، فلو
+            // بدّلها المستخدم من موضع آخر وجد الطوق على ما يراه لا على ما نذكره.
+            appIcon = AppIconManager.current
+        }
         }
         .navigationTitle(focus == .homeCards ? loc("شاشة اليوم") : loc("appearance"))
         .navigationBarTitleDisplayMode(.inline)
@@ -77,6 +86,9 @@ struct AppearanceView: View {
                     Button {
                         withAnimation(Motion.gentle) { store.appTheme = theme }
                         Haptics.tap(enabled: store.hapticsEnabled)
+                        // ومن ربط أيقونته بطابعه فقد أذن مرّةً: تُبدَّل معه بلا سؤالٍ منّا
+                        // (وسؤال iOS يبقى، وهو سؤاله لا سؤالنا).
+                        if store.appIconMode == .theme { apply(AppIconChoice.matching(theme)) }
                         // الويدجت الذي يلبس الطابع يتبدّل معه فورًا لا عند الخلفية التالية.
                         if store.widgetPalette == .theme {
                             WidgetCenter.shared.reloadAllTimelines()
@@ -145,6 +157,214 @@ struct AppearanceView: View {
                 .foregroundStyle(on ? accent : Theme.inkSoft)
         }
         .scaleEffect(on ? 1.03 : 1)
+    }
+
+    // MARK: أيقونة التطبيق
+
+    /// صفّ يمرّ بالإبهام، بالأيقونات نفسها لا برسمٍ يقاربها — فما يراه هنا هو ما يجده
+    /// على شاشته. وتُطوى المجموعة كلّها حيث يمنع النظامُ البدائل: خيارٌ لا يُنفَّذ خُلفٌ للوعد.
+    @ViewBuilder private var appIconPicker: some View {
+        if AppIconManager.supported {
+            VStack(spacing: 8) {
+                SettingsGroupTitle(text: loc("أيقونة التطبيق"), tint: Theme.accent(for: "dusk"))
+
+                // إمّا أن تمشي مع الطابع فلا يُشغَل بها، وإمّا أن يخصّها باختيار.
+                Picker("", selection: Binding(
+                    get: { store.appIconMode },
+                    set: { mode in
+                        store.appIconMode = mode
+                        // «تتبع الطابع» تُلبِس أيقونة الطابع فورًا — الاختيار نفسه إذنُه.
+                        if mode == .theme { apply(AppIconChoice.matching(store.appTheme)) }
+                    }
+                )) {
+                    ForEach(AppIconMode.allCases) { Text($0.title).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .accessibilityLabel(loc("أيقونة التطبيق"))
+
+                if store.appIconMode == .theme {
+                    themeIconNote
+                } else {
+                    customIconRow
+                }
+
+                if iconFailed {
+                    // رفض النظام لا يستحقّ نافذةً تقطع الشاشة — سطرٌ خافت يُقرأ ثم يُنسى.
+                    Text(loc("تعذّر تغيير الأيقونة الآن."))
+                        .font(Theme.display(11))
+                        .foregroundStyle(Theme.danger)
+                        .frame(maxWidth: .infinity)
+                }
+            }
+        }
+    }
+
+    /// حين تتبع الطابع: تُعرض أيقونته الحاضرة وسطرٌ يفسّر أن iOS يستأذن عند كل تبديل —
+    /// فلا يُفاجأ بنافذة النظام ويحسبها خللًا.
+    @ViewBuilder private var themeIconNote: some View {
+        let suggested = AppIconChoice.matching(store.appTheme)
+        HStack(spacing: 12) {
+            iconTile(suggested)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(loc("أيقونة %1$@", suggested.title))
+                    .font(Theme.display(14, weight: .semibold))
+                    .foregroundStyle(Theme.ink)
+                Text(loc("تتبدّل مع طابعك. ويسألك iOS في كل مرة — هذا سؤاله هو، لا خلل."))
+                    .font(Theme.display(11))
+                    .foregroundStyle(Theme.inkFaint)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(12)
+        .background(RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous).fill(Theme.surfaceAlt))
+        .accessibilityElement(children: .combine)
+    }
+
+    @ViewBuilder private var customIconRow: some View {
+        Group {
+                ScrollView(.horizontal) {
+                    HStack(spacing: 14) {
+                        ForEach(AppIconChoice.allCases) { choice in
+                            Button { apply(choice) } label: { iconTile(choice) }
+                                .buttonStyle(.plain)
+                                .accessibilityLabel(choice.title)
+                                .accessibilityAddTraits(appIcon == choice ? .isSelected : [])
+                        }
+                    }
+                    // طوق المختارة يخرج عن حدّ بلاطتها، فتُترك له فسحة لئلّا يقصّه الصفّ.
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 7)
+                }
+                .scrollIndicators(.hidden)
+                .accessibilityElement(children: .contain)
+                .accessibilityLabel(loc("أيقونة التطبيق"))
+
+                iconSuggestion
+        }
+    }
+
+    private func iconTile(_ choice: AppIconChoice) -> some View {
+        let on = appIcon == choice
+        let side: CGFloat = 62
+        // زاوية أيقونة iOS ليست نصف الضلع: نحو ٢٢٪ منه بانحناءٍ متّصل، وإلا بدت البلاطة حبّة.
+        let corner = side * 0.22
+        return VStack(spacing: 7) {
+            Group {
+                if let image = iconImage(choice) {
+                    Image(uiImage: image).resizable().scaledToFill()
+                } else {
+                    iconPlaceholder(choice)
+                }
+            }
+            .frame(width: side, height: side)
+            .clipShape(RoundedRectangle(cornerRadius: corner, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: corner, style: .continuous)
+                .strokeBorder(Theme.hairline.opacity(0.7), lineWidth: 0.5))
+            .overlay(RoundedRectangle(cornerRadius: corner + 5, style: .continuous)
+                .strokeBorder(Theme.accent, lineWidth: 2.5)
+                .padding(-5)
+                .opacity(on ? 1 : 0))
+            .overlay(alignment: .bottomTrailing) {
+                if on {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 17, weight: .bold))
+                        .foregroundStyle(Theme.accent)
+                        // قرص بلون الورق تحت العلامة: الأيقونات ملوّنة، والعلامة عليها بلا سندٍ تضيع.
+                        .background(Circle().fill(Theme.canvas).padding(1))
+                        .padding(3)
+                        .accessibilityHidden(true)
+                }
+            }
+            .shadow(color: on ? Theme.accent.opacity(0.22) : .clear, radius: 8, y: 3)
+            Text(choice.title)
+                .font(Theme.display(12, weight: on ? .semibold : .regular))
+                .foregroundStyle(on ? Theme.accent : Theme.inkSoft)
+                .lineLimit(1)
+        }
+        .frame(minWidth: 44)
+        // البلاطة هدفٌ واحد: ما بين الصورة وعنوانها يُلمس كما تُلمس الصورة نفسها.
+        .tapTarget()
+        .scaleEffect(on ? 1.03 : 1)
+    }
+
+    /// صورة الأيقونة من الحزمة: باسم ملفّ الألف والأربعة والعشرين أولًا، ثم باسم
+    /// مجموعتها — فمصنّف الأصول لا يفتح الأيقونات البديلة بالاسمين معًا في كل إصدار.
+    private func iconImage(_ choice: AppIconChoice) -> UIImage? {
+        UIImage(named: choice.previewAsset) ?? UIImage(named: choice.assetName ?? "AppIcon")
+    }
+
+    /// وإن أبى الاسمان، رُسمت بلاطةٌ بلون الطابع الذي سُمّيت الأيقونة به:
+    /// يبقى اللون دليلًا على ما سيصير إليه شكلها وإن غاب رسمها.
+    private func iconPlaceholder(_ choice: AppIconChoice) -> some View {
+        let theme = iconTheme(choice)
+        let accent  = Color.adaptive(light: Color(hex: theme.accent.light),  dark: Color(hex: theme.accent.dark))
+        let accent2 = Color.adaptive(light: Color(hex: theme.accent2.light), dark: Color(hex: theme.accent2.dark))
+        return LinearGradient(colors: [accent2, accent], startPoint: .topTrailing, endPoint: .bottomLeading)
+            .overlay(
+                Image(systemName: "drop.fill")
+                    .font(.system(size: 24, weight: .medium))
+                    .foregroundStyle(Color(hex: theme.canvas.light).opacity(0.92))
+                    .accessibilityHidden(true)
+            )
+    }
+
+    /// الطابع الذي منه لون البديل. أكثر الأسماء تلتقي مع أسماء الطوابع، و«ليلي»
+    /// و«عسلي» لا طابع باسمهما فيُلحقان بأقربهما لونًا.
+    private func iconTheme(_ choice: AppIconChoice) -> AppTheme {
+        switch choice {
+        case .original: return .green
+        case .night:    return .indigo
+        case .honey:    return .amber
+        default:        return AppTheme(rawValue: choice.rawValue) ?? .green
+        }
+    }
+
+    /// من بدّل طابعه لم يطلب تبديل أيقونته: تُعرض الموافقة عرضًا، ولا تُلبَس إلا بضغطة منه.
+    @ViewBuilder private var iconSuggestion: some View {
+        let suggested = AppIconChoice.matching(store.appTheme)
+        if suggested != appIcon {
+            HStack(spacing: 8) {
+                Image(systemName: "sparkles")
+                    .font(.system(size: 12))
+                    .foregroundStyle(Theme.accent)
+                    .accessibilityHidden(true)
+                Text(loc("أيقونة تناسب طابعك: %1$@", suggested.title))
+                    .font(Theme.display(12))
+                    .foregroundStyle(Theme.inkSoft)
+                Spacer(minLength: 6)
+                Button { apply(suggested) } label: {
+                    Text(loc("البسها"))
+                        .font(Theme.display(12, weight: .semibold))
+                        .foregroundStyle(Theme.accent)
+                        .padding(.horizontal, 13).padding(.vertical, 6)
+                        .background(Capsule().fill(Theme.accentSoft))
+                        .tapTarget()
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(loc("البس أيقونة %1$@", suggested.title))
+            }
+            .padding(.horizontal, 12).padding(.vertical, 10)
+            .background(RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous)
+                .fill(Theme.surfaceAlt))
+        }
+    }
+
+    private func apply(_ choice: AppIconChoice) {
+        Haptics.tap(enabled: store.hapticsEnabled)
+        Task {
+            do {
+                try await AppIconManager.set(choice)
+                // ما استقرّ عند النظام هو الحقّ، لا ما طلبناه — فيُقرأ منه بعد التبديل.
+                withAnimation(Motion.gentle) {
+                    appIcon = AppIconManager.current
+                    iconFailed = false
+                }
+            } catch {
+                withAnimation(Motion.snappy) { iconFailed = true }
+            }
+        }
     }
 
     // MARK: لون الويدجت

@@ -73,6 +73,7 @@ extension AtharStore {
         static let highlights    = "athar.mushaf.highlights"
         static let notes         = "athar.mushaf.notes"
         static let readingMode   = "athar.mushaf.readingMode"
+        static let spread        = "athar.mushaf.spread"
         static let khatmahDays   = "athar.khatmah.totalDays"
         static let khatmahStart  = "athar.khatmah.startDay"
         static let khatmahDone   = "athar.khatmah.pagesDone"
@@ -145,6 +146,13 @@ extension AtharStore {
     var readingMode: ReadingMode {
         get { ReadingMode(rawValue: defaults.string(forKey: MKey.readingMode) ?? "") ?? .page }
         set { defaults.set(newValue.rawValue, forKey: MKey.readingMode); objectWillChange.send() }
+    }
+
+    /// بماذا تُملأ الشاشة العريضة. الافتراضي صفحةٌ واحدة كما كان،
+    /// فلا يتبدّل مصحف قارئٍ من غير أن يطلب.
+    var mushafSpread: MushafSpread {
+        get { MushafSpread(rawValue: defaults.string(forKey: MKey.spread) ?? "") ?? .one }
+        set { defaults.set(newValue.rawValue, forKey: MKey.spread); objectWillChange.send() }
     }
 
     /// «وقفتُ هنا» — علامة يضعها القارئ بيده ليعود إليها، مستقلة عن
@@ -492,6 +500,25 @@ enum ReadingMode: String, CaseIterable, Identifiable {
         case .page:   return "book.pages.fill"
         case .framed: return "rectangle.portrait.inset.filled"
         case .ayah:   return "list.bullet"
+        }
+    }
+}
+
+
+/// ما تُملأ به الشاشة العريضة (الآيباد وما شابهه). الهاتف لا يسع إلا صفحة،
+/// فلا معنى للخيار عنده ولا يُعرض.
+enum MushafSpread: String, CaseIterable, Identifiable {
+    case one     // صفحة وحدها، كما في الهاتف
+    case two     // صفحتان متقابلتان: الوترية يمينًا وتاليتها يسارًا
+    case tafsir  // صفحة والتفسير إلى جانبها
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .one:    return loc("صفحة واحدة")
+        case .two:    return loc("صفحتان")
+        case .tafsir: return loc("مع التفسير")
         }
     }
 }
