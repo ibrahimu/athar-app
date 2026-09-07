@@ -165,6 +165,13 @@ targets:
           - "LiveStreams.swift"
           - "RadioPlayer.swift"
           - "GroupKhatmah.swift"
+      # النسخ في حزمة الودجة كما في حزمة الساعة: الودجات تكتب الحديث والذكر واسم اليوم
+      # بـ.custom("NotoNaskhArabic-…")، وبلا الملفات كانت تسقط صامتةً إلى خط النظام.
+      # «ثمانية» (Obf) للتطبيق وحده — الودجات لا تسجّله ولا تستعمله.
+      - path: Athar/Resources/Fonts
+        buildPhase: resources
+        excludes:
+          - "Obf/**"
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.ibrahim.athar.widget

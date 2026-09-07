@@ -358,7 +358,6 @@ struct SettingsGroupTitle: View {
                 .frame(width: 7, height: 7)
             Text(text)
                 .font(Theme.display(12, weight: .semibold))
-                .tracking(0.6)
                 .foregroundStyle(tint.opacity(0.85))
         }
         .padding(.horizontal, 6)

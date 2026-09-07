@@ -25,10 +25,10 @@ final class CloudKV {
     static let keys: [String] = [
         "athar.tabs.visible", "athar.home.cards", "athar.home.cards.hidden",
         "athar.theme", "athar.appearance", "athar.bgPattern", "athar.unifyIcons",
-        "athar.hadith.favorites", "athar.bookmarks", "athar.highlights",
-        "athar.stopMark", "athar.lastRead",
+        "athar.hadith.favorites", "athar.mushaf.bookmarks", "athar.mushaf.highlights",
+        "athar.mushaf.stopMark", "athar.mushaf.lastRead",
         "athar.athanSound", "athar.preAthanMinutes", "athar.iqamahMinutes",
-        "athar.readingTheme", "athar.readingMode", "athar.mushafFontScale", "athar.fontScale",
+        "athar.mushaf.theme", "athar.mushaf.readingMode", "athar.mushaf.fontScale", "athar.fontScale",
         "athar.tasbihPhrase", "athar.tasbihTarget", "athar.secondaryCityId",
     ]
 

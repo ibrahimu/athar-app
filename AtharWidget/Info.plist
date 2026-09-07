@@ -4,6 +4,12 @@
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>ar</string>
+	<key>UIAppFonts</key>
+	<array>
+		<string>NotoNaskhArabic-Regular.ttf</string>
+		<string>NotoNaskhArabic-Medium.ttf</string>
+		<string>NotoNaskhArabic-Bold.ttf</string>
+	</array>
 	<key>CFBundleDisplayName</key>
 	<string>أثر</string>
 	<key>CFBundleExecutable</key>

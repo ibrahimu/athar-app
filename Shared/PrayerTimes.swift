@@ -62,12 +62,12 @@ enum CalculationMethod: String, CaseIterable, Identifiable {
     /// شرح يظهر تحت الاسم في شاشة الاختيار.
     var detail: String {
         switch self {
-        case .ummAlQura: return "المعتمدة في السعودية · الفجر ١٨٫٥° والعشاء بعد المغرب ٩٠ دقيقة"
-        case .mwl:       return "الفجر ١٨° والعشاء ١٧°"
-        case .egypt:     return "الفجر ١٩٫٥° والعشاء ١٧٫٥°"
-        case .karachi:   return "الفجر والعشاء ١٨°"
-        case .isna:      return "الفجر والعشاء ١٥°"
-        case .dubai:     return "الفجر والعشاء ١٨٫٢°"
+        case .ummAlQura: return "المعتمدة في السعودية · الفجر 18.5° والعشاء بعد المغرب 90 دقيقة"
+        case .mwl:       return "الفجر 18° والعشاء 17°"
+        case .egypt:     return "الفجر 19.5° والعشاء 17.5°"
+        case .karachi:   return "الفجر والعشاء 18°"
+        case .isna:      return "الفجر والعشاء 15°"
+        case .dubai:     return "الفجر والعشاء 18.2°"
         }
     }
 

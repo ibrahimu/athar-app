@@ -49,6 +49,8 @@
 	<true/>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>لحساب أوقات الصلاة واتجاه القبلة. قد تُرسل الإحداثيات إلى Apple للتعرّف على اسم المدينة.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>لحفظ بطاقة الآية أو صورة العبارة في «الصور» حين تختار «حفظ الصورة» من ورقة المشاركة.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>لسماع قراءتك أثناء التسميع فقط.</string>
 	<key>NSSpeechRecognitionUsageDescription</key>
