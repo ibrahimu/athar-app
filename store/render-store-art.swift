@@ -89,7 +89,24 @@ let specs: [Spec] = [
           features: [.init(icon: "rectangle.expand.vertical", text: "الصفحة كاملة بلا تمرير"), .init(icon: "highlighter", text: "تظليل الآية كتلة متصلة"),
                      .init(icon: "hand.wave.fill", text: "ترحيب: الموقع والتنبيهات والأذان والمظهر"), .init(icon: "heart.fill", text: "بطاقة إحسان للصدقة من الرئيسية")],
           c1: Color(red: 0.06, green: 0.32, blue: 0.26), c2: Color(red: 0.10, green: 0.46, blue: 0.37)),
+    // — الإصدار 1.4: مدموجةٌ عمدًا، فحدّ المتجر عشر صور والجديد أكثر من عشرة.
+    .init(file: "15", shots: ["34-jump.png", "30-mushaf-tools.png"], title: "اذهب إلى صفحتك أو جزئك",
+          subtitle: "اكتب الرقم فتصل — أو اضغط شريط الموضع واختر صفحة أو جزءًا، وسجّل تدبّرك على الآية",
+          features: [.init(icon: "doc.plaintext.fill", text: "الانتقال بالصفحة أو الجزء أو السورة"), .init(icon: "square.and.pencil", text: "تدبّراتي: ملاحظتك على الآية تبقى معك"),
+                     .init(icon: "magnifyingglass", text: "بحث واحد: آية وحديثًا وذكرًا وحكمًا"), .init(icon: "rectangle.split.2x1", text: "صفحتان متقابلتان على الآيباد")],
+          c1: Color(red: 0.06, green: 0.32, blue: 0.26), c2: Color(red: 0.10, green: 0.46, blue: 0.37)),
+    .init(file: "16", shots: ["33-prayer.png", "16-prayer-alerts.png"], title: "الأذان لا يفوتك",
+          subtitle: "تنبيهٌ حسّاس للوقت يخترق التركيز، وأزرارٌ في بطاقته، وتجديدٌ في الخلفية فلا ينقطع",
+          features: [.init(icon: "bell.badge.waveform.fill", text: "يخترق «عدم الإزعاج» وأوضاع التركيز"), .init(icon: "checkmark.circle.fill", text: "«صلّيتها في وقتها» و«ذكّرني بعد 10 دقائق»"),
+                     .init(icon: "arrow.clockwise", text: "تجديد خلفي فلا تنقطع بعد أسبوع"), .init(icon: "airplane", text: "مثبّتة على منطقة مكانك لا جهازك")],
+          c1: Color(red: 0.50, green: 0.34, blue: 0.10), c2: Color(red: 0.72, green: 0.52, blue: 0.20)),
+    .init(file: "17", shots: ["31-appearance-icons.png", "32-sections-search.png"], title: "على ذوقك من الأيقونة إلى الودجة",
+          subtitle: "اثنتا عشرة أيقونة، ولون ودجتك بيدك، ومسبحةٌ تعدّ من الشاشة الرئيسية",
+          features: [.init(icon: "app.badge.checkmark", text: "12 أيقونة: تتبع طابعك أو مستقلة"), .init(icon: "square.grid.2x2.fill", text: "لون الويدجت وشاشة القفل والساعة واحد"),
+                     .init(icon: "hand.tap.fill", text: "مسبحة تعدّ وتُصفَّر من الودجة"), .init(icon: "calendar", text: "ودجة التاريخ الهجري والمناسبة القادمة")],
+          c1: Color(red: 0.20, green: 0.18, blue: 0.42), c2: Color(red: 0.34, green: 0.30, blue: 0.62)),
 ]
+
 
 let W: CGFloat = 1290, H: CGFloat = 2796
 
