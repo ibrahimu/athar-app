@@ -27,6 +27,9 @@
 - **سيري**: «سجّل صلاة الظهر» و«أين ختمتي» بلا فتح التطبيق.
 - **الساعة**: عدّ المسبحة بالتاج الرقمي، وتعقيدتان جديدتان للذكر ولعدّاد اليوم.
 - **إتاحة أفضل**: أحجام الخط الكبيرة تعمل فعلًا، وأهداف لمس أوسع، ووصف صوتي للعدّادات والبطاقات.
+- **أيقونة التطبيق بلونك**: اثنتا عشرة أيقونة بالرسم نفسه — تتبع طابعك أو تختارها مستقلة.
+- **المصحف على الآيباد**: صفحتان متقابلتان تُقلَّبان معًا كالمصحف حين يُفتح، أو صفحة، أو صفحة مع التفسير.
+- **الساعة تتبع لونك**: ما تختاره للويدجت يلبسه معصمك أيضًا.
 - وأذكار وتوثيق المصادر وعشرات التحسينات.
 
 ## What's New (English)
@@ -53,6 +56,9 @@
 - **Siri**: log a prayer, ask where your khatmah stands.
 - **Watch**: count the tasbih with the Digital Crown, plus two new complications.
 - **Better accessibility**: large text sizes actually work, wider tap targets, and spoken descriptions for counters and cards.
+- **Your own app icon**: twelve icons in the same design — follow your theme or pick one independently.
+- **Mushaf on iPad**: two facing pages turned together like an open muṣḥaf, or one page, or a page beside the tafsir.
+- **The Watch follows your colour**: whatever you choose for the widgets, your wrist wears too.
 - Plus adhkar, source credits and dozens of refinements.
 
 ## ملاحظات للرفع
