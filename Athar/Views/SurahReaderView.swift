@@ -304,7 +304,12 @@ struct SurahReaderView: View {
             // فلولاه انقطعت سِمة الصفحة أسفل الورقة ولم يبلغها القارئ.
             // سعة الشاشة تُمرَّر من القارئ: الورقة على الآيباد تُعرض ضيّقة فيقول
             // صنف حجمها «مضغوط»، فلو سألتْه لسقط خيار الشاشة العريضة عن الآيباد.
-            ReaderControls(wide: sizeClass == .regular).presentationDetents([.height(430), .large])
+            // ارتفاعٌ ثابت كان يقصّ الورقة في منتصف قسمٍ فتبدو مبتورة، والسحب داخلها
+            // كان يمطّها بدل أن يمرّر محتواها. فالمقاسان قياسيّان، والسحب تمريرٌ لا مطّ.
+            ReaderControls(wide: sizeClass == .regular)
+                .presentationDetents([.medium, .large])
+                .presentationContentInteraction(.scrolls)
+                .presentationDragIndicator(.visible)
                 .atharSheetChrome()
         }
         .sheet(item: $selected) { ref in
@@ -1267,7 +1272,8 @@ struct ReaderControls: View {
                 // مقبض السحب من النظام (كسوة الأوراق)، فيبدأ المحتوى تحته بهامشٍ لا بمقبضٍ مرسوم.
                 .padding(.top, Theme.Space.xl)
                 .padding(.horizontal, 22)
-                .padding(.bottom, 18)
+                // فسحةٌ أسفل آخر قسم: بلا هذا يلتصق «سِمة الصفحة» بحافّة الورقة فيُظنّ مقصوصًا.
+                .padding(.bottom, 40)
             }
         }
     }
@@ -1423,7 +1429,8 @@ struct GoToPageSheet: View {
                 }
                 .padding(.top, Theme.Space.xl)
                 .padding(.horizontal, 22)
-                .padding(.bottom, 18)
+                // فسحةٌ أسفل آخر قسم: بلا هذا يلتصق «سِمة الصفحة» بحافّة الورقة فيُظنّ مقصوصًا.
+                .padding(.bottom, 40)
                 .readableWidth(520)
             }
             .scrollIndicators(.hidden)
