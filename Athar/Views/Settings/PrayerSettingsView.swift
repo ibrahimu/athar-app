@@ -107,6 +107,23 @@ struct PrayerSettingsView: View {
                 .buttonStyle(.plain)
 
                 SettingsDivider()
+                // النشاط الحيّ: عدّ الصلاة القادمة على شاشة القفل والجزيرة في النصف ساعة
+                // الأخيرة قبل الأذان. إيقافه يُنهي ما هو قائم فورًا؛ وتشغيله يطلبه إن كان الأذان قريبًا.
+                SettingsRow(icon: "timer", tint: Theme.accent(for: "sea"),
+                            title: loc("النشاط الحيّ"),
+                            subtitle: loc("عدّ الصلاة القادمة على شاشة القفل قبل الأذان بنصف ساعة")) {
+                    Toggle("", isOn: Binding(
+                        get: { store.liveActivityEnabled },
+                        set: { enabled in
+                            store.liveActivityEnabled = enabled
+                            if enabled { LiveActivityManager.sync(store: store) } else { LiveActivityManager.endAll() }
+                        }
+                    ))
+                    .labelsHidden()
+                    .accessibilityLabel(loc("النشاط الحيّ"))
+                }
+
+                SettingsDivider()
                 SettingsRow(icon: "bell.and.waves.left.and.right.fill", tint: Theme.accent,
                             title: loc("rowAthan"),
                             subtitle: loc("subAthan")) {

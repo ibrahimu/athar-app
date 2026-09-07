@@ -1,4 +1,5 @@
 import SwiftUI
+import WidgetKit
 
 /// المظهر: الطابع اللوني، لون الأيقونات والخلفية، وترتيب الشريط السفلي وبطاقات اليوم.
 /// (خط الواجهة والإضاءة في بطاقة «المظهر والخط» بجذر الإعدادات — مصدر واحد لا اثنان.)
@@ -21,6 +22,7 @@ struct AppearanceView: View {
                     tabBar
                 } else {
                     themes
+                    widgetPalettePicker
                     iconStylePicker
                     backgroundPicker
                     tabBar
@@ -75,6 +77,11 @@ struct AppearanceView: View {
                     Button {
                         withAnimation(Motion.gentle) { store.appTheme = theme }
                         Haptics.tap(enabled: store.hapticsEnabled)
+                        // الويدجت الذي يلبس الطابع يتبدّل معه فورًا لا عند الخلفية التالية.
+                        if store.widgetPalette == .theme {
+                            WidgetCenter.shared.reloadAllTimelines()
+                            if store.liveActivityEnabled { LiveActivityManager.sync(store: store) }
+                        }
                     } label: {
                         swatch(theme)
                     }
@@ -138,6 +145,32 @@ struct AppearanceView: View {
                 .foregroundStyle(on ? accent : Theme.inkSoft)
         }
         .scaleEffect(on ? 1.03 : 1)
+    }
+
+    // MARK: لون الويدجت
+
+    /// لون الويدجتات والنشاط الحيّ معًا — نقطة اختيار واحدة، فلا يختلف لون شاشة القفل عن الويدجت.
+    private var widgetPalettePicker: some View {
+        VStack(spacing: 8) {
+            SettingsGroupTitle(text: loc("الويدجت وشاشة القفل"), tint: Theme.accent(for: "night"))
+            SettingsCard {
+                SettingsPickerRow(
+                    icon: "square.grid.2x2.fill", tint: Theme.accent(for: "night"),
+                    title: loc("لون الويدجت"), options: AtharStyle.WidgetPalette.allCases,
+                    selection: Binding(
+                        get: { store.widgetPalette },
+                        set: { palette in
+                            store.widgetPalette = palette
+                            // الويدجتات تُعاد جدولتها فورًا، والنشاط الحيّ يُطلب من جديد بلوحته.
+                            WidgetCenter.shared.reloadAllTimelines()
+                            if store.liveActivityEnabled { LiveActivityManager.sync(store: store) }
+                        }))
+            }
+            Text(loc("يشمل ويدجتات الشاشة الرئيسية والصلاة القادمة على شاشة القفل."))
+                .font(Theme.display(11))
+                .foregroundStyle(Theme.inkFaint)
+                .frame(maxWidth: .infinity)
+        }
     }
 
     // MARK: لون الأيقونات
@@ -551,3 +584,6 @@ struct AppearanceView: View {
 }
 
 
+
+/// خيارات «لون الويدجت» في قائمة الاختيار الموحّدة.
+extension AtharStyle.WidgetPalette: SettingsChoice {}

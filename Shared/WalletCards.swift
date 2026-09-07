@@ -17,8 +17,23 @@ struct WalletCard: Codable, Identifiable, Hashable {
     let to: Int?
     let dhikrCategory: String?
     let dhikrId: String?
+    /// ألوان البطاقة (سداسية بلا #) كما وُقّعت في ملفها — لون القسم: ورق فاتح بحبر داكن للنهار،
+    /// وداكن بحبر فاتح للمساء والنوم والكرب والسفر. غيابها = الورق الكريمي الأول.
+    let bg: String?
+    let fg: String?
+    let label: String?
 
     var isQuran: Bool { kind == "quran" }
+
+    /// خلفية البطاقة وحبرها ولون عناوينها — للمعاينة داخل التطبيق من الأصل نفسه.
+    var backgroundHex: UInt32 { Self.hex(bg) ?? 0xF7F2E7 }
+    var inkHex: UInt32 { Self.hex(fg) ?? 0x14362C }
+    var labelHex: UInt32 { Self.hex(label) ?? 0xA67C30 }
+
+    private static func hex(_ s: String?) -> UInt32? {
+        guard let s, let v = UInt32(s.trimmingCharacters(in: CharacterSet(charactersIn: "#")), radix: 16) else { return nil }
+        return v
+    }
     var repetitionText: String {
         switch count {
         case ...1: return "مرة واحدة"

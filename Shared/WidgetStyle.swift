@@ -4,8 +4,16 @@ import SwiftUI
 enum AtharStyle {
 
     /// لحظة اليوم — تُشتق من أوقات الصلاة لا من الساعة، فتصدق مع كل موقع.
+    /// و`theme` لوحةٌ ثابتة بألوان طابع التطبيق المختار، لمن أراد الويدجت بلون التطبيق لا بلون الوقت.
     enum Moment {
-        case night, dawn, morning, noon, afternoon, sunset
+        case night, dawn, morning, noon, afternoon, sunset, theme
+
+        /// اللوحة التي تلبسها الويدجتات والنشاط الحيّ فعلًا: اختيار المستخدم («لون الويدجت» في
+        /// المظهر) إن كان ثابتًا، وإلا لحظة اليوم. نقطة واحدة تمرّ بها كل الويدجتات وشاشة القفل،
+        /// فلا تختلف ألوانهما مهما اختار.
+        static func resolved(at date: Date, times: PrayerTimes?) -> Moment {
+            AtharStore.shared.widgetPalette.fixedMoment ?? at(date, times: times)
+        }
 
         static func at(_ date: Date, times: PrayerTimes?) -> Moment {
             guard let t = times,
@@ -29,6 +37,10 @@ enum AtharStyle {
             case .noon:      return [Color(hex: 0x14332A), Color(hex: 0x1E4B3A)]
             case .afternoon: return [Color(hex: 0x2A2A20), Color(hex: 0x4A3A24)]
             case .sunset:    return [Color(hex: 0x2B1E2C), Color(hex: 0x3E2438)]
+            // ورق الطابع الداكن وسطحه البديل — العمق نفسه الذي للّحظات، فالنص فوقه مقروء.
+            case .theme:
+                let t = AtharStore.shared.appTheme
+                return [Color(hex: t.canvas.dark), Color(hex: t.surfaceAlt.dark)]
             }
         }
 
@@ -41,6 +53,7 @@ enum AtharStyle {
             case .noon:      return Color(hex: 0x7FD9AE)
             case .afternoon: return Color(hex: 0xE0B06A)
             case .sunset:    return Color(hex: 0xE39BB4)
+            case .theme:     return Color(hex: AtharStore.shared.appTheme.accent.dark)
             }
         }
 
@@ -55,6 +68,56 @@ enum AtharStyle {
             case .noon:      return "طاب يومك"
             case .afternoon: return "أذكار المساء"
             case .sunset:    return "حصّن ليلتك"
+            case .theme:     return "طاب يومك"
+            }
+        }
+    }
+
+    /// «لون الويدجت» في المظهر: يتبع وقت الصلاة (الافتراضي)، أو طابع التطبيق، أو لوحة ثابتة من
+    /// لوحات اللحظات (الظهر يُستغنى عنه: أخضره قريب من الصباح).
+    enum WidgetPalette: String, CaseIterable, Identifiable {
+        case auto, theme, night, dawn, morning, afternoon, sunset
+
+        var id: String { rawValue }
+
+        /// اللوحة الثابتة إن كانت، وإلا nil (= لحظة اليوم).
+        var fixedMoment: Moment? {
+            switch self {
+            case .auto:      return nil
+            case .theme:     return .theme
+            case .night:     return .night
+            case .dawn:      return .dawn
+            case .morning:   return .morning
+            case .afternoon: return .afternoon
+            case .sunset:    return .sunset
+            }
+        }
+
+        var title: String {
+            switch self {
+            case .auto:      return loc("يتغيّر مع وقت الصلاة")
+            case .theme:     return loc("طابع التطبيق")
+            case .night:     return loc("أزرق ليلي")
+            case .dawn:      return loc("بنفسجي")
+            case .morning:   return loc("أخضر")
+            case .afternoon: return loc("ذهبي")
+            case .sunset:    return loc("وردي")
+            }
+        }
+
+        var shortTitle: String {
+            switch self {
+            case .auto:  return loc("مع الوقت")
+            case .theme: return loc("الطابع")
+            default:     return title
+            }
+        }
+
+        var detail: String {
+            switch self {
+            case .auto:  return loc("ليلٌ أزرق قبل الفجر، ثم بنفسجي، فأخضر في الصباح، وذهبي بعد العصر، ووردي بعد المغرب — بحسب مواقيت مكانك.")
+            case .theme: return loc("ألوان الطابع الذي اخترته للتطبيق، ثابتةً طوال اليوم.")
+            default:     return loc("لون ثابت لا يتغيّر مع الوقت.")
             }
         }
     }

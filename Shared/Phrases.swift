@@ -4,7 +4,7 @@ import Foundation
 
 /// أصناف العبارات. المفاتيح اللونية من لوحة Theme.accent(for:) الرسمية.
 enum PhraseCategory: String, CaseIterable, Identifiable {
-    case friday, morning, evening, dua, ayat, hadith, greetings, condolence, recovery
+    case friday, morning, evening, dua, ayat, hadith, greetings, occasions, condolence, recovery
 
     var id: String { rawValue }
 
@@ -17,6 +17,7 @@ enum PhraseCategory: String, CaseIterable, Identifiable {
         case .ayat:       return "آيات"
         case .hadith:     return "أحاديث"
         case .greetings:  return "تهانٍ"
+        case .occasions:  return "مناسبات"
         case .condolence: return "مواساة"
         case .recovery:   return "شفاء"
         }
@@ -31,6 +32,7 @@ enum PhraseCategory: String, CaseIterable, Identifiable {
         case .ayat:       return "book.closed.fill"
         case .hadith:     return "text.quote"
         case .greetings:  return "gift.fill"
+        case .occasions:  return "party.popper.fill"
         case .condolence: return "heart.fill"
         case .recovery:   return "cross.case.fill"
         }
@@ -45,6 +47,7 @@ enum PhraseCategory: String, CaseIterable, Identifiable {
         case .ayat:       return "sea"
         case .hadith:     return "asr"
         case .greetings:  return "calm"
+        case .occasions:  return "gold"
         case .condolence: return "night"
         case .recovery:   return "success"
         }
@@ -118,6 +121,11 @@ struct Phrase: Identifiable, Hashable {
     }
 
     var isAvailable: Bool { !text.isEmpty }
+
+    /// عبارة يكتبها المستخدم بنفسه في مصمّم البطاقة — عامة، لا تُنسب إلى مصدر.
+    static func custom(_ text: String, category: PhraseCategory = .greetings, id: String = "custom") -> Phrase {
+        Phrase(id: id, category: category, source: .text(text))
+    }
 }
 
 enum PhraseLibrary {
@@ -235,6 +243,18 @@ enum PhraseLibrary {
         plain(15, "مبارك النجاح، وفّقكم الله لما يحب ويرضى", .greetings),
         plain(16, "حجّ مبرور، تقبّل الله حجّكم وردّكم سالمين", .greetings),
         plain(17, "عمرة مقبولة، تقبّل الله طاعتكم", .greetings),
+
+        // مناسبات (عبارات عامة): العيدان ورمضان، واليوم الوطني ويوم التأسيس
+        plain(40, "عيد فطر مبارك، تقبّل الله صيامكم وقيامكم، وكل عام وأنتم بخير", .occasions),
+        plain(41, "كل عام وأنتم إلى الله أقرب — عيدكم مبارك وأيامكم سعيدة", .occasions),
+        plain(42, "عيد أضحى مبارك، تقبّل الله طاعتكم وأعاده عليكم بالخير والبركة", .occasions),
+        plain(43, "أضحى مبارك، جعله الله عيد خير وفرح عليكم وعلى من تحبّون", .occasions),
+        plain(44, "رمضان مبارك، بلّغنا الله وإياكم صيامه وقيامه على خير", .occasions),
+        plain(45, "مبارك عليكم الشهر، جعله الله شهر رحمة ومغفرة وعتق من النار", .occasions),
+        plain(46, "كل عام ووطننا بخير — حفظ الله بلادنا وأدام أمنها وعزّها", .occasions),
+        plain(47, "في يومنا الوطني نسأل الله أن يديم على بلادنا الأمن والرخاء، وأن يحفظ قادتها وأهلها", .occasions),
+        plain(48, "يوم التأسيس: ذكرى عزّ وتاريخ ممتدّ — حفظ الله وطننا وأدام مجده", .occasions),
+        plain(49, "في ذكرى التأسيس، نحمد الله على نعمة الأمن والاجتماع، ونسأله دوام الخير لبلادنا", .occasions),
 
         // مواساة
         ayah(2, 156, .condolence),

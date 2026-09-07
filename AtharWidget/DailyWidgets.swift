@@ -12,7 +12,7 @@ struct HadithEntry: TimelineEntry {
 struct HadithProvider: TimelineProvider {
     private func entry(at date: Date) -> HadithEntry {
         HadithEntry(date: date, hadith: HadithLibrary.daily(for: date),
-                    moment: .at(date, times: AtharStore.shared.prayerTimes(for: date)))
+                    moment: .resolved(at: date, times: AtharStore.shared.prayerTimes(for: date)))
     }
     func placeholder(in context: Context) -> HadithEntry { entry(at: Date()) }
     func getSnapshot(in context: Context, completion: @escaping (HadithEntry) -> Void) { completion(entry(at: Date())) }
@@ -93,7 +93,7 @@ struct NameEntry: TimelineEntry {
 struct NameProvider: TimelineProvider {
     private func entry(at date: Date) -> NameEntry {
         NameEntry(date: date, name: NamesLibrary.daily(for: date),
-                  moment: .at(date, times: AtharStore.shared.prayerTimes(for: date)))
+                  moment: .resolved(at: date, times: AtharStore.shared.prayerTimes(for: date)))
     }
     func placeholder(in context: Context) -> NameEntry { entry(at: Date()) }
     func getSnapshot(in context: Context, completion: @escaping (NameEntry) -> Void) { completion(entry(at: Date())) }
@@ -188,11 +188,11 @@ struct SunnahProvider: TimelineProvider {
                 ?? store.prayerTimes(for: tomorrow)?.nextPrayer(after: date) else { return nil }
         return SunnahEntry(date: date, prayer: next.prayer, prayerTime: next.date,
                            before: SunanLibrary.before(next.prayer), after: SunanLibrary.after(next.prayer),
-                           moment: .at(date, times: store.prayerTimes(for: date)))
+                           moment: .resolved(at: date, times: store.prayerTimes(for: date)))
     }
     private var fallback: SunnahEntry {
         SunnahEntry(date: Date(), prayer: .fajr, prayerTime: Date(), before: SunanLibrary.before(.fajr), after: [],
-                    moment: .at(Date(), times: nil))
+                    moment: .resolved(at: Date(), times: nil))
     }
     func placeholder(in context: Context) -> SunnahEntry { entry(at: Date()) ?? fallback }
     func getSnapshot(in context: Context, completion: @escaping (SunnahEntry) -> Void) { completion(placeholder(in: context)) }

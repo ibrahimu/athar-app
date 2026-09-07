@@ -21,7 +21,7 @@ struct ProgressProvider: TimelineProvider {
             total: store.totalDhikrCount,
             completedToday: store.completedToday.count,
             dailyGoal: 2, // أذكار الصباح + المساء
-            moment: .at(date, times: store.prayerTimes(for: date))
+            moment: .resolved(at: date, times: store.prayerTimes(for: date))
         )
     }
 

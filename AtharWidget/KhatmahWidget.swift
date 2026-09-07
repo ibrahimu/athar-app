@@ -28,7 +28,7 @@ struct KhatmahProvider: TimelineProvider {
             totalDays: s.khatmahTotalDays,
             todayFrom: range.lowerBound,
             todayTo: range.upperBound,
-            moment: .at(date, times: s.prayerTimes(for: date)))
+            moment: .resolved(at: date, times: s.prayerTimes(for: date)))
     }
 
     func placeholder(in context: Context) -> KhatmahEntry {

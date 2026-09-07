@@ -5,12 +5,13 @@
 
 ## ما الجديد (عربي)
 
-- **بطاقات Apple Wallet**: آية الكرسي وخواتيم البقرة والمعوّذات وسيد الاستغفار وأذكار الصباح والمساء والنوم والسفر والكرب — ست وستون بطاقة بتصميم أثر تُضاف إلى المحفظة بضغطة، نصّها كاملًا على وجهها وظهرها، بلا إنترنت.
+- **بطاقات Apple Wallet**: آية الكرسي وخواتيم البقرة والمعوّذات وسيد الاستغفار وأذكار الصباح والمساء والنوم والسفر والكرب — ست وستون بطاقة بتصميم أثر، لكل قسم لونه، تُضاف إلى المحفظة بضغطة أو كلها معًا، نصّها كاملًا على وجهها وظهرها، بلا إنترنت.
 - **البث المباشر**: الحرم المكي والحرم النبوي من قناتيهما الرسميتين، وإذاعة القرآن الكريم من هيئة الإذاعة والتلفزيون — تستمر في الخلفية ومن شاشة القفل، ولها قسمها وبطاقتها في «اليوم».
 - **الصفحة كاملة على الشاشة**: المصحف يضبط حجم الصفحة لتظهر كلها بلا تمرير، والآية المختارة تُظلَّل كتلةً واحدة متصلة.
 - **خط ثمانية**: خطٌّ عربي معاصر لواجهة التطبيق تختاره من الترحيب أو من الإعدادات، مع حجم الخط في المكان نفسه. النص الشرعي يبقى بخط النسخ.
-- **عبارات**: آيات وأدعية وتهانٍ للجمعة والعيد ورمضان تنسخها أو تشاركها مباشرة في سناب وواتساب، أو تحوّلها صورةَ ستوري بخلفية أثر.
-- **ترحيب من أربع خطوات**: الموقع والتنبيهات والمظهر والخط من أول تشغيل.
+- **عبارات وبطاقات صور**: آيات وأدعية وتهانٍ للجمعة والعيدين ورمضان واليوم الوطني ويوم التأسيس تنسخها أو تشاركها مباشرة، أو تصمّمها صورةَ ستوري: اختر الشكل واللون والنقش والخط، أضف توقيعك، أو اكتب تهنئتك بنفسك — والمشاركة الفورية بالشكل المعتمد ضغطة واحدة.
+- **ترحيب من خمس خطوات**: الموقع والتنبيهات وصوت الأذان واختيار المؤذّن والمظهر والخط من أول تشغيل.
+- **لون الويدجت بيدك**: يتغيّر مع وقت الصلاة، أو يلبس طابع التطبيق، أو لون ثابت — ويطابقه عدّ الصلاة القادمة على شاشة القفل، الذي صار يظهر قبل الأذان بنصف ساعة فقط ويمكن إيقافه.
 - **الصوت يستمر**: التلاوة والإذاعة تعملان بعد إغلاق التطبيق، بتحكّم كامل من شاشة القفل ومركز التحكم.
 - **الإعدادات مرتّبة**: المظهر والخط، الصلاة والمواقيت، التذكيرات، المصحف والقراءة، بياناتك، التطبيق — كلٌّ في صفحته.
 - **إحسان**: شعار منصة إحسان الملوّن في بطاقة الصدقة، ويتّبع الطابع الموحّد إن اخترته.
@@ -18,12 +19,13 @@
 
 ## What's New (English)
 
-- **Apple Wallet cards**: Ayat al-Kursi, the end of al-Baqarah, the three Qul surahs, the master supplication for forgiveness, and morning, evening, sleep, travel and distress adhkar — 66 cards in Athar's design, added to Wallet with one tap, full text on the front and back, no internet needed.
+- **Apple Wallet cards**: Ayat al-Kursi, the end of al-Baqarah, the three Qul surahs, the master supplication for forgiveness, and morning, evening, sleep, travel and distress adhkar — 66 cards in Athar's design, each section in its own colour, added to Wallet one at a time or all at once, full text on the front and back, no internet needed.
 - **Live**: Masjid al-Haram and the Prophet's Mosque from their official channels, plus Saudi Quran Radio — keeps playing in the background with Lock Screen controls, with its own section and Today card.
 - **Whole page on screen**: the Mushaf fits each page without scrolling, and the selected ayah is highlighted as one continuous block.
 - **Thmanyah typeface**: a contemporary Arabic UI font you can pick during onboarding or in Settings, with text size in the same place. Sacred text stays in Naskh.
-- **Phrases**: ayahs, supplications and greetings for Friday, Eid and Ramadan to copy or share straight into Snapchat and WhatsApp, or turn into a story image.
-- **Four-step welcome**: location, notifications, appearance and font on first launch.
+- **Phrases & story cards**: ayahs, supplications and greetings for Friday, both Eids, Ramadan, National Day and Founding Day to copy or share directly, or design as a story image — pick the layout, colour, pattern and font, add a signature, or write your own greeting; one-tap sharing in the default look.
+- **Five-step welcome**: location, notifications, athan sound and muezzin, appearance and font on first launch.
+- **Widget colour, your way**: follow the prayer time, wear the app theme, or a fixed colour — and the Lock Screen next-prayer countdown matches it, now only in the last 30 minutes before the athan and can be switched off.
 - **Audio keeps going** after closing the app, with full Lock Screen and Control Centre controls.
 - **Settings reorganised** into clear pages: appearance & font, prayer & times, reminders, Mushaf & reading, your data, the app.
 - **Ehsan**: the platform's colour logo on the sadaqah card; follows the unified icon style when chosen.

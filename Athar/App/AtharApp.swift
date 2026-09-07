@@ -44,18 +44,17 @@ struct AtharApp: App {
                     if let id = activity.userInfo?["kCSSearchableItemActivityIdentifier"] as? String, let r = AppRoute(spotlightId: id) { store.pendingRoute = r }
                 }
                 .onOpenURL { url in if let r = AppRoute(url: url) { store.pendingRoute = r } }
-                .preferredColorScheme({
-                    switch store.readerScheme {
-                    case .light: return .light
-                    case .dark:  return .dark
-                    case .none:  return store.appearance.colorScheme
-                    }
-                }())
+                .preferredColorScheme(preferredScheme)
+                // المرآة على النافذة نفسها — من أول رسم ومع كل تبدّل (فتح القارئ الليلي، تغيير المظهر).
+                .onChange(of: preferredScheme, initial: true) { _, scheme in WindowStyle.apply(scheme) }
 
         }
         .onChange(of: scenePhase) { _, phase in
             switch phase {
             case .active:
+                // النافذة قد تُنشأ بعد أول onChange، وقد يعبث النظام بنمطها عند لقطات الخلفية —
+                // فتُعاد كتابته مع كل عودة.
+                WindowStyle.apply(preferredScheme)
                 SpotlightIndexer.indexIfNeeded()  // مرة لكل إصدار من الفهرس
                 store.startCloudSync()            // لا يفعل شيئًا إن كانت المزامنة مطفأة
                 WatchSync.shared.activate()       // الساعة تأخذ مدينتك وطريقة حسابك من هنا
@@ -74,6 +73,35 @@ struct AtharApp: App {
                 WidgetCenter.shared.reloadAllTimelines()
             default:
                 break
+            }
+        }
+    }
+
+    /// سِمة الواجهة المفروضة: ورق القارئ الظاهر أوّلًا، ثم مظهر التطبيق (فاتح/داكن/النظام).
+    private var preferredScheme: ColorScheme? {
+        switch store.readerScheme {
+        case .light: return .light
+        case .dark:  return .dark
+        case .none:  return store.appearance.colorScheme
+        }
+    }
+}
+
+/// مرآة UIKit لـpreferredColorScheme: النمط يُكتب على النافذة نفسها أيضًا. لقطتا مبدّل
+/// التطبيقات (فاتحة وداكنة) تُلتقطان عند الانتقال إلى الخلفية بتراث النظام لا بتفضيل SwiftUI،
+/// فكان القارئ الليلي على جهازٍ فاتح يظهر في المبدّل — وبعد لحظة من مغادرة التطبيق —
+/// نهاريًّا. تجاوز النافذة يُحترم في اللقطتين وفي كل مرور تراثيّ عابر.
+private enum WindowStyle {
+    @MainActor static func apply(_ scheme: ColorScheme?) {
+        let style: UIUserInterfaceStyle
+        switch scheme {
+        case .light: style = .light
+        case .dark:  style = .dark
+        default:     style = .unspecified
+        }
+        for case let scene as UIWindowScene in UIApplication.shared.connectedScenes {
+            for window in scene.windows where window.overrideUserInterfaceStyle != style {
+                window.overrideUserInterfaceStyle = style
             }
         }
     }

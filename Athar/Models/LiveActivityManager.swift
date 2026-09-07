@@ -5,14 +5,23 @@ import ActivityKit
 
 /// النشاط الحيّ للصلاة القادمة (Dynamic Island وشاشة القفل).
 /// يُزامَن عند كل عودة إلى التطبيق: يُنهي ما انقضى موعده أو تبدّلت حالته، ويطلب
-/// نشاطًا واحدًا للصلاة القادمة. لا يرمي خطأً أبدًا — تعطيل المستخدم للأنشطة أو
-/// رفض النظام (حدّ الأنشطة، أو إيقافها في الإعدادات) يُسكَتان بصمت.
+/// نشاطًا واحدًا للصلاة القادمة إن كان أذانها قريبًا. لا يرمي خطأً أبدًا — تعطيل
+/// المستخدم للأنشطة أو رفض النظام (حدّ الأنشطة، أو إيقافها في الإعدادات) يُسكَتان بصمت.
 /// هدف النشر iOS 17، فلا حاجة لحراسة #available(iOS 16.2) على واجهات ActivityKit.
 @MainActor
 enum LiveActivityManager {
 
-    /// مهلة بعد الأذان يعدّ النظام بعدها النشاطَ قديمًا فيخفته ويطويه — تكفي لصلاة الجماعة.
-    private static let staleGrace: TimeInterval = 15 * 60
+    /// لا يُطلب النشاط إلا إذا كان الأذان القادم خلال هذه المهلة أو أقل: طلبه لصلاةٍ بعد
+    /// خمس ساعات يُبقي عدًّا على شاشة القفل والجزيرة طوال اليوم، فيبدو للمستخدم أن
+    /// التطبيق لا يهدأ. خارج النافذة تُنهى الأنشطة القائمة ويُنتظر تنشيطٌ لاحق.
+    /// نصف ساعة لا أكثر: النشاط لا يُنهى آليًّا بعد الأذان (انظر staleDate أدناه)، فكلّما
+    /// ضاقت النافذة قلّت المدة التي قد يبقى فيها يتيمًا على شاشة القفل.
+    static let requestWindow: TimeInterval = 30 * 60
+
+    /// تاريخ القِدَم (staleDate) هو الأذان نفسه. لا يُنهي النظامُ النشاطَ عنده ولا يطويه:
+    /// يعلّمه قديمًا (activityState = .stale، وisStale في الامتداد) فيعرض الامتداد
+    /// «حان وقت …» بدل عدٍّ صفري وشريطٍ ممتلئ. ولا مؤقّتات خلفية عندنا، فلا يُنهى إلا عند
+    /// التنشيط التالي للتطبيق (refresh يُنهي ما ليس .active) أو ببلوغ حدّ النظام.
 
     /// يُستدعى عند تنشيط المشهد ما دام المستخدم مفعّلًا للميزة.
     static func sync(store: AtharStore) {
@@ -31,18 +40,24 @@ enum LiveActivityManager {
     #if canImport(ActivityKit)
     private static func refresh(store: AtharStore) async {
         let running = Activity<NextPrayerAttributes>.activities
+        let now = Date()
         guard store.liveActivityEnabled,
               ActivityAuthorizationInfo().areActivitiesEnabled,
-              let up = store.upcomingPrayer(after: Date())
+              let up = store.upcomingPrayer(after: now),
+              up.date.timeIntervalSince(now) <= requestWindow
         else {
             await end(running)
             return
         }
 
+        // لحظة اليوم الآن — الاشتقاق نفسه الذي تلوّن به ويدجتات الشاشة الرئيسية خلفياتها،
+        // فتتطابق شاشة القفل معها. تُحمل في الحالة لأن الامتداد لا يُعيد الرسم من تلقاء نفسه.
+        let moment = AtharStyle.Moment.resolved(at: now, times: store.prayerTimes(for: now))
         let state = NextPrayerAttributes.ContentState(prayerTitle: up.prayer.title,
                                                        prayerKey: up.prayer.rawValue,
                                                        time: up.date,
-                                                       place: store.placeName)
+                                                       place: store.placeName,
+                                                       momentKey: moment.activityKey)
 
         // نشاطٌ قائم بالحالة نفسها يبقى كما هو (لا نعيد طلبه فيومض)، وما سواه —
         // انقضى موعده، أو تبدّل المكان أو طريقة الحساب — يُنهى فورًا.
@@ -58,8 +73,7 @@ enum LiveActivityManager {
         await end(stale)
         guard !kept else { return }
 
-        let content = ActivityContent(state: state,
-                                      staleDate: up.date.addingTimeInterval(staleGrace))
+        let content = ActivityContent(state: state, staleDate: up.date)
         do {
             _ = try Activity.request(attributes: NextPrayerAttributes(startedAt: Date()),
                                      content: content,

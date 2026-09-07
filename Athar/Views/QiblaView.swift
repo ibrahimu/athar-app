@@ -22,6 +22,11 @@ struct QiblaView: View {
 
     @Environment(\.colorScheme) private var scheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
+
+    /// هل الشاشة ظاهرة الآن؟ تُقرأ عند عودة التطبيق إلى الواجهة، فلا نعيد البوصلة لتبويبٍ
+    /// مطويّ: onDisappear لا يُسقط المعدِّلات، فتبويب القبلة غير المختار يبقى يتلقّى تغيّر المشهد.
+    @State private var isShown = false
 
     /// حروف الجهات الأربع على القرص — الشمال (ش) أبرزها والبقية مُلمَّحة.
     private let cardinalMarks: [QiblaCardinal] = [
@@ -93,8 +98,20 @@ struct QiblaView: View {
         .navigationTitle(loc("القبلة"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(isRootTab ? .visible : .hidden, for: .tabBar)
-        .onAppear { compass.start() }
-        .onDisappear { compass.stop() }
+        .onAppear { isShown = true; compass.start() }
+        .onDisappear { isShown = false; compass.stop() }
+        // قفل الشاشة أو الانتقال إلى تطبيق آخر لا يُطلق onDisappear، فكانت البوصلة (وسهم الموقع
+        // في شريط الحالة) تبقى تعمل ما دام التطبيق حيًّا في الخلفية. نوقفها عند دخول الخلفية
+        // — لا عند الخمول العابر (.inactive): مركز التحكّم، أو تنبيه إذن الموقع من منتقي المدينة،
+        // أو شاشة معايرة البوصلة نفسها، فإيقافها هناك يغلق المعايرة ويعيد فتحها رفرفةً —
+        // ونعيدها عند العودة إن كانت الشاشة ما زالت ظاهرة.
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .background {
+                compass.stop()
+            } else if phase == .active, isShown {
+                compass.start()
+            }
+        }
         .onChange(of: offBy) { _, off in
             guard let off else { return }
             // اهتزازة واحدة عند الانطباق (≤٤°)، ولا تعود إلا بعد ابتعاد حقيقي (>١٢°).

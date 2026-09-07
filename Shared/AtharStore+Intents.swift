@@ -10,6 +10,16 @@ private var pendingTabs: [ObjectIdentifier: AppTab] = [:]
 extension AtharStore {
     private enum IKey {
         static let liveActivity = "athar.liveActivity"
+        static let widgetPalette = "athar.widgetPalette"
+    }
+
+    // MARK: لون الويدجت
+
+    /// لون الويدجتات والنشاط الحيّ: مع وقت الصلاة (الافتراضي)، أو طابع التطبيق، أو لوحة ثابتة.
+    /// يقرؤه الامتداد من مجموعة التطبيق عبر AtharStyle.Moment.resolved.
+    var widgetPalette: AtharStyle.WidgetPalette {
+        get { AtharStyle.WidgetPalette(rawValue: defaults.string(forKey: IKey.widgetPalette) ?? "") ?? .auto }
+        set { defaults.set(newValue.rawValue, forKey: IKey.widgetPalette); objectWillChange.send() }
     }
 
     // MARK: النشاط الحيّ

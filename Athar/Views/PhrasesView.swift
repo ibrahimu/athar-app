@@ -7,10 +7,13 @@ struct PhrasesView: View {
     var isRootTab = false
     @State private var category: PhraseCategory?
     @State private var query = ""
-    @State private var story: StoryShareItem?
-    @State private var imageError = false
+    /// العبارة المفتوحة في مصمّم البطاقة (أو نصّ خاص فارغ يكتبه المستخدم).
+    @State private var designing: Phrase?
 
     private var tint: Color { Theme.accent(for: category?.accentKey ?? "gold") }
+    private var direction: LayoutDirection {
+        AppConfig.arabicOnly ? .rightToLeft : store.appLanguage.layoutDirection
+    }
     private var phrases: [Phrase] {
         let key = ArabicMatch.normalize(query.trimmingCharacters(in: .whitespacesAndNewlines))
         return PhraseLibrary.phrases(in: category).filter {
@@ -22,6 +25,7 @@ struct PhrasesView: View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 18) {
                 introduction
+                designYourOwn
                 categories
                 HStack {
                     Text(category?.title ?? "كل العبارات")
@@ -35,9 +39,7 @@ struct PhrasesView: View {
                 } else {
                     ForEach(phrases) { phrase in
                         PhraseCardView(phrase: phrase, fontScale: store.fontScale, haptics: store.hapticsEnabled) {
-                            if let image = StoryCard.render(phrase: phrase) {
-                                story = StoryShareItem(image: image)
-                            } else { imageError = true }
+                            designing = phrase
                         }
                     }
                 }
@@ -56,13 +58,38 @@ struct PhrasesView: View {
         .searchable(text: $query, prompt: "ابحث في النصوص والمصادر")
         .toolbar(isRootTab ? .visible : .hidden, for: .tabBar)
         .environment(\.layoutDirection, .rightToLeft)
-        .sheet(item: $story) { item in
-            ShareSheet(items: [item.image]).ignoresSafeArea()
-                .environment(\.layoutDirection, .rightToLeft)
+        // مصمّم البطاقة: يُفتح بالشكل المعتمد، فالمشاركة الفورية ضغطة واحدة، والتخصيص لمن أراد.
+        .sheet(item: $designing) { phrase in
+            StoryDesignerView(phrase: phrase)
+                .environment(\.layoutDirection, direction)
+                .atharSheetChrome()
         }
-        .alert("تعذّر إنشاء الصورة", isPresented: $imageError) {
-            Button("حسنًا", role: .cancel) {}
-        } message: { Text("حاول مرة أخرى، أو شارك العبارة كنص.") }
+    }
+
+    /// نصّ خاص فوق صورة بشكل التطبيق: تهنئة أو كلمة يكتبها المستخدم ثم يختار لونها ونقشها وخطها.
+    private var designYourOwn: some View {
+        Button {
+            Haptics.tap(enabled: store.hapticsEnabled)
+            designing = Phrase.custom("", category: .occasions)
+        } label: {
+            AtharCard(padding: 16, tint: Theme.accent(for: "calm")) {
+                HStack(spacing: 14) {
+                    IconChip(icon: "paintbrush.pointed.fill", tint: Theme.accent(for: "calm"), size: .md)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text("صمّم تهنئتك")
+                            .font(Theme.display(16, weight: .semibold)).foregroundStyle(Theme.ink)
+                        Text("اكتب نصّك، واختر اللون والنقش والخط، وشاركه صورة")
+                            .font(Theme.display(12)).foregroundStyle(Theme.inkSoft)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    Spacer(minLength: 0)
+                    Image(systemName: "chevron.forward")
+                        .font(.system(size: 12, weight: .semibold)).foregroundStyle(Theme.inkFaint)
+                }
+            }
+        }
+        .buttonStyle(.plain)
+        .pressable()
     }
 
     private var introduction: some View {
@@ -118,11 +145,6 @@ struct PhrasesView: View {
         .buttonStyle(.plain)
         .accessibilityAddTraits(selected ? .isSelected : [])
     }
-}
-
-private struct StoryShareItem: Identifiable {
-    let id = UUID()
-    let image: UIImage
 }
 
 private struct PhraseCardView: View {

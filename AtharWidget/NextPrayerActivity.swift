@@ -6,8 +6,11 @@ import ActivityKit
 // MARK: - النشاط الحيّ: الصلاة القادمة
 
 /// الصلاة القادمة بعدٍّ تنازلي في Dynamic Island وشاشة القفل.
-/// الألوان من هوية الويدجت (AtharStyle) لا من طابع التطبيق: شاشة القفل لا تعرف الطابع
-/// المختار ولا تُعاد رسمها عند تبديله، فتبقى لوحة الأوقات الثابتة أصدق.
+/// الألوان من هوية الويدجت (AtharStyle) لا من طابع التطبيق: لوحة لحظة اليوم نفسها التي
+/// تلبسها ويدجتات الشاشة الرئيسية، محمولةً في حالة النشاط وقت طلبه — فلا يظهر الويدجت
+/// بلون الغروب والنشاط بلون الليل معًا. شاشة القفل لا تُعاد رسمها من تلقاء نفسها.
+/// عند الأذان يعدّ النظام النشاطَ قديمًا (isStale) ولا يُنهيه — التطبيق يُنهيه عند تنشيطه
+/// التالي — فنعرض «حان وقت …» بدل عدٍّ صفري وشريط تقدّم ممتلئ قد يبقيان ساعات.
 /// هدف النشر iOS 17، فواجهات ActivityKit (iOS 16.2) متاحة بلا حراسة #available.
 struct NextPrayerActivity: Widget {
     var body: some WidgetConfiguration {
@@ -31,20 +34,30 @@ struct NextPrayerActivity: Widget {
                     .padding(.top, 4)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
-                    Text(timerInterval: look.range, countsDown: true)
-                    .environment(\.locale, Locale(identifier: "ar_SA@numbers=latn"))
-                        .monospacedDigit()
-                        .font(.system(size: 17, weight: .semibold, design: .rounded))
-                        .foregroundStyle(look.tint)
-                        .multilineTextAlignment(.trailing)
-                        .frame(width: 82, alignment: .trailing)
-                        .padding(.top, 4)
+                    Group {
+                        if look.isStale {
+                            Text(look.dueShort)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.7)
+                        } else {
+                            Text(timerInterval: look.range, countsDown: true)
+                                .environment(\.locale, Locale(identifier: "ar_SA@numbers=latn"))
+                                .monospacedDigit()
+                        }
+                    }
+                    .font(.system(size: 17, weight: .semibold, design: .rounded))
+                    .foregroundStyle(look.tint)
+                    .multilineTextAlignment(.trailing)
+                    .frame(width: 82, alignment: .trailing)
+                    .padding(.top, 4)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
                     VStack(spacing: 6) {
-                        ProgressView(timerInterval: look.range, countsDown: false)
-                            .progressViewStyle(.linear)
-                            .tint(look.tint)
+                        if !look.isStale {
+                            ProgressView(timerInterval: look.range, countsDown: false)
+                                .progressViewStyle(.linear)
+                                .tint(look.tint)
+                        }
                         HStack {
                             Text(look.state.place)
                                 .font(.system(size: 12))
@@ -64,14 +77,21 @@ struct NextPrayerActivity: Widget {
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(look.tint)
             } compactTrailing: {
-                Text(timerInterval: look.range, countsDown: true)
-                    .environment(\.locale, Locale(identifier: "ar_SA@numbers=latn"))
-                    .monospacedDigit()
-                    .font(.system(size: 13, weight: .semibold, design: .rounded))
-                    .foregroundStyle(look.tint)
-                    .multilineTextAlignment(.trailing)
-                    .minimumScaleFactor(0.7)
-                    .frame(width: 54, alignment: .trailing)
+                Group {
+                    if look.isStale {
+                        Text(look.dueShort)
+                            .lineLimit(1)
+                    } else {
+                        Text(timerInterval: look.range, countsDown: true)
+                            .environment(\.locale, Locale(identifier: "ar_SA@numbers=latn"))
+                            .monospacedDigit()
+                    }
+                }
+                .font(.system(size: 13, weight: .semibold, design: .rounded))
+                .foregroundStyle(look.tint)
+                .multilineTextAlignment(.trailing)
+                .minimumScaleFactor(0.7)
+                .frame(width: 54, alignment: .trailing)
             } minimal: {
                 Image(systemName: look.icon)
                     .font(.system(size: 12, weight: .semibold))
@@ -110,28 +130,43 @@ private struct NextPrayerLockScreenView: View {
                 Spacer(minLength: 8)
 
                 VStack(alignment: .trailing, spacing: 2) {
-                    Text(timerInterval: look.range, countsDown: true)
-                    .environment(\.locale, Locale(identifier: "ar_SA@numbers=latn"))
-                        .monospacedDigit()
-                        .font(.system(size: 24, weight: .bold, design: .rounded))
-                        .foregroundStyle(look.tint)
-                        .multilineTextAlignment(.trailing)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.7)
+                    if look.isStale {
+                        // بعد الأذان: جملة بدل عدٍّ صفري — النظام لا يطوي النشاط من تلقاء نفسه.
+                        Text(look.dueTitle)
+                            .font(.system(size: 17, weight: .bold, design: .rounded))
+                            .foregroundStyle(look.tint)
+                            .multilineTextAlignment(.trailing)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
+                    } else {
+                        Text(timerInterval: look.range, countsDown: true)
+                            .environment(\.locale, Locale(identifier: "ar_SA@numbers=latn"))
+                            .monospacedDigit()
+                            .font(.system(size: 24, weight: .bold, design: .rounded))
+                            .foregroundStyle(look.tint)
+                            .multilineTextAlignment(.trailing)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
+                    }
                     Text(look.clock)
                         .font(.system(size: 12, weight: .medium, design: .rounded))
                         .foregroundStyle(look.moment.inkSoft)
                 }
             }
 
-            // خط تقدّم رفيع: يمتلئ من بدء النشاط حتى الأذان.
-            ProgressView(timerInterval: look.range, countsDown: false)
-                .progressViewStyle(.linear)
-                .tint(look.tint)
-                .scaleEffect(x: 1, y: 0.6, anchor: .center)
+            // خط تقدّم رفيع: يمتلئ من بدء النشاط حتى الأذان — ويُخفى بعده، فلا يبقى ممتلئًا ساعات.
+            if !look.isStale {
+                ProgressView(timerInterval: look.range, countsDown: false)
+                    .progressViewStyle(.linear)
+                    .tint(look.tint)
+                    .scaleEffect(x: 1, y: 0.6, anchor: .center)
+            }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
+        // خلفية الويدجت نفسها (تدرّج اللحظة والوهج وحلقات الأثر) لا لونٌ مسطّح، فتبدو
+        // بطاقة شاشة القفل امتدادًا لبطاقة الشاشة الرئيسية. الحلقات أصغر كما في الويدجت الصغير.
+        .background(AtharStyle.Backdrop(moment: look.moment, rippleScale: 0.75))
         .environment(\.layoutDirection, .rightToLeft)
     }
 }
@@ -142,18 +177,31 @@ private struct NextPrayerLockScreenView: View {
 private struct NextPrayerLook {
     let state: NextPrayerAttributes.ContentState
     let startedAt: Date
+    /// هل بلغ النشاط تاريخ قِدَمه (الأذان)؟ النظام يعلّمه قديمًا فقط ولا يُنهيه — التطبيق
+    /// يُنهيه عند تنشيطه التالي — فتُستبدل بالعدّ جملةُ «حان وقت …» ويُخفى شريط التقدّم.
+    let isStale: Bool
 
     init(context: ActivityViewContext<NextPrayerAttributes>) {
         state = context.state
         startedAt = context.attributes.startedAt
+        isStale = context.isStale
     }
 
     private var prayer: Prayer { Prayer(rawValue: state.prayerKey) ?? .isha }
 
     var icon: String { prayer.icon }
 
-    /// لحظة الويدجت المقابلة للصلاة — لونها هويّتها الثابتة (فجر بنفسجي، مغرب وردي…).
+    /// «حان وقت العصر» — لشاشة القفل حيث المتّسع.
+    var dueTitle: String { loc("حان وقت %1$@", state.prayerTitle) }
+
+    /// «حان الوقت» — للجزيرة حيث اسم الصلاة مجاور والعرض ضيّق.
+    var dueShort: String { loc("حان الوقت") }
+
+    /// لحظة اليوم كما رآها التطبيق وقت طلب النشاط — لوحة الويدجتات نفسها (قبل العشاء غروبٌ
+    /// ورديّ كالويدجت، لا ليلٌ أزرق). نشاطٌ قائم من إصدار سابق بلا مفتاح يسقط إلى لحظة
+    /// الصلاة نفسها كما كان.
     var moment: AtharStyle.Moment {
+        if let key = state.momentKey, let m = AtharStyle.Moment(activityKey: key) { return m }
         switch prayer {
         case .fajr, .sunrise: return .dawn
         case .dhuhr:          return .noon

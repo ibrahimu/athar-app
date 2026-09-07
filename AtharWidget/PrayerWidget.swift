@@ -27,7 +27,7 @@ struct PrayerProvider: TimelineProvider {
                            zone: store.placeTimeZone,
                            upcoming: upcoming,
                            today: today?.ordered ?? [],
-                           moment: .at(date, times: today))
+                           moment: .resolved(at: date, times: today))
     }
 
     func placeholder(in context: Context) -> PrayerEntry {

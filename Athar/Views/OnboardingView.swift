@@ -1,16 +1,20 @@
 import SwiftUI
 import CoreLocation
+import UserNotifications
 
-/// تظهر مرة واحدة عند أول تشغيل، في أربع خطوات: ترحيب، موقع، تنبيهات، مظهر.
+/// تظهر مرة واحدة عند أول تشغيل، في خمس خطوات: ترحيب، موقع، تنبيهات، أذان، مظهر.
 /// كل خطوة تُتخطّى بلا أثر، ولا شيء يُفعّل دون علم المستخدم — وكل ما يُختار هنا
 /// يبقى قابلًا للتغيير لاحقًا من الإعدادات.
 struct OnboardingView: View {
     @EnvironmentObject private var store: AtharStore
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
+    // مشغّل الاستماع لخطوة الأذان — بالنمط نفسه الذي يراقب به AthanSoundPicker المفرد المشترك.
+    @StateObject private var preview = AthanPreview.shared
 
     /// ترتيب الخطوات هو ترتيب الحالات؛ «التالي» يزيد الرقم واحدًا.
-    private enum Step: Int, CaseIterable { case welcome, location, reminders, appearance }
+    private enum Step: Int, CaseIterable { case welcome, location, reminders, athan, appearance }
     @State private var step: Step = .welcome
 
     @State private var wantAdhkar = true
@@ -21,6 +25,9 @@ struct OnboardingView: View {
     @State private var showCityPicker = false
     @State private var working = false
     @State private var denied = false
+    /// حالة إذن الإشعارات كما يراها نظام التشغيل — تُقرأ عند دخول خطوة الأذان وعند العودة من
+    /// إعدادات الجهاز، حتى لا يوهم مفتاح مفعّل بأذان لن يصل لأن الإذن لم يُمنح.
+    @State private var notifStatus: UNAuthorizationStatus = .notDetermined
 
     var body: some View {
         ZStack {
@@ -38,6 +45,8 @@ struct OnboardingView: View {
                         page { OnboardingLocationStep(store: store) { showCityPicker = true } }
                     case .reminders:
                         page { reminders }
+                    case .athan:
+                        page { athan }
                     case .appearance:
                         page { appearance }
                     }
@@ -50,10 +59,8 @@ struct OnboardingView: View {
             }
         }
         .alert(loc("الإشعارات موقوفة"), isPresented: $denied) {
-            Button(loc("فتح الإعدادات")) {
-                if let u = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(u) }
-            }
-            // «لاحقًا» تُكمل إلى خطوة المظهر لا تُنهي التدفّق: رفض الإشعارات لا يعني رفض الباقي.
+            Button(loc("فتح الإعدادات")) { openSystemSettings() }
+            // «لاحقًا» تُكمل إلى الخطوة التالية لا تُنهي التدفّق: رفض الإشعارات لا يعني رفض الباقي.
             Button(loc("later"), role: .cancel) { advance() }
         } message: {
             Text(loc("لتصلك التذكيرات، اسمح للتطبيق بالإشعارات من إعدادات الجهاز. يمكنك تفعيلها لاحقًا من إعدادات أثر."))
@@ -63,6 +70,23 @@ struct OnboardingView: View {
             OnboardingLocationHost(store: store)
                 .atharSheetChrome()
         }
+        // مغادرة خطوة الأذان توقف الاستماع: لا يبقى أذان يعمل خلف خطوة أخرى.
+        .onChange(of: step) { _, _ in preview.stop() }
+        // الخلفية توقف الاستماع؛ والعودة إلى المقدّمة تعيد قراءة الإذن — ربّما سمح به من إعدادات الجهاز.
+        .onChange(of: scenePhase) { _, phase in
+            if phase != .active { preview.stopIfBackgrounded() }
+            else if step == .athan { refreshNotifStatus() }
+        }
+        // دخول خطوة الأذان يقرأ الإذن الذي حسمته خطوة التذكيرات للتوّ (أو لم تحسمه).
+        .task(id: step) { if step == .athan { refreshNotifStatus() } }
+    }
+
+    private func refreshNotifStatus() {
+        Task { notifStatus = await Reminders.authorizationStatus() }
+    }
+
+    private func openSystemSettings() {
+        if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
     }
 
     // MARK: الإطار العلوي — مؤشّر الخطوات و«تخطّي»
@@ -222,23 +246,160 @@ struct OnboardingView: View {
         }
     }
 
-    private func hint(_ icon: String, _ text: String) -> some View {
+    /// تلميح خافت أسفل البطاقة؛ يقبل زرًّا اختياريًا تحت النص (كزرّ «فتح الإعدادات» في خطوة الموقع).
+    private func hint(_ icon: String, _ text: String,
+                      action: (title: String, run: () -> Void)? = nil) -> some View {
         HStack(alignment: .top, spacing: 8) {
             Image(systemName: icon)
                 .font(.system(size: 12))
                 .foregroundStyle(Theme.inkFaint)
                 .padding(.top, 2)
-            Text(text)
-                .font(Theme.display(12))
-                .foregroundStyle(Theme.inkFaint)
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            VStack(alignment: .leading, spacing: 8) {
+                Text(text)
+                    .font(Theme.display(12))
+                    .foregroundStyle(Theme.inkFaint)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let action {
+                    Button(action.title, action: action.run)
+                        .font(Theme.display(13, weight: .semibold))
+                        .foregroundStyle(Theme.accent)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(14)
         .background(RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous).fill(Theme.surfaceAlt))
     }
 
-    // MARK: ٤ — المظهر
+    // MARK: ٤ — الأذان
+
+    /// لون الخطوة — لون «صوت الأذان» نفسه في الإعدادات.
+    private var athanTint: Color { Theme.accent(for: "dusk") }
+
+    /// الخطوة كلها على شاشة واحدة بلا تمرير (ستة أصوات): مسافات أضيق من خطوة التذكيرات،
+    /// والتلميح تحت مفتاحه مباشرةً لا في ذيل الصفحة حيث يختفي خلف الأزرار.
+    private var athan: some View {
+        VStack(spacing: 14) {
+            VStack(spacing: 6) {
+                Text(loc("الأذان"))
+                    .font(Theme.display(22, weight: .bold))
+                    .foregroundStyle(Theme.ink)
+                Text(loc("اختر صوت المؤذّن، واستمع قبل أن تقرّر."))
+                    .font(Theme.display(14))
+                    .foregroundStyle(Theme.inkSoft)
+                    .multilineTextAlignment(.center)
+            }
+
+            // المتغيّر نفسه الذي تكتبه خطوة التذكيرات في «أوقات الصلاة»، فالمفتاحان متزامنان.
+            SettingsCard {
+                row("bell.and.waves.left.and.right.fill", athanTint, loc("الأذان عند دخول وقت الصلاة"),
+                    loc("تنبيه بصوت المؤذّن الذي تختاره"), $wantAthan)
+            }
+
+            // المفتاح بلا إذن إشعارات لا يفعل شيئًا، فالتلميح يقول ذلك صراحةً — تحت المفتاح لا آخر الصفحة.
+            if !wantAthan {
+                hint("speaker.slash.fill",
+                     loc("الصوت المختار يُستعمل حين تفعّل تنبيه الصلاة، الآن أو لاحقًا من الإعدادات."))
+            } else if notifStatus == .authorized {
+                hint("waveform",
+                     loc("يصلك أوّل ثلاثين ثانية من الأذان المختار عند كل وقت."))
+            } else if notifStatus == .notDetermined {
+                // لم يُطلب الإذن (ضغط «لاحقًا» في خطوة التذكيرات)، ولا نطلبه هنا: التفعيل من الإعدادات.
+                hint("bell.badge",
+                     loc("لم يُطلب إذن الإشعارات بعد؛ فعّل الأذان لاحقًا من الإعدادات ← الصلاة."))
+            } else {
+                hint("bell.slash.fill",
+                     loc("الإشعارات موقوفة؛ اسمح بها من إعدادات الجهاز ليصلك الأذان."),
+                     action: (loc("فتح الإعدادات"), openSystemSettings))
+            }
+
+            VStack(spacing: 6) {
+                SettingsGroupTitle(text: loc("صوت الأذان"), tint: athanTint)
+                SettingsCard {
+                    ForEach(Array(AthanSound.allCases.enumerated()), id: \.element.id) { i, sound in
+                        soundRow(sound)
+                        if i < AthanSound.allCases.count - 1 { SettingsDivider(inset: 44) }
+                    }
+                }
+            }
+        }
+        .animation(reduceMotion ? nil : Motion.smooth, value: wantAthan)
+        .animation(reduceMotion ? nil : Motion.smooth, value: notifStatus)
+    }
+
+    /// صف مؤذّن بأسلوب AthanSoundPicker: الاختيار يُكتب فورًا، والاستماع لا يغيّر الاختيار.
+    private func soundRow(_ sound: AthanSound) -> some View {
+        let selected = store.athanSound == sound
+        let isPlaying = preview.playing == sound
+
+        // صفٌّ مضغوط (سطران بلا فراغ زائد) حتى تتّسع الأصوات الستة مع المفتاح والتلميح في شاشة واحدة.
+        return VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .center, spacing: 10) {
+                Button {
+                    guard !selected else { return }
+                    store.athanSound = sound
+                    Haptics.tap(enabled: store.hapticsEnabled)
+                    // الإشعارات المجدولة تحمل الصوت وقت جدولتها، فإن كان التنبيه مفعّلًا
+                    // أعدنا الجدولة فورًا — كما يفعل AthanSoundPicker عبر onChange — حتى لا
+                    // يصدح الأذان التالي بالصوت القديم لو خرج المستخدم بـ«تخطّي».
+                    if store.athanAlerts { Task { await Reminders.rescheduleAll(store: store) } }
+                } label: {
+                    HStack(alignment: .center, spacing: 10) {
+                        Image(systemName: selected ? "checkmark.circle.fill" : "circle")
+                            .font(.system(size: 18))
+                            .foregroundStyle(selected ? Theme.accent : Theme.inkFaint)   // hairline يكاد يختفي
+
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(sound.title)
+                                .font(Theme.display(15, weight: selected ? .semibold : .regular))
+                                .foregroundStyle(Theme.ink)
+                                .multilineTextAlignment(.leading)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.85)
+                            Text(sound.detail)
+                                .font(Theme.display(11))
+                                .foregroundStyle(Theme.inkFaint)
+                                .multilineTextAlignment(.leading)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.85)
+                        }
+                        Spacer(minLength: 0)
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(selected ? .isSelected : [])
+
+                // نغمة النظام لا ملفّ لها فلا زرّ استماع.
+                if sound != .system {
+                    Button { preview.toggle(sound) } label: {
+                        Image(systemName: isPlaying ? "stop.circle.fill" : "play.circle.fill")
+                            .font(.system(size: 26))
+                            .foregroundStyle(isPlaying ? athanTint : Theme.accent)
+                            .frame(width: 40, height: 36)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel(isPlaying ? loc("إيقاف الاستماع إلى %1$@", sound.title)
+                                                  : loc("استمع إلى %1$@", sound.title))
+                }
+            }
+
+            if isPlaying {
+                Text(loc("يُشغَّل التسجيل الكامل — التنبيه يستخدم أوّل 30 ثانية"))
+                    .font(Theme.display(11))
+                    .foregroundStyle(athanTint)
+                    .padding(.top, 6)
+                    .padding(.leading, 28)
+                    .transition(.opacity)
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 9)
+        .animation(reduceMotion ? nil : Motion.snappy, value: isPlaying)
+    }
+
+    // MARK: ٥ — المظهر
 
     private var appearance: some View {
         VStack(spacing: 22) {
@@ -412,6 +573,10 @@ struct OnboardingView: View {
                 // بلا اختيار لا يوجد ما يُفعَّل، فيصدق الزر ويقول «التالي».
                 primary(anySelected ? loc("فعّل التذكيرات") : loc("التالي"), busy: working) { enable() }
                 later { advance() }
+            case .athan:
+                // الاختيار كُتب فورًا في الصفوف، فلا «تفعيل» هنا — «التالي» و«لاحقًا» كلاهما يُكمل.
+                primary(loc("التالي")) { advance() }
+                later { advance() }
             case .appearance:
                 primary(loc("ابدأ باستخدام التطبيق")) { finish() }
             }
@@ -456,9 +621,23 @@ struct OnboardingView: View {
     // MARK: المنطق
 
     private func advance() {
+        if step == .athan { commitAthan() }
         guard let next = Step(rawValue: step.rawValue + 1) else { finish(); return }
         withAnimation(reduceMotion ? nil : Motion.smooth) { step = next }
         Haptics.tap(enabled: store.hapticsEnabled)
+    }
+
+    /// مغادرة خطوة الأذان بأي زرّ («التالي»، «لاحقًا»، «تخطّي»): المفتاح قد تبدّل بعد أن كتبته
+    /// خطوة التذكيرات، فنثبّته ونعيد الجدولة إن تبدّل فقط — تبدّل الصوت أُعيدت جدولته لحظة
+    /// اختياره. بلا طلب إذن جديد؛ الإذن شأن خطوة التذكيرات وحدها، ومن لم يمنحه بعد لا يُكتب
+    /// له شيء (كما لو ضغط «لاحقًا» هناك). المخزن مفرد مشترك، فتُكمل المهمة بعد الإغلاق أيضًا.
+    private func commitAthan() {
+        Task {
+            guard await Reminders.authorizationStatus() == .authorized else { return }
+            guard store.athanAlerts != wantAthan else { return }
+            store.athanAlerts = wantAthan
+            await Reminders.rescheduleAll(store: store)
+        }
     }
 
     private func enable() {
@@ -484,6 +663,9 @@ struct OnboardingView: View {
     }
 
     private func finish() {
+        preview.stop()
+        // «تخطّي» من خطوة الأذان يحترم ما قلبه المستخدم في المفتاح كما تفعل «لاحقًا».
+        if step == .athan { commitAthan() }
         store.didOnboard = true
         dismiss()
     }

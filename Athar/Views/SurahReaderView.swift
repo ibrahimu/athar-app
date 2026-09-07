@@ -39,7 +39,23 @@ struct ReadingPalette {
 private enum ReaderWake {
     private static var depth = 0
 
+    /// اليقظة تلزم التطبيقَ الظاهرَ فقط: قفل الشاشة أو الانتقال إلى تطبيق آخر لا يُطلق
+    /// onDisappear، فيُعاد المؤقّت عند مغادرة الواجهة ويُردّ بحسب العدّاد عند العودة —
+    /// لا ينتظر خروج القارئ. يُسجَّل مرّة واحدة عند أول دخول.
+    private static let lifecycle: [NSObjectProtocol] = {
+        let center = NotificationCenter.default
+        return [
+            center.addObserver(forName: UIApplication.willResignActiveNotification, object: nil, queue: .main) { _ in
+                UIApplication.shared.isIdleTimerDisabled = false
+            },
+            center.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { _ in
+                UIApplication.shared.isIdleTimerDisabled = depth > 0
+            },
+        ]
+    }()
+
     static func enter() {
+        _ = lifecycle
         depth += 1
         UIApplication.shared.isIdleTimerDisabled = true
     }
@@ -55,6 +71,7 @@ struct SurahReaderView: View {
     var scrollTo: AyahRef? = nil
 
     @EnvironmentObject private var store: AtharStore
+    @Environment(\.scenePhase) private var scenePhase
     @StateObject private var audio = Recitation.shared
     @StateObject private var ayahAudio = AyahAudio.shared
     @State private var showControls = false
@@ -267,7 +284,7 @@ struct SurahReaderView: View {
         // القارئ يُمسك المصحف دقائق دون لمس — لا تنطفئ الشاشة عليه.
         .onAppear {
             ReaderWake.enter()
-            store.readerScheme = effectiveTheme == .night ? .dark : .light
+            syncScheme()
         }
         .onDisappear {
             ReaderWake.exit()
@@ -276,7 +293,17 @@ struct SurahReaderView: View {
             ayahAudio.stop()
             TafsirSpeaker.shared.stop()
         }
-        .onChange(of: store.readingTheme) { _, t in store.readerScheme = t == .night ? .dark : .light }
+        // السِمة المفروضة على النافذة تتبع الورق الفعليّ (بما فيه الليليّ التلقائي) لا الاختيار
+        // المحفوظ وحده: اختيار «ورق» بعد العشاء مع الليليّ التلقائي كان يترك الورق ليليًّا وشريط
+        // الحالة والمبدّل نهاريَّين. والعودة من الخلفية تعيد المطابقة — فقد يكون العشاء دخل أو
+        // الفجر طلع في الغياب.
+        .onChange(of: store.readingTheme) { _, _ in syncScheme() }
+        .onChange(of: store.readingThemeAuto) { _, _ in syncScheme() }
+        .onChange(of: scenePhase) { _, phase in if phase == .active { syncScheme() } }
+    }
+
+    private func syncScheme() {
+        store.readerScheme = effectiveTheme == .night ? .dark : .light
     }
 
     // MARK: عرض آية آية (تمرير عمودي)

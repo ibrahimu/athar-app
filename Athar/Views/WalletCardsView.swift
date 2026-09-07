@@ -2,8 +2,10 @@ import SwiftUI
 import PassKit
 
 /// «بطاقات Wallet»: مكتبة بطاقات موقَّعة مسبقًا (آية الكرسي، خواتيم البقرة، سيد الاستغفار،
-/// أذكار الصباح والمساء…) يختار المستخدم منها ما يضيفه إلى Apple Wallet عبر
-/// PKAddPassesViewController — لا يحتاج استحقاقًا ولا خادمًا. الموجود منها في المحفظة
+/// أذكار الصباح والمساء…) يختار المستخدم منها ما يضيفه إلى Apple Wallet — لا يحتاج
+/// استحقاقًا ولا خادمًا. البطاقة الواحدة عبر PKAddPassesViewController في ورقة، و«أضف الكل»
+/// عبر واجهة النظام PKPassLibrary.addPasses بلا متحكّم عرض؛ وإن اختار المستخدم «مراجعة»
+/// فورقة النظام لكل بطاقة على حدة عند رفض القائمة المتعددة. الموجود منها في المحفظة
 /// يُعلَّم بختم، ويُفتح من Wallet مباشرة.
 struct WalletCardsView: View {
     @EnvironmentObject private var store: AtharStore
@@ -12,11 +14,16 @@ struct WalletCardsView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var query = ""
     @State private var preview: WalletCard?
-    @State private var pending: [PKPass] = []
-    @State private var showAdd = false
+    @State private var addRequest: AddPassesRequest?
+    /// ما بقي من بطاقات «مراجعة» تُعرض واحدةً واحدة بعد إغلاق كل ورقة.
+    @State private var reviewQueue: [PKPass] = []
+    @State private var isAddingAll = false
+    @State private var walletUnavailable = false
     @State private var passes: [String: PKPass] = [:]
     @State private var isLoading = true
     @State private var inWallet: Set<String> = []
+    /// مكتبة محفوظة لا مؤقتة، كي لا تسقط قبل وصول إكمال addPasses.
+    private let library = PKPassLibrary()
 
     private var tint: Color { Theme.accent(for: "gold") }
     private var direction: LayoutDirection {
@@ -45,20 +52,31 @@ struct WalletCardsView: View {
                 .readableWidth(560)
             }
             .scrollIndicators(.hidden)
-            // ورقة الإضافة الجماعية («أضف الكل») على المُمرِّر، وورقة المعاينة على الحاوية:
-            // ورقتان على عنصر واحد تتنازعان العرض.
-            .sheet(isPresented: $showAdd, onDismiss: refresh) {
-                AddPassesController(passes: pending) {
-                    showAdd = false
+            // ورقة النظام لمراجعة البطاقات على المُمرِّر، وورقة المعاينة على الحاوية:
+            // ورقتان على عنصر واحد تتنازعان العرض. الورقة مربوطة بطلب لا يُنشأ إلا
+            // بمتحكّم حقيقي، فلا تُعرض أبدًا فارغة. التالي من طابور المراجعة يُعرض من
+            // onDismiss لا من onFinish، حتى يكتمل إغلاق الورقة قبل عرض ما بعدها.
+            .sheet(item: $addRequest, onDismiss: presentNextReview) { request in
+                AddPassesController(controller: request.controller) {
+                    addRequest = nil
                     refresh()
                 }
                 .ignoresSafeArea()
                 .environment(\.layoutDirection, direction)
             }
+            .alert(loc("تعذّر فتح واجهة الإضافة الآن"), isPresented: $walletUnavailable) {
+                Button(loc("حسنًا"), role: .cancel) {}
+            } message: {
+                Text(loc("لم يقبل النظام فتح واجهة الإضافة. حاول مرة أخرى بعد قليل."))
+            }
         }
         .navigationTitle(loc("بطاقات المحفظة"))
         .searchable(text: $query, prompt: "ابحث عن بطاقة أو ذكر")
-        .onChange(of: scenePhase) { _, phase in if phase == .active { refresh() } }
+        // واجهة النظام بعيدة عن المشهد، فلا يعود نشطًا إلا بعد زوالها: إن لم يصل
+        // الإكمال (تعليق التطبيق أثناء ظهورها) لا يبقى «أضف الكل» ميتًا.
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { isAddingAll = false; refresh() }
+        }
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(isRootTab ? .visible : .hidden, for: .tabBar)
         .task {
@@ -109,7 +127,7 @@ struct WalletCardsView: View {
 
     private func section(_ group: WalletCardLibrary.Group) -> some View {
         let missing = group.cards.filter { !inWallet.contains($0.id) && passes[$0.id] != nil }
-        let addAll: (() -> Void)? = (canAdd && missing.count > 1) ? { add(missing) } : nil
+        let addAll: (() -> Void)? = (canAdd && missing.count > 1) ? { self.addAll(missing) } : nil
         return VStack(alignment: .leading, spacing: 10) {
             SectionHeader(title: group.title, tint: tint, action: addAll, actionTitle: loc("أضف الكل"))
             AtharCard(padding: 0) {
@@ -138,13 +156,14 @@ struct WalletCardsView: View {
             preview = card
         } label: {
             HStack(alignment: .center, spacing: 14) {
+                // بطاقة مصغّرة بلون القسم نفسه الذي في Wallet: ورقها وحبرها من فهرس البطاقات.
                 ZStack {
-                    RoundedRectangle(cornerRadius: 12).fill(Theme.accent.opacity(0.09))
+                    RoundedRectangle(cornerRadius: 12).fill(Color(hex: card.backgroundHex))
                     Image(systemName: card.isQuran ? "book.closed" : "sparkles")
-                        .font(.system(size: 23, weight: .light)).foregroundStyle(Theme.accent)
+                        .font(.system(size: 23, weight: .light)).foregroundStyle(Color(hex: card.inkHex))
                 }
                 .frame(width: 56, height: 68)
-                .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(tint.opacity(0.25), lineWidth: 0.7))
+                .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Color(hex: card.labelHex).opacity(0.45), lineWidth: 0.7))
                 .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 6) {
                     Text(card.title).font(Theme.display(16, weight: .semibold)).foregroundStyle(Theme.ink)
@@ -172,16 +191,58 @@ struct WalletCardsView: View {
     /// containsPass لا يحتاج استحقاق Pass Type ID، بخلاف passes().
     private func refresh() {
         guard PKPassLibrary.isPassLibraryAvailable() else { return }
-        let library = PKPassLibrary()
         inWallet = Set(passes.filter { library.containsPass($0.value) }.map(\.key))
     }
 
-    private func add(_ cards: [WalletCard]) {
+    /// «أضف الكل»: واجهة النظام لإضافة عدة بطاقات دفعة واحدة بلا متحكّم عرض —
+    /// PKAddPassesViewController(passes:) يعيد nil لقائمة متعددة على بعض الأجهزة
+    /// فكانت تظهر ورقة بيضاء ثم تختفي. إن اختار المستخدم «مراجعة» تُعرض له ورقة النظام
+    /// عبر present (قائمة كاملة، أو واحدةً واحدة إن رفضها النظام).
+    private func addAll(_ cards: [WalletCard]) {
         let list = cards.compactMap { passes[$0.id] }
-        guard !list.isEmpty else { return }
+        guard !list.isEmpty, !isAddingAll else { return }
+        guard PKPassLibrary.isPassLibraryAvailable() else { walletUnavailable = true; return }
         Haptics.tap(enabled: store.hapticsEnabled)
-        pending = list
-        showAdd = true
+        isAddingAll = true
+        library.addPasses(list) { status in
+            Task { @MainActor in
+                isAddingAll = false
+                refresh()
+                switch status {
+                case .didAddPasses:
+                    Haptics.done(enabled: store.hapticsEnabled)
+                    // قد يلتزم passd بالإضافة بعد الإكمال بلحظة، ولا إشعار تغيّر بلا
+                    // استحقاق Pass Type ID — قراءة ثانية رخيصة بعد مهلة قصيرة.
+                    try? await Task.sleep(for: .seconds(1))
+                    refresh()
+                case .shouldReviewPasses: present(list)
+                case .didCancelAddPasses: break
+                @unknown default: break
+                }
+            }
+        }
+    }
+
+    /// ورقة النظام لبطاقة أو أكثر: إن رفض النظام القائمة المتعددة (init يعيد nil على
+    /// الجهاز) تُراجَع البطاقات واحدةً واحدة عبر reviewQueue — المتحكّم المفرد هو نفسه
+    /// الذي يعمل لبطاقة واحدة. التنبيه فقط حين يرفض النظام حتى البطاقة الواحدة.
+    private func present(_ list: [PKPass]) {
+        if let request = AddPassesRequest(passes: list) {
+            addRequest = request
+        } else if list.count > 1, let first = list.first {
+            reviewQueue = Array(list.dropFirst())
+            present([first])
+        } else {
+            reviewQueue = []
+            walletUnavailable = true
+        }
+    }
+
+    /// بعد إغلاق ورقة النظام: تحديث الختم، ثم التالي من طابور المراجعة إن بقي شيء.
+    private func presentNextReview() {
+        refresh()
+        guard !reviewQueue.isEmpty else { return }
+        present([reviewQueue.removeFirst()])
     }
 }
 
@@ -190,6 +251,7 @@ struct WalletCardsView: View {
 private struct WalletCardSheet: View {
     @EnvironmentObject private var store: AtharStore
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.layoutDirection) private var direction
     let card: WalletCard
     let tint: Color
     let pass: PKPass?
@@ -198,7 +260,8 @@ private struct WalletCardSheet: View {
     let isLoading: Bool
     var onChange: () -> Void
 
-    @State private var showAdd = false
+    @State private var addRequest: AddPassesRequest?
+    @State private var walletUnavailable = false
 
     var body: some View {
         NavigationStack {
@@ -221,14 +284,33 @@ private struct WalletCardSheet: View {
                     Button(loc("إغلاق")) { dismiss() }
                 }
             }
-            .sheet(isPresented: $showAdd, onDismiss: onChange) {
-                AddPassesController(passes: pass.map { [$0] } ?? []) {
-                    showAdd = false
+            .sheet(item: $addRequest, onDismiss: onChange) { request in
+                AddPassesController(controller: request.controller) {
+                    addRequest = nil
+                    if let pass, PKPassLibrary.isPassLibraryAvailable(), PKPassLibrary().containsPass(pass) {
+                        Haptics.done(enabled: store.hapticsEnabled)
+                    }
                     onChange()
                     dismiss()
                 }
                 .ignoresSafeArea()
+                .environment(\.layoutDirection, direction)
             }
+            .alert(loc("تعذّر فتح واجهة الإضافة الآن"), isPresented: $walletUnavailable) {
+                Button(loc("حسنًا"), role: .cancel) {}
+            } message: {
+                Text(loc("لم يقبل النظام فتح واجهة الإضافة. حاول مرة أخرى بعد قليل."))
+            }
+        }
+    }
+
+    /// لا تُفتح الورقة إلا بمتحكّم حقيقي؛ إن رفض النظام إنشاءه فتنبيه بدل ورقة بيضاء.
+    private func requestAdd() {
+        Haptics.tap(enabled: store.hapticsEnabled)
+        if let pass, let request = AddPassesRequest(passes: [pass]) {
+            addRequest = request
+        } else {
+            walletUnavailable = true
         }
     }
 
@@ -277,11 +359,8 @@ private struct WalletCardSheet: View {
                 .font(Theme.display(13))
                 .foregroundStyle(Theme.inkSoft)
         } else if canAdd {
-            WalletAddButton {
-                Haptics.tap(enabled: store.hapticsEnabled)
-                showAdd = true
-            }
-            .frame(width: 230, height: 50)
+            WalletAddButton(action: requestAdd)
+                .frame(width: 230, height: 50)
         } else {
             Text(loc("Apple Wallet غير متاح على هذا الجهاز."))
                 .font(Theme.display(13))
@@ -292,24 +371,33 @@ private struct WalletCardSheet: View {
 
 // MARK: - ورقة Wallet النظامية
 
+/// طلب فتح ورقة النظام: يُنشأ المتحكّم مسبقًا، فإن رفض النظام (canAddPasses كاذبة، أو
+/// init يعيد nil كما يحدث على الجهاز لقائمة متعددة) فلا طلب أصلًا — ولا ورقة فارغة.
+private struct AddPassesRequest: Identifiable {
+    let id = UUID()
+    let controller: PKAddPassesViewController
+
+    init?(passes: [PKPass]) {
+        guard !passes.isEmpty, PKAddPassesViewController.canAddPasses(),
+              let controller = PKAddPassesViewController(passes: passes) else { return nil }
+        self.controller = controller
+    }
+}
+
 /// PKAddPassesViewController داخل ورقة SwiftUI: أزرار «إلغاء/إضافة» من النظام،
 /// وإغلاق الورقة على عاتقنا عند انتهائه.
 private struct AddPassesController: UIViewControllerRepresentable {
-    let passes: [PKPass]
+    let controller: PKAddPassesViewController
     let onFinish: () -> Void
 
     func makeCoordinator() -> Coordinator { Coordinator(onFinish: onFinish) }
 
-    func makeUIViewController(context: Context) -> UIViewController {
-        guard !passes.isEmpty, let controller = PKAddPassesViewController(passes: passes) else {
-            DispatchQueue.main.async { onFinish() }
-            return UIViewController()
-        }
+    func makeUIViewController(context: Context) -> PKAddPassesViewController {
         controller.delegate = context.coordinator
         return controller
     }
 
-    func updateUIViewController(_ controller: UIViewController, context: Context) {
+    func updateUIViewController(_ controller: PKAddPassesViewController, context: Context) {
         context.coordinator.onFinish = onFinish
     }
 
@@ -323,8 +411,10 @@ private struct AddPassesController: UIViewControllerRepresentable {
 /// معاينة من أصل الرسم نفسه الذي يُوقّع داخل ملف البطاقة.
 private struct WalletCardArtwork: View {
     let card: WalletCard
-    private let ink = Color(hex: 0x14362C)
-    private let gold = Color(hex: 0xA67C30)
+    // ألوان القسم من فهرس البطاقات — الأصل نفسه الذي وُقّع في ملف البطاقة، فلا تختلف المعاينة عن Wallet.
+    private var ink: Color { Color(hex: card.inkHex) }
+    private var gold: Color { Color(hex: card.labelHex) }
+    private var paper: Color { Color(hex: card.backgroundHex) }
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
@@ -355,10 +445,10 @@ private struct WalletCardArtwork: View {
             }
             .padding(20)
         }
-        .background(Color(hex: 0xF7F2E7))
+        .background(paper)
         .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 22).strokeBorder(gold.opacity(0.3), lineWidth: 0.7))
-        .shadow(color: ink.opacity(0.12), radius: 15, y: 8)
+        .shadow(color: Color.black.opacity(0.12), radius: 15, y: 8)
         .environment(\.layoutDirection, .rightToLeft)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("معاينة بطاقة \(card.title). النص الكامل أسفل زر الإضافة.")

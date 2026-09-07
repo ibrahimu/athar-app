@@ -34,7 +34,7 @@ struct DhikrProvider: TimelineProvider {
     func placeholder(in context: Context) -> DhikrEntry {
         let d = dhikr(at: Date())
         return DhikrEntry(date: Date(), dhikr: d, categoryTitle: category(for: d),
-                          moment: .at(Date(), times: AtharStore.shared.prayerTimes()))
+                          moment: .resolved(at: Date(), times: AtharStore.shared.prayerTimes()))
     }
 
     func getSnapshot(in context: Context, completion: @escaping (DhikrEntry) -> Void) {
@@ -49,7 +49,7 @@ struct DhikrProvider: TimelineProvider {
             let date = now.addingTimeInterval(Double(offset) * 1800)
             let d = dhikr(at: date)
             entries.append(DhikrEntry(date: date, dhikr: d, categoryTitle: category(for: d),
-                                      moment: .at(date, times: AtharStore.shared.prayerTimes(for: date))))
+                                      moment: .resolved(at: date, times: AtharStore.shared.prayerTimes(for: date))))
         }
         completion(Timeline(entries: entries, policy: .atEnd))
     }
