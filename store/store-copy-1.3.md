@@ -15,6 +15,18 @@
 - **الصوت يستمر**: التلاوة والإذاعة تعملان بعد إغلاق التطبيق، بتحكّم كامل من شاشة القفل ومركز التحكم.
 - **الإعدادات مرتّبة**: المظهر والخط، الصلاة والمواقيت، التذكيرات، المصحف والقراءة، بياناتك، التطبيق — كلٌّ في صفحته.
 - **إحسان**: شعار منصة إحسان الملوّن في بطاقة الصدقة، ويتّبع الطابع الموحّد إن اخترته.
+- **الانتقال إلى صفحة أو جزء**: اكتب الرقم في بحث المصحف فتنتقل إليه، أو اضغط شريط الموضع في القارئ واختر صفحة أو جزءًا.
+- **تدبّراتي**: ملاحظة خاصة على أي آية تبقى في جهازك، وعلامة خافتة عند رقمها، وصفحة تجمعها كلها.
+- **بحث واحد لكل شيء**: آية وحديثًا وذكرًا واسمًا وحكمًا وسورة من حقل واحد.
+- **مسبحة في الودجة**: تعدّ بضغطة من الشاشة الرئيسية بلا فتح التطبيق. وودجة للتاريخ الهجري والمناسبة القادمة، وودجة الذكر تختار لها بابًا.
+- **الأذان يخترق التركيز**: تنبيهات الوقت صارت «حسّاسة للوقت»، وتظهر وتُسمع والتطبيق مفتوح، وفيها «صلّيتها في وقتها» و«ذكّرني بعد 10 دقائق»، ونقرتها تفتح موضعها.
+- **تجديد التنبيهات في الخلفية** فلا تنقطع بعد أسبوع، وتُعاد جدولتها إذا بدّلت مدينتك، ومواعيدها مثبّتة على منطقة مكانك لا جهازك.
+- **خطة ختمة بموعد**: تختار يوم الختم فيوزّع الورد ويذكّرك به.
+- **ضبط التاريخ الهجري** يومًا أو يومين ليوافق تقويم بلدك — يتبعه التقويم والمناسبات والتنبيهات والودجات.
+- **مؤقّت نوم للإذاعة**، وبطاقة صورة من الأذكار والحديث، و«أضف إلى المحفظة» من الذكر نفسه.
+- **سيري**: «سجّل صلاة الظهر» و«أين ختمتي» بلا فتح التطبيق.
+- **الساعة**: عدّ المسبحة بالتاج الرقمي، وتعقيدتان جديدتان للذكر ولعدّاد اليوم.
+- **إتاحة أفضل**: أحجام الخط الكبيرة تعمل فعلًا، وأهداف لمس أوسع، ووصف صوتي للعدّادات والبطاقات.
 - وأذكار وتوثيق المصادر وعشرات التحسينات.
 
 ## What's New (English)
@@ -29,6 +41,18 @@
 - **Audio keeps going** after closing the app, with full Lock Screen and Control Centre controls.
 - **Settings reorganised** into clear pages: appearance & font, prayer & times, reminders, Mushaf & reading, your data, the app.
 - **Ehsan**: the platform's colour logo on the sadaqah card; follows the unified icon style when chosen.
+- **Go to a page or juz**: type the number in the Mushaf search, or tap the position bar in the reader and pick a page or juz.
+- **My reflections**: a private note on any ayah, kept on your device, with a quiet marker and a page that gathers them.
+- **One search for everything**: ayah, hadith, dhikr, name, ruling and surah from a single field.
+- **Interactive tasbih widget**, a Hijri date + next-occasion widget, and a configurable dhikr widget.
+- **Athan cuts through Focus**: prayer alerts are now time-sensitive, appear and sound while the app is open, carry «prayed on time» and «remind me in 10 minutes», and open the right screen when tapped.
+- **Background refresh** so alerts never lapse after a week, rescheduling when you change city, and triggers pinned to your place's time zone.
+- **Khatmah plan with a target date** that spreads the daily share and reminds you.
+- **Hijri date adjustment** of ±2 days to match your country, followed by the calendar, occasions, reminders and widgets.
+- **Radio sleep timer**, story cards from adhkar and hadith, and «add to Wallet» from a dhikr.
+- **Siri**: log a prayer, ask where your khatmah stands.
+- **Watch**: count the tasbih with the Digital Crown, plus two new complications.
+- **Better accessibility**: large text sizes actually work, wider tap targets, and spoken descriptions for counters and cards.
 - Plus adhkar, source credits and dozens of refinements.
 
 ## ملاحظات للرفع
