@@ -24,6 +24,37 @@ private struct FridayCard: Identifiable {
     var id: String { phrase.id }
 }
 
+/// شكل ما يخرج: بطاقةٌ كاملة، أو لوحةٌ مؤطَّرة، أو إحداهما بلا خلفية تُوضع فوق صورة.
+private enum FridayForm: String, CaseIterable, Identifiable {
+    case card, plaque, plaqueSticker, sticker
+    var id: String { rawValue }
+    var title: String {
+        switch self {
+        case .card:          return loc("بطاقة")
+        case .plaque:        return loc("لوحة")
+        case .plaqueSticker: return loc("لوحة شفافة")
+        case .sticker:       return loc("ملصق شفاف")
+        }
+    }
+    var icon: String {
+        switch self {
+        case .card:          return "rectangle.portrait"
+        case .plaque:        return "rectangle.inset.filled"
+        case .plaqueSticker: return "photo.on.rectangle.angled"
+        case .sticker:       return "rectangle.dashed"
+        }
+    }
+    /// الشفّافان يُحفظان PNG بلا خلفية.
+    var isTransparent: Bool { self == .sticker || self == .plaqueSticker }
+    var hint: String? {
+        switch self {
+        case .sticker:       return loc("نصٌّ بلا خلفية، يُحفظ PNG شفّافًا — ألصقه فوق صورتك في سناب أو إكس.")
+        case .plaqueSticker: return loc("اللوحة بلا خلفية، تُحفظ PNG شفّافًا — ضعها فوق صورتك في سناب أو إكس.")
+        default:             return nil
+        }
+    }
+}
+
 /// ثوب البطاقة: طابعٌ ونقشٌ وشكل.
 private struct FridayDress {
     let theme: AppTheme
@@ -43,7 +74,7 @@ struct FridayShareSheet: View {
     let progress: FridaySunanProgress
 
     @State private var chosen = 0
-    @State private var asSticker = false
+    @State private var form: FridayForm = .card
     @State private var share: StoryShareItem?
     @State private var designing: Phrase?
     @State private var renderFailed = false
@@ -88,9 +119,19 @@ struct FridayShareSheet: View {
         return FridayCard(phrase: phrase,
                           design: StoryDesign(theme: dress.theme,
                                               pattern: dress.pattern,
-                                              layout: asSticker ? .sticker : dress.layout,
+                                              layout: layout(for: dress),
                                               font: AppFont.current,
                                               eyebrow: eyebrow))
+    }
+
+    /// الشكل المختار يغلب ثوبَ البطاقة إلا في «بطاقة»، فيبقى تناوب الأثواب على حاله.
+    private func layout(for dress: FridayDress) -> StoryDesign.Layout {
+        switch form {
+        case .card:          return dress.layout
+        case .plaque:        return .plaque
+        case .plaqueSticker: return .plaqueSticker
+        case .sticker:       return .sticker
+        }
     }
 
     private var selected: FridayCard? {
@@ -218,14 +259,14 @@ struct FridayShareSheet: View {
             // البطاقة صورةٌ تُصيَّر لا نصٌّ يُتصفَّح: تُطوى في عنصر واحد ينطق بما فيها.
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(loc("معاينة البطاقة — %1$@", card.phrase.text))
-            .accessibilityValue(asSticker ? loc("ملصق شفاف") : loc("بطاقة"))
+            .accessibilityValue(form.title)
     }
 
     /// وجه البطاقة مصغّرًا. الملصق يُعرض فوق رماديٍّ يمثّل صورة صاحبه، وإلا بدا نصًّا
     /// معلّقًا في الفراغ لا ملصقًا شفّافًا يُحكَم على وضوحه قبل إرساله.
     private func face(_ card: FridayCard, scale: CGFloat) -> some View {
         ZStack {
-            if card.design.isSticker { photoBackdrop }
+            if card.design.isTransparent { photoBackdrop }
             StoryCard(phrase: card.phrase, design: card.design)
                 .frame(width: StoryCard.size.width, height: StoryCard.size.height)
                 .scaleEffect(scale)
@@ -244,21 +285,28 @@ struct FridayShareSheet: View {
     /// بطاقةٌ أم ملصق: الشريط كلّه يتبع الاختيار، فلا يُرى في المعرض شيء ويُرسل غيره.
     private var formPicker: some View {
         VStack(spacing: 8) {
-            HStack(spacing: 8) {
-                chip(loc("بطاقة"), icon: "rectangle.portrait", selected: !asSticker) { asSticker = false }
-                chip(loc("ملصق شفاف"), icon: "rectangle.dashed", selected: asSticker) { asSticker = true }
+            // أربعة أشكال لا يسعها صفٌّ في الشاشة الضيّقة، فتمرّ أفقيًّا كرقائق المصمّم.
+            ScrollView(.horizontal) {
+                HStack(spacing: 8) {
+                    ForEach(FridayForm.allCases) { option in
+                        chip(option.title, icon: option.icon, selected: form == option) { form = option }
+                    }
+                }
+                .padding(.vertical, 2)
             }
+            .scrollIndicators(.hidden)
+            .contentMargins(.horizontal, 1)
             .accessibilityElement(children: .contain)
             .accessibilityLabel(loc("شكل المشاركة"))
-            if asSticker {
-                Text(loc("نصٌّ بلا خلفية، يُحفظ PNG شفّافًا — ألصقه فوق صورتك في سناب أو إكس."))
+            if let hint = form.hint {
+                Text(hint)
                     .font(Theme.display(11))
                     .foregroundStyle(Theme.inkFaint)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
-        .animation(Motion.smooth, value: asSticker)
+        .animation(Motion.smooth, value: form)
     }
 
     // MARK: شريط البطاقات
@@ -307,7 +355,7 @@ struct FridayShareSheet: View {
     private func actions(_ card: FridayCard) -> some View {
         VStack(spacing: 10) {
             Button { shareCard(card) } label: {
-                Label(asSticker ? loc("مشاركة الملصق") : loc("مشاركة البطاقة"),
+                Label(form.isTransparent ? loc("مشاركة الملصق") : loc("مشاركة البطاقة"),
                       systemImage: "square.and.arrow.up")
                     .font(Theme.display(16, weight: .semibold))
                     .gradientButton(Theme.goldGradient, glow: Theme.gold)
@@ -391,7 +439,7 @@ struct FridayShareSheet: View {
 
     private func shareCard(_ card: FridayCard) {
         Haptics.tap(enabled: store.hapticsEnabled)
-        if card.design.isSticker {
+        if card.design.isTransparent {
             // الملصق يخرج ملفًّا لا صورة: بعض الوجهات تحوّل UIImage إلى JPEG فتذهب شفافيته.
             if let url = StoryCard.stickerFile(phrase: card.phrase, design: card.design) {
                 share = StoryShareItem(payload: url)

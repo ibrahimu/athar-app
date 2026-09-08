@@ -6,22 +6,26 @@ import UIKit
 /// بضغطة قبل المصمّم، فمن لم يغيّر شيئًا خرج بالشكل نفسه.
 struct StoryDesign: Equatable {
     enum Layout: String, CaseIterable, Identifiable {
-        case classic, paper, minimal, sticker
+        case classic, paper, plaque, minimal, sticker, plaqueSticker
         var id: String { rawValue }
         var title: String {
             switch self {
             case .classic: return loc("المعتمد")
             case .paper:   return loc("ورقة")
+            case .plaque:  return loc("لوحة")
             case .minimal: return loc("بسيط")
             case .sticker: return loc("ملصق شفاف")
+            case .plaqueSticker: return loc("لوحة شفافة")
             }
         }
         var icon: String {
             switch self {
             case .classic: return "sparkles.rectangle.stack"
             case .paper:   return "doc.plaintext"
+            case .plaque:  return "rectangle.inset.filled"
             case .minimal: return "text.alignright"
             case .sticker: return "rectangle.dashed"
+            case .plaqueSticker: return "photo.on.rectangle.angled"
             }
         }
     }
@@ -52,7 +56,14 @@ struct StoryDesign: Equatable {
     var eyebrow: String = ""
 
     /// الملصق: نصٌّ وحده على خلفية شفافة، يُلصق فوق أي صورة في سناب أو إنستغرام.
+    /// (اللوحة الشفافة ليست منه: لها جسمُها الورقيّ، فلا تُعرض عليها ألوانُ نصّ الملصق.)
     var isSticker: Bool { layout == .sticker }
+
+    /// ما يُصيَّر بخلفيةٍ شفّافة وارتفاعٍ على قدر نصّه — الملصق النصّي واللوحة جميعًا.
+    var isTransparent: Bool { layout == .sticker || layout == .plaqueSticker }
+
+    /// اللوحة: ورقٌ كريمي في إطارٍ منقوط — كاملةً على خلفيتها أو شفّافةً فوق صورة.
+    var isPlaque: Bool { layout == .plaque || layout == .plaqueSticker }
 
     static var standard: StoryDesign {
         StoryDesign(theme: Theme.current, pattern: .stars, layout: .classic, font: AppFont.current)
@@ -81,10 +92,15 @@ struct StoryCard: View {
     private var text: String { phrase.text }
     private var attribution: String { phrase.attribution }
     private var isPaper: Bool { design.layout == .paper }
+    /// اللوحة ورقٌ كالورقة: حبرها داكن على كريمي، لا أبيض على تدرّج.
+    private var onPaper: Bool { isPaper || design.isPlaque }
 
     /// عرض عمود النص وأقصى ارتفاعه بحسب الشكل: الورقة أضيق بحواشيها.
-    private var textWidth: CGFloat { isPaper ? 744 : 888 }
-    private var textMaxHeight: CGFloat { isPaper ? 960 : 1100 }
+    private var textWidth: CGFloat {
+        if design.isPlaque { return plaqueWidth - 2 * Self.plaqueTextInset }
+        return isPaper ? 744 : 888
+    }
+    private var textMaxHeight: CGFloat { design.isPlaque ? 880 : (isPaper ? 960 : 1100) }
 
     /// قياس اللفظ كاملًا؛ طول النص وحده لا يكفي لمنع قص الأحاديث الطويلة.
     private var fontSize: CGFloat {
@@ -116,10 +132,10 @@ struct StoryCard: View {
 
     // MARK: ألوان النص بحسب الشكل
 
-    private var ink: Color { isPaper ? paperInk : .white }
-    private var inkSoft: Color { isPaper ? paperAccent : .white.opacity(0.82) }
-    private var lineInk: Color { isPaper ? paperAccent.opacity(0.55) : .white.opacity(0.35) }
-    private var starInk: Color { isPaper ? paperAccent : .white.opacity(0.7) }
+    private var ink: Color { onPaper ? paperInk : .white }
+    private var inkSoft: Color { onPaper ? paperAccent : .white.opacity(0.82) }
+    private var lineInk: Color { onPaper ? paperAccent.opacity(0.55) : .white.opacity(0.35) }
+    private var starInk: Color { onPaper ? paperAccent : .white.opacity(0.7) }
 
     private var textFont: Font {
         phrase.isSacred ? Theme.dhikrFont(fixed: fontSize) : design.font.font(size: fontSize, weight: .medium)
@@ -127,8 +143,8 @@ struct StoryCard: View {
 
     var body: some View {
         Group {
-            if design.isSticker {
-                sticker
+            if design.isTransparent {
+                if design.layout == .plaqueSticker { plaqueSticker } else { sticker }
             } else {
                 ZStack {
                     LinearGradient(colors: [top, mid, bottom], startPoint: .top, endPoint: .bottom)
@@ -190,6 +206,82 @@ struct StoryCard: View {
         .frame(width: StoryCard.size.width - 160)
         .padding(80)
         .background(Color.clear)
+    }
+
+    // MARK: اللوحة
+
+    /// اللوحة: ورقٌ كريمي في إطارٍ رفيع تتوسّط أضلاعَه أربعُ نقاط — كاللوحات المحفورة.
+    /// شكلٌ واحد يُرسم كاملًا على خلفية الطابع، أو شفّافًا يُوضع فوق صورة صاحبه.
+    /// الشفّافة أعرض قليلًا: لا خلفية تحتها تحتاج حاشية.
+    static let plaqueTextInset: CGFloat = 92
+    private var plaqueWidth: CGFloat { design.layout == .plaqueSticker ? 952 : 900 }
+
+    /// حجم اللوحة ثابت المظهر مهما قصر النص: العبارة القصيرة لا تُخرج لوحةً شريطية.
+    private var plaqueMinHeight: CGFloat { design.layout == .plaqueSticker ? 560 : 640 }
+
+    private var plaqueBody: some View {
+        VStack(spacing: 30) {
+            eyebrowLine(paperAccent)
+            Text(text)
+                .font(textFont)
+                .foregroundStyle(paperInk)
+                .multilineTextAlignment(.center)
+                .lineSpacing(fontSize * 0.45)
+                .fixedSize(horizontal: false, vertical: true)
+            if !attribution.isEmpty {
+                Text(attribution)
+                    .font(Theme.naskhFont(fixed: 28))
+                    .foregroundStyle(paperAccent.opacity(0.85))
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            signatureLine
+        }
+        .padding(.horizontal, Self.plaqueTextInset)
+        .padding(.vertical, 104)
+        .frame(width: plaqueWidth)
+        .frame(minHeight: plaqueMinHeight)
+        .background(plaqueFrame)
+    }
+
+    /// الورق وإطاره: الخطّ الرفيع داخلَه بمسافةٍ ثابتة، وفي وسط كلّ ضلعٍ نقطةٌ تقطعه —
+    /// دائرةٌ بلون الورق تفتح له فُرجة، وفيها نقطةٌ بلون الإطار.
+    private var plaqueFrame: some View {
+        RoundedRectangle(cornerRadius: 64, style: .continuous)
+            .fill(paper)
+            .overlay {
+                RoundedRectangle(cornerRadius: 42, style: .continuous)
+                    .strokeBorder(paperAccent.opacity(0.6), lineWidth: 3)
+                    .padding(30)
+            }
+            .overlay(alignment: .top)      { plaqueDot.offset(y: 30) }
+            .overlay(alignment: .bottom)   { plaqueDot.offset(y: -30) }
+            .overlay(alignment: .leading)  { plaqueDot.offset(x: 30) }
+            .overlay(alignment: .trailing) { plaqueDot.offset(x: -30) }
+            .shadow(color: .black.opacity(0.22), radius: 36, y: 18)
+    }
+
+    private var plaqueDot: some View {
+        ZStack {
+            Circle().fill(paper).frame(width: 26, height: 26)
+            Circle().fill(paperAccent.opacity(0.75)).frame(width: 12, height: 12)
+        }
+    }
+
+    /// اللوحة الشفافة: اللوحة وحدها وتحتها اسمُ التطبيق صغيرًا، وما حولهما شفّاف —
+    /// تُلصق فوق صورةٍ كما هي. الهالة الفاتحة تُبقي الاسم مقروءًا فوق صورةٍ داكنة.
+    private var plaqueSticker: some View {
+        VStack(spacing: 26) {
+            plaqueBody
+            HStack(spacing: 9) {
+                Image(systemName: "drop.fill").font(.system(size: 24))
+                Text("أثر").font(Theme.naskhFont(fixed: 30, bold: true))
+            }
+            .foregroundStyle(paper)
+            .shadow(color: .black.opacity(0.45), radius: 6, y: 2)
+        }
+        .frame(width: StoryCard.size.width)
+        .padding(.vertical, 44)
     }
 
     // MARK: النقش
@@ -254,6 +346,11 @@ struct StoryCard: View {
             .padding(.horizontal, 96)
             .padding(.vertical, 200)
 
+        case .plaque:
+            plaqueBody
+                .padding(.horizontal, 90)
+                .padding(.vertical, 180)
+
         case .minimal:
             VStack(alignment: .leading, spacing: 40) {
                 Spacer(minLength: 0)
@@ -265,8 +362,8 @@ struct StoryCard: View {
             .padding(.horizontal, 96)
             .padding(.vertical, 200)
 
-        case .sticker:
-            // الملصق له جسمه الخاص (sticker) — لا يمرّ من هنا.
+        case .sticker, .plaqueSticker:
+            // الشفّافان لهما جسماهما الخاصّان — لا يمرّان من هنا.
             EmptyView()
         }
     }
@@ -355,7 +452,7 @@ struct StoryCard: View {
     static func render(phrase: Phrase, design: StoryDesign = .standard) -> UIImage? {
         let renderer = ImageRenderer(content: StoryCard(phrase: phrase, design: design))
         renderer.scale = 1
-        if design.isSticker {
+        if design.isTransparent {
             renderer.isOpaque = false
             renderer.proposedSize = ProposedViewSize(width: size.width, height: nil)
         } else {

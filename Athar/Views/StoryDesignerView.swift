@@ -50,12 +50,13 @@ struct StoryDesignerView: View {
                     layoutPicker
                     if design.isSticker { stickerInkPicker } else { colorPicker }
                     if design.isSticker && design.stickerInk == .theme { colorPicker }
-                    if !design.isSticker { patternPicker }
+                    // اللوحة الشفافة بلا خلفية كالملصق، فلا نقش لها يُختار.
+                    if !design.isTransparent { patternPicker }
                     fontPicker
                     signatureField
                     shareButtons
                 }
-                .animation(Motion.smooth, value: design.isSticker)
+                .animation(Motion.smooth, value: design.layout)
                 .padding(.horizontal, Theme.gutter)
                 .padding(.top, 12)
                 .padding(.bottom, 32)
@@ -102,7 +103,7 @@ struct StoryDesignerView: View {
     private var preview: some View {
         let scale: CGFloat = 0.27
         return ZStack {
-            if design.isSticker {
+            if design.isTransparent {
                 LinearGradient(colors: [Color(hex: 0x9AA3AE), Color(hex: 0x5B6570), Color(hex: 0xC9CFD6)],
                                startPoint: .topLeading, endPoint: .bottomTrailing)
                 VStack {
@@ -130,11 +131,16 @@ struct StoryDesignerView: View {
 
     /// وصف المعاينة: ما لا يُرى يُقال. الملصق بلا خلفية فلا نقش له ولا لون بطاقة.
     private var previewLabel: String {
-        design.isSticker
-            ? loc("معاينة البطاقة — الشكل %1$@، لون النص %2$@، الخط %3$@",
-                  design.layout.title, design.stickerInk.title, design.font.title)
-            : loc("معاينة البطاقة — الشكل %1$@، اللون %2$@، النقش %3$@، الخط %4$@",
-                  design.layout.title, design.theme.title, design.pattern.title, design.font.title)
+        if design.isSticker {
+            return loc("معاينة البطاقة — الشكل %1$@، لون النص %2$@، الخط %3$@",
+                       design.layout.title, design.stickerInk.title, design.font.title)
+        }
+        if design.layout == .plaqueSticker {
+            return loc("معاينة البطاقة — الشكل %1$@، اللون %2$@، الخط %3$@",
+                       design.layout.title, design.theme.title, design.font.title)
+        }
+        return loc("معاينة البطاقة — الشكل %1$@، اللون %2$@، النقش %3$@، الخط %4$@",
+                   design.layout.title, design.theme.title, design.pattern.title, design.font.title)
     }
 
     // MARK: النص الخاص
@@ -178,8 +184,10 @@ struct StoryDesignerView: View {
             // صفّ الرقائق مجموعةٌ واحدة باسمها، فلا تتناثر خياراتها بلا سياق يجمعها.
             .accessibilityElement(children: .contain)
             .accessibilityLabel(loc("الشكل"))
-            if design.isSticker {
-                Text(loc("نصّ وحده بلا خلفية — يُحفظ PNG شفّافًا، فأضفه ملصقًا فوق صورتك."))
+            if design.isTransparent {
+                Text(design.isSticker
+                     ? loc("نصّ وحده بلا خلفية — يُحفظ PNG شفّافًا، فأضفه ملصقًا فوق صورتك.")
+                     : loc("اللوحة وحدها بلا خلفية — يُحفظ PNG شفّافًا، فضعه فوق صورتك."))
                     .font(Theme.display(11))
                     .foregroundStyle(Theme.inkFaint)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -320,7 +328,7 @@ struct StoryDesignerView: View {
     private var shareButtons: some View {
         VStack(spacing: 10) {
             Button(action: shareImage) {
-                Label(design.isSticker ? loc("مشاركة الملصق") : loc("مشاركة الصورة"), systemImage: "square.and.arrow.up")
+                Label(design.isTransparent ? loc("مشاركة الملصق") : loc("مشاركة الصورة"), systemImage: "square.and.arrow.up")
                     .font(Theme.display(16, weight: .semibold))
                     .gradientButton()
             }
@@ -377,7 +385,7 @@ struct StoryDesignerView: View {
         focus = nil
         guard canShare else { return }
         Haptics.tap(enabled: store.hapticsEnabled)
-        if design.isSticker {
+        if design.isTransparent {
             if let url = StoryCard.stickerFile(phrase: phrase, design: design) {
                 share = StoryShareItem(payload: url)
             } else {
