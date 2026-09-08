@@ -10,6 +10,7 @@ struct DhikrSessionView: View {
     @State private var index = 0
     @ObservedObject private var speaker = DhikrSpeaker.shared
     @ObservedObject private var ayahAudio = AyahAudio.shared
+    @ObservedObject private var recorded = DhikrAudio.shared
     /// ما بقي من تكرار التلاوة القرآنية — العدّ يقع عند تمام المقطع لا عند كل آية.
     @State private var recitingLeft = 0
     @State private var remaining: [String: Int] = [:]
@@ -327,12 +328,20 @@ struct DhikrSessionView: View {
         DhikrRecitation.range(category: category.id, dhikr: current.id)
     }
 
-    private var sounding: Bool { speaker.speaking || recitingLeft > 0 }
+    private var sounding: Bool { speaker.speaking || recitingLeft > 0 || recorded.playing }
+
+    /// أفضل ما يُسمع به هذا الذكر: تسجيلٌ إن وُجد، فتلاوةٌ إن كان قرآنًا، فنطقٌ أخيرًا.
+    private var hasRecording: Bool { DhikrAudio.has(category: category.id, dhikr: current.id) }
 
     /// صوتُ آلةٍ يقرأ القرآن نشاز، فما كان قرآنًا يُتلى بصوت قارئٍ من محرّك التلاوة
     /// نفسه الذي في المصحف، وما سواه يبقى على النطق. والعدّ في الحالين عند التمام.
     private func startSound() {
         stopSound()
+        // تسجيلُ قارئٍ أولى من كل تركيب، فإن وُجد فهو المقدَّم على ما سواه.
+        if hasRecording {
+            recorded.start(category: category.id, dhikr: current.id, times: max(1, left)) { step() }
+            return
+        }
         guard let range = quranRange else {
             speaker.start(current.text, times: max(1, left), onEach: { step() }, onDone: {})
             return
@@ -354,6 +363,7 @@ struct DhikrSessionView: View {
 
     private func stopSound() {
         speaker.stop()
+        recorded.stop()
         if recitingLeft > 0 { recitingLeft = 0; ayahAudio.stop() }
     }
 

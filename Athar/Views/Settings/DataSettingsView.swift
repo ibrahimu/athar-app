@@ -71,15 +71,19 @@ struct DataSettingsView: View {
             SettingsGroupTitle(text: loc("المزامنة والنسخ"), tint: Theme.accent(for: "sea"))
             SettingsCard {
                 SettingsRow(icon: "icloud.fill", tint: Theme.accent(for: "sea"), title: loc("مزامنة iCloud"),
-                            subtitle: loc("التفضيلات والمفضّلة والعلامات فقط — لا العدّادات")) {
+                            subtitle: loc("اختيارية، وما يخرج من جهازك مكتوبٌ تحتها")) {
                     Toggle("", isOn: Binding(get: { store.cloudSyncEnabled }, set: { store.cloudSyncEnabled = $0 }))
                         .labelsHidden()
                         .accessibilityLabel(loc("مزامنة iCloud"))
+                        .accessibilityHint(syncDisclosure)
                 }
+                // البيان تحت المفتاح لا في صفحة أخرى: من يفتحه يفتحه على بيّنة بما يخرج،
+                // والتدبّرات أوّل ما يُسمّى فيه لأنها كلامه هو لا تفضيلًا يُعوَّض.
+                syncNote
                 SettingsDivider()
                 Button { exportData() } label: {
                     SettingsRow(icon: "square.and.arrow.up.on.square.fill", tint: Theme.accent(for: "sea"),
-                                title: loc("تصدير بياناتي"), subtitle: loc("ملف واحد: المفضّلة والسجلات والختمة والإعدادات")) { EmptyView() }
+                                title: loc("تصدير بياناتي"), subtitle: loc("ملف واحد: المفضّلة والسجلات والتدبّرات والختمة والإعدادات")) { EmptyView() }
                 }
                 .buttonStyle(.plain)
                 SettingsDivider()
@@ -90,6 +94,33 @@ struct DataSettingsView: View {
                 .buttonStyle(.plain)
             }
         }
+    }
+
+    /// جردٌ حرفيّ لمفاتيح CloudKV.keys — يُقرأ بالعين تحت المفتاح، ويُسمعه VoiceOver
+    /// عند المفتاح نفسه، فلا يُقلب إلا وصاحبه يعلم ما يغادر جهازه.
+    private var syncDisclosure: String {
+        loc("يخرج من جهازك إلى مخزن iCloud في حسابك: تدبّراتك على الآيات بنصّها، وعلامات المصحف وتظليلاته، وموضع القراءة وعلامة الوقوف، والأحاديث المحفوظة، وإعدادات المظهر والخط وترتيب الشاشة، والأذان والتنبيه القبلي والإقامة، وعبارة المسبحة وهدفها، والمدينة الثانية.")
+    }
+
+    private var syncNote: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(syncDisclosure)
+                .font(Theme.display(11))
+                .foregroundStyle(Theme.inkSoft)
+            Text(loc("ولا تخرج عدّاداتك ولا إحصاءاتك ولا سجلّا الصلاة والقراءة. المزامنة إلى حسابك وحده عبر Apple، لا إلى خادم لنا؛ وإيقافها يوقف ما بعده ولا يمحو ما بلغ iCloud."))
+                .font(Theme.display(11))
+                .foregroundStyle(Theme.inkFaint)
+            // وعدٌ لا يُوفى يُقال: إن امتلأ المخزن توقّف رفع التدبّرات، فلا يُترك القارئ يظنّها مصونة.
+            if store.cloudSyncEnabled, store.defaults.bool(forKey: "athar.cloudSync.notesCapacity") {
+                Text(loc("بلغت تدبّراتك سعة مخزن iCloud فتوقّف رفعها. هي محفوظة على هذا الجهاز — صدّر نسخة تحفظها."))
+                    .font(Theme.display(11))
+                    .foregroundStyle(Theme.danger)
+            }
+        }
+        .fixedSize(horizontal: false, vertical: true)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 16)
+        .padding(.bottom, 14)
     }
 
     // MARK: أثري

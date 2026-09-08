@@ -2,14 +2,38 @@ import Foundation
 import CoreLocation
 import UserNotifications
 
-/// Local-only reminders. No server, no tokens, nothing leaves the device.
+/// التذكير كله محليّ: لا خادم ولا رمز ولا شيء يغادر الجهاز — أوقاتُ صاحبه تبقى عنده.
 @MainActor
 enum Reminders {
     private static var planningDate = Date()
     private static var planned: [UNNotificationRequest] = []
     private static var scheduling = false
     private static var scheduleAgain = false
+
+    // MARK: - سقف النظام وميزانيته
+
+    /// ما يقبله iOS من تنبيهات معلّقة لكل تطبيق. ما زاد عليه يسقط صامتًا: لا خطأ
+    /// يُرفع ولا سجلّ يُكتب — يظنّ التطبيق أنه جدول سبعة أيام وقد ضاع آخرها.
+    static let systemLimit = 64
+
+    /// مقاعد لا تملؤها الخطة أبدًا: تأجيلٌ لكل فريضة (معرّف التأجيل يحمل اسم صلاته
+    /// فلا يتجاوز عددُها عدد الفرائض) وتنبيه تجربةٍ واحد. تُحجز ولو كانت خاليةً الآن،
+    /// لأن المستخدم يؤجّل بعد أن نفرغ من الجدولة لا قبلها — وحجزُ المقعد بعد جلوس
+    /// صاحبه لا يفيد.
+    static let reservedSlots = Prayer.allCases.filter(\.isPrayer).count + 1
+
+    /// ما تخطّطه الجدولة حين لا يُطرح شيء آخر: السقف ناقص المقاعد المحجوزة.
+    static let plannerBudget = systemLimit - reservedSlots
+
+    // MARK: - ما تقرؤه صفحة الجاهزية
+
+    /// آخر أذانٍ مجدول — به تُعرف نهاية التغطية. يُكتب مما ثبت في النظام بعد
+    /// الجدولة لا مما نويناه قبلها.
     static let coverageKey = "athar.notifications.coverage"
+    /// لحظة آخر إعادة جدولة ناجحة.
+    static let lastRefreshKey = "athar.notifications.lastRefresh"
+    /// كم طلبًا ردّه النظام في آخر جدولة — صفرٌ في العادة، وما فوقه يُعرض كما هو.
+    static let failuresKey = "athar.notifications.failures"
 
     // البادئات ليست خاصّة: مندوب الإشعارات يوجّه النقرة بها نفسها، فلا تُبنى في مكانين.
     static let morningId = "athar.reminder.morning"
@@ -24,6 +48,8 @@ enum Reminders {
     static let whitePrefix = "athar.white."
     static let hadithPrefix = "athar.hadith."
     static let coverageId = "athar.coverage"
+    /// تنبيه التجربة: يصل بعد ثوانٍ ويُستثنى من الكنس، فلا تمحوه إعادة جدولةٍ تسبقه.
+    static let testId = "athar.test"
 
     static func requestAuthorization() async -> Bool {
         (try? await UNUserNotificationCenter.current()
@@ -67,8 +93,8 @@ enum Reminders {
             let cal = placeCalendar(store)
             for dayOffset in 0..<4 {
                 guard let day = cal.date(byAdding: .day, value: dayOffset, to: planningDate), let t = store.prayerTimes(for: day) else { continue }
-                for (prayer, id, title, body) in [(Prayer.fajr, morningId, "أذكار الصباح", "﴿ فَاذْكُرُونِي أَذْكُرْكُمْ ﴾ — بعد الفجر أطيبُ وقتٍ لها."),
-                                                   (Prayer.asr, eveningId, "أذكار المساء", "حصّن يومك قبل أن يغيب — أذكار المساء بانتظارك.")] {
+                for (prayer, id, title, body) in [(Prayer.fajr, morningId, loc("أذكار الصباح"), loc("﴿ فَاذْكُرُونِي أَذْكُرْكُمْ ﴾ — بعد الفجر أطيبُ وقتٍ لها.")),
+                                                   (Prayer.asr, eveningId, loc("أذكار المساء"), loc("حصّن يومك قبل أن يغيب — أذكار المساء بانتظارك."))] {
                     guard let base = t[prayer] else { continue }
                     let fire = base.addingTimeInterval(20 * 60)
                     guard fire > planningDate else { continue }
@@ -81,18 +107,18 @@ enum Reminders {
         }
 
         add(id: morningId,
-                  title: "أذكار الصباح",
-                  body: "﴿ فَاذْكُرُونِي أَذْكُرْكُمْ ﴾ — دقيقتان تكفيك اليوم كله.",
+                  title: loc("أذكار الصباح"),
+                  body: loc("﴿ فَاذْكُرُونِي أَذْكُرْكُمْ ﴾ — دقيقتان تكفيك اليوم كله."),
                   minutes: store.morningReminderMinutes)
 
         add(id: eveningId,
-                  title: "أذكار المساء",
-                  body: "حصّن يومك قبل أن يغيب — أذكار المساء بانتظارك.",
+                  title: loc("أذكار المساء"),
+                  body: loc("حصّن يومك قبل أن يغيب — أذكار المساء بانتظارك."),
                   minutes: store.eveningReminderMinutes)
     }
 
-    /// Schedules the next few days of prayer alerts. iOS caps pending local
-    /// notifications at 64, so we schedule 7 days x 5 prayers and refresh on launch.
+    /// أذان سبعة أيام يُخطَّط ولا يُجدوَل كلّه: المخطّط يقصّه على ما تسعه الميزانية،
+    /// ويتجدّد مع كل فتح — فالسعة أهون من انقطاع النداء في اليوم الثالث.
     private static func scheduleAthan(store: AtharStore) {
         guard store.athanAlerts else { return }
 
@@ -116,7 +142,7 @@ enum Reminders {
                 // العنوان اسم الصلاة وحده، والسطر الثاني نداؤها ومكانها ووقتها، والمتن آية
                 // أو حديث ثابت يتبدّل مع الأيام — بدل «الرياض — حان وقت الظهر» الجافّة.
                 content.title = entry.prayer.title
-                content.subtitle = "حيّ على الصلاة · \(store.placeName) · \(clockText(entry.date, store: store))"
+                content.subtitle = loc("حيّ على الصلاة · %1$@ · %2$@", store.placeName, clockText(entry.date, store: store))
                 content.body = athanBody(for: entry.prayer, dayOffset: dayOffset)
                 switch prefs.soundMode {
                 case .athan:  content.sound = athanSound(store)
@@ -150,9 +176,9 @@ enum Reminders {
                     let iqDate = entry.date.addingTimeInterval(Double(iqamah) * 60)
                     if iqDate > now {
                         let iq = UNMutableNotificationContent()
-                        iq.title = "إقامة \(entry.prayer.title)"
-                        iq.subtitle = "\(store.placeName) · \(clockText(iqDate, store: store))"
-                        iq.body = "قد قامت الصلاة — دع ما بيدك وقم إليها."
+                        iq.title = loc("إقامة %1$@", entry.prayer.title)
+                        iq.subtitle = loc("%1$@ · %2$@", store.placeName, clockText(iqDate, store: store))
+                        iq.body = loc("قد قامت الصلاة — دع ما بيدك وقم إليها.")
                         iq.sound = .default
                         iq.interruptionLevel = .timeSensitive
                         collect(UNNotificationRequest(
@@ -170,9 +196,9 @@ enum Reminders {
                 guard preDate > now else { continue }
 
                 let pre = UNMutableNotificationContent()
-                pre.title = "\(entry.prayer.title) \(minutesPhrase(effectivePre))"
-                pre.subtitle = "\(store.placeName) · \(clockText(entry.date, store: store))"
-                pre.body = "توضّأ على مهلٍ واستعدّ — «الصلاة على وقتها» أحبّ الأعمال إلى الله."
+                pre.title = loc("%1$@ %2$@", entry.prayer.title, minutesPhrase(effectivePre))
+                pre.subtitle = loc("%1$@ · %2$@", store.placeName, clockText(entry.date, store: store))
+                pre.body = loc("توضّأ على مهلٍ واستعدّ — «الصلاة على وقتها» أحبّ الأعمال إلى الله.")
                 pre.sound = .default
                 pre.interruptionLevel = .timeSensitive
                 let preRequest = UNNotificationRequest(
@@ -188,10 +214,10 @@ enum Reminders {
     /// «بعد 5 دقائق» / «بعد 15 دقيقة»: تمييز العدد يتبدّل بعد العشرة.
     private static func minutesPhrase(_ n: Int) -> String {
         switch n {
-        case 1:       return "بعد دقيقة"
-        case 2:       return "بعد دقيقتين"
-        case 3...10:  return "بعد \(n.counterText) دقائق"
-        default:      return "بعد \(n.counterText) دقيقة"
+        case 1:       return loc("بعد دقيقة")
+        case 2:       return loc("بعد دقيقتين")
+        case 3...10:  return loc("بعد %1$@ دقائق", n.counterText)
+        default:      return loc("بعد %1$@ دقيقة", n.counterText)
         }
     }
 
@@ -213,7 +239,7 @@ enum Reminders {
                   let hadith = HadithLibrary.daily(for: day) else { continue }
 
             let content = UNMutableNotificationContent()
-            content.title = "حديث اليوم"
+            content.title = loc("حديث اليوم")
             content.subtitle = hadith.citation
             content.body = truncated(hadith.text, to: 180)
             content.sound = .default
@@ -243,9 +269,9 @@ enum Reminders {
     private static func scheduleWird(store: AtharStore) {
         guard store.wirdEnabled else { return }
         add(id: wirdId,
-                  title: "وردك من القرآن",
+                  title: loc("وردك من القرآن"),
                   // «10 آيات تكفيك» لا «10 آية»: تمييز العدد في Int.ayahCountText.
-                  body: "\(store.wirdTarget.ayahCountText) تكفيك اليوم — «أحبُّ الأعمال إلى الله أدومها».",
+                  body: loc("%1$@ تكفيك اليوم — «أحبُّ الأعمال إلى الله أدومها».", store.wirdTarget.ayahCountText),
                   minutes: store.wirdReminderMinutes)
     }
 
@@ -265,10 +291,10 @@ enum Reminders {
         guard store.khatmahPlanActive, hasShare else {
             let overdue = store.khatmahPlanActive
             add(id: khatmahPrefix + "daily",
-                title: "ورد الختمة",
+                title: loc("ورد الختمة"),
                 body: overdue
-                    ? "مضى موعد ختمتك وبقي منها شيء — تابع وردك أو مدّد الموعد."
-                    : "\(AtharStore.pagesText(store.khatmahPagesPerDay)) اليوم تُبقيك على خطتك.",
+                    ? loc("مضى موعد ختمتك وبقي منها شيء — تابع وردك أو مدّد الموعد.")
+                    : loc("%1$@ اليوم تُبقيك على خطتك.", AtharStore.pagesText(store.khatmahPagesPerDay)),
                 minutes: minutes)
             return
         }
@@ -286,11 +312,11 @@ enum Reminders {
                   fire > now else { continue }
 
             let content = UNMutableNotificationContent()
-            content.title = "ورد الختمة"
+            content.title = loc("ورد الختمة")
             if let target = store.khatmahTargetDate {
-                content.subtitle = "الختم يوم \(AtharStore.khatmahDateText(target))"
+                content.subtitle = loc("الختم يوم %1$@", AtharStore.khatmahDateText(target))
             }
-            content.body = "\(AtharStore.pagesText(share)) اليوم تبلغ بك ختمتك في موعدها."
+            content.body = loc("%1$@ اليوم تبلغ بك ختمتك في موعدها.", AtharStore.pagesText(share))
             content.sound = .default
 
             var comps = calendar.dateComponents([.year, .month, .day, .hour, .minute], from: fire)
@@ -305,10 +331,10 @@ enum Reminders {
         guard store.istighfarAlerts else { return }
 
         let phrases = [
-            ("أستغفر الله", "«وَٱسْتَغْفِرُوا۟ رَبَّكُمْ ثُمَّ تُوبُوٓا۟ إِلَيْهِ»"),
-            ("سبحان الله وبحمده", "من قالها مئة مرة حُطَّت خطاياه وإن كانت مثل زبد البحر."),
-            ("لا حول ولا قوة إلا بالله", "كنز من كنوز الجنة."),
-            ("اللهم صلِّ على محمد", "من صلى عليَّ صلاة صلى الله عليه بها عشرًا."),
+            (loc("أستغفر الله"), loc("«وَٱسْتَغْفِرُوا۟ رَبَّكُمْ ثُمَّ تُوبُوٓا۟ إِلَيْهِ»")),
+            (loc("سبحان الله وبحمده"), loc("من قالها مئة مرة حُطَّت خطاياه وإن كانت مثل زبد البحر.")),
+            (loc("لا حول ولا قوة إلا بالله"), loc("كنز من كنوز الجنة.")),
+            (loc("اللهم صلِّ على محمد"), loc("من صلى عليَّ صلاة صلى الله عليه بها عشرًا.")),
         ]
         let step = store.istighfarEveryHours
         var hour = 8
@@ -336,7 +362,7 @@ enum Reminders {
 
             let content = UNMutableNotificationContent()
             content.title = loc("ثلث الليل الآخر")
-            content.body = "«ينزل ربنا إلى السماء الدنيا حين يبقى ثلث الليل الآخر فيقول: من يدعوني فأستجيب له»"
+            content.body = loc("«ينزل ربنا إلى السماء الدنيا حين يبقى ثلث الليل الآخر فيقول: من يدعوني فأستجيب له»")
             content.sound = .default
             let r = UNNotificationRequest(identifier: "\(qiyamPrefix)\(day)", content: content,
                                           trigger: UNCalendarNotificationTrigger(dateMatching: pinned(q.lastThird, cal), repeats: false))
@@ -359,9 +385,9 @@ enum Reminders {
                 let fire = dhuhr.addingTimeInterval(-3600)
                 guard fire > planningDate else { continue }
                 let c = UNMutableNotificationContent()
-                c.title = "جمعة مباركة"
-                c.subtitle = "بعد ساعة تُقام الجمعة"
-                c.body = "اغتسل وتطيّب، واقرأ سورة الكهف، وأكثِر من الصلاة على النبي ﷺ."
+                c.title = loc("جمعة مباركة")
+                c.subtitle = loc("بعد ساعة تُقام الجمعة")
+                c.body = loc("اغتسل وتطيّب، واقرأ سورة الكهف، وأكثِر من الصلاة على النبي ﷺ.")
                 c.sound = .default
                 collect(UNNotificationRequest(identifier: "\(jumuahId).\(scheduled)", content: c,
                     trigger: UNCalendarNotificationTrigger(dateMatching: pinned(fire, cal), repeats: false)))
@@ -371,10 +397,10 @@ enum Reminders {
 
         // ليلة الاثنين والخميس 9 مساءً (الأحد 1 والأربعاء 4)
         if store.fastingAlert {
-            for (wd, day) in [(1, "الاثنين"), (4, "الخميس")] {
+            for (wd, day) in [(1, loc("الاثنين")), (4, loc("الخميس"))] {
                 let c = UNMutableNotificationContent()
-                c.title = "غدًا \(day)"
-                c.body = "«تُعرض الأعمال يوم الاثنين والخميس، فأحب أن يُعرض عملي وأنا صائم» — انوِ الصيام."
+                c.title = loc("غدًا %1$@", day)
+                c.body = loc("«تُعرض الأعمال يوم الاثنين والخميس، فأحب أن يُعرض عملي وأنا صائم» — انوِ الصيام.")
                 c.sound = .default
                 var dc = DateComponents(); dc.weekday = wd; dc.hour = 21
                 collect(UNNotificationRequest(identifier: "\(fastingPrefix)\(wd)",
@@ -395,8 +421,8 @@ enum Reminders {
                 let eve = Hijri.unshifted(raw)
                 cursor = eve.addingTimeInterval(86400 * 3)
                 let c = UNMutableNotificationContent()
-                c.title = "الأيام البيض"
-                c.body = "غدًا 13 من الشهر الهجري — صيام 13 و14 و15 كصيام الدهر."
+                c.title = loc("الأيام البيض")
+                c.body = loc("غدًا 13 من الشهر الهجري — صيام 13 و14 و15 كصيام الدهر.")
                 c.sound = .default
                 let dc = Calendar.current.dateComponents([.year, .month, .day, .hour], from: eve)
                 collect(UNNotificationRequest(identifier: "\(whitePrefix)\(i)",
@@ -412,26 +438,49 @@ enum Reminders {
         defer { scheduling = false }
         repeat {
             scheduleAgain = false
-            let requests = makePlan(store: store)
             let center = UNUserNotificationCenter.current()
             let previous = await center.pendingNotificationRequests()
+            // ما لا نكنسه يبقى شاغلًا مقعده من السقف، فيُطرح من الميزانية قبل التخطيط
+            // لا بعده. ولا ينزل المطروح عن المقاعد المحجوزة مهما كان الباقي قليلًا.
+            //
+            // البرهان: بعد الكنس لا يبقى إلا `retained`، ونضيف `budget` على الأكثر،
+            // فالمجموع = retained.count + 64 − max(reservedSlots, retained.count) ≤ 64.
+            // ولو أجّل المستخدم فرائضه الخمس وجرّب تنبيهًا بعد فراغنا، لم يُنشئ أكثر
+            // من ستّة، وهي المقاعد المحجوزة نفسها — فلا يتجاوز المجموع السقف أبدًا.
+            let retained = previous.filter { !isSweptOnReschedule($0.identifier) }
+            let requests = makePlan(store: store, budget: systemLimit - max(reservedSlots, retained.count))
             // تأجيل المستخدم يُستثنى من الكنس: عمره عشر دقائق ويسقط بنفسه، ومحوُه
             // لمجرّد أن التطبيق فُتح يُضيع ما طلبه بيده قبل أن يبلغه.
-            center.removePendingNotificationRequests(withIdentifiers: previous.map(\.identifier)
-                .filter { $0.hasPrefix("athar.") && !$0.hasPrefix(NotificationDelegate.snoozePrefix) })
+            center.removePendingNotificationRequests(
+                withIdentifiers: previous.map(\.identifier).filter(isSweptOnReschedule))
+            var failures = 0
             for request in requests {
                 do { try await center.add(request) }
-                catch { store.defaults.removeObject(forKey: coverageKey) }
+                catch { failures += 1 }
             }
+            // التغطية تُقرأ مما ثبت في النظام لا مما أرسلناه: الفرق بينهما هو
+            // بعينه ما تبحث عنه صفحة الجاهزية.
             let saved = await center.pendingNotificationRequests()
             let lastPrayer = saved.filter { isPrayerAlert($0) }.compactMap { fireDate($0) }.max()
             if let lastPrayer { store.defaults.set(lastPrayer, forKey: coverageKey) }
             else { store.defaults.removeObject(forKey: coverageKey) }
+            store.defaults.set(Date(), forKey: lastRefreshKey)
+            store.defaults.set(failures, forKey: failuresKey)
             store.objectWillChange.send()
         } while scheduleAgain
     }
 
-    static func makePlan(store: AtharStore, now: Date = Date()) -> [UNNotificationRequest] {
+    /// ما تمحوه إعادة الجدولة: خطّتنا وحدها. يبقى خارجها تأجيلُ المستخدم وتنبيهُ
+    /// التجربة وما ليس لنا أصلًا — مصدرٌ واحد للقاعدة كي لا يفترق الكنسُ عن الحساب.
+    private static func isSweptOnReschedule(_ identifier: String) -> Bool {
+        identifier.hasPrefix("athar.")
+            && !identifier.hasPrefix(NotificationDelegate.snoozePrefix)
+            && identifier != testId
+    }
+
+    /// خطة واحدة لكل العائلات، مقصوصة على `budget` — وهو عدد ما سيُضاف فعلًا،
+    /// تذكيرُ التغطية داخله لا فوقه. وبلا ميزانيةٍ مذكورة تُؤخذ ميزانية المخطّط.
+    static func makePlan(store: AtharStore, now: Date = Date(), budget: Int? = nil) -> [UNNotificationRequest] {
         planningDate = now
         planned = []
         scheduleAdhkar(store: store)
@@ -445,24 +494,59 @@ enum Reminders {
         let chronological = planned.sorted {
             (fireDate($0) ?? .distantFuture) < (fireDate($1) ?? .distantFuture)
         }
-        // نضمن أقرب 25 أذانًا أولًا؛ ثم نملأ البقية بالتذكيرات الأقرب موعدًا.
-        let prayers = Array(chronological.filter(isPrayerAlert).prefix(25))
-        let ids = Set(prayers.map(\.identifier))
-        let others = chronological.filter { !ids.contains($0.identifier) }
-        var result = prayers + others.prefix(63 - prayers.count)
+        planned = []
+
+        let allowed = max(0, min(plannerBudget, budget ?? plannerBudget))
+        let athans = chronological.filter(isPrayerAlert)
+        // مقعدٌ يُقتطع أوّلًا لتذكير التغطية: بلا نداءٍ يسبق انقطاع الأذان لا يدري
+        // صاحبه أن التنبيهات سكتت. ولا يُقتطع حين لا أذان أصلًا فلا تذكير حينها.
+        let coverageSlot = athans.isEmpty ? 0 : 1
+        let room = max(0, allowed - coverageSlot)
+        // الأذان أوّلًا: أقرب خمسة وعشرين نداءً (خمسة أيام) تُحجز قبل أن تأخذ الأذكارُ
+        // والورد والختمة والاستغفار نصيبها — فعائلةٌ تتكاثر لا تُجوّع الفريضة.
+        let prayers = athans.prefix(min(25, room))
+        let taken = Set(prayers.map(\.identifier))
+        // والبقية بالأقرب موعدًا: ما يصل اليوم أولى بالمقعد ممّا يصل بعد أسبوع.
+        let others = chronological.filter { !taken.contains($0.identifier) }.prefix(room - prayers.count)
+        var result = Array(prayers) + Array(others)
         // تذكير واضح قبل نهاية التغطية: التجديد الخلفي يسدّ الثغرة غالبًا، لكن النظام
         // لا يعد به — فيبقى النداء اليدويّ آخر ضمانة قبل أن ينقطع الأذان.
         if let last = prayers.last.flatMap(fireDate) {
             let fire = max(planningDate.addingTimeInterval(60), last.addingTimeInterval(-6 * 3600))
             let content = UNMutableNotificationContent()
-            content.title = "جدّد تنبيهات الصلاة"
-            content.body = "افتح أثر لتحديث مواقيت الأيام القادمة واستمرار التنبيهات."
+            content.title = loc("جدّد تنبيهات الصلاة")
+            content.body = loc("افتح أثر لتحديث مواقيت الأيام القادمة واستمرار التنبيهات.")
             content.sound = .default
             result.append(UNNotificationRequest(identifier: coverageId, content: content,
                 trigger: UNCalendarNotificationTrigger(dateMatching: pinned(fire, placeCalendar(store)), repeats: false)))
         }
-        planned = []
+        // العدد لا يتجاوز الميزانية: (prayers + others) ≤ room، والتغطية مقعدها محجوز.
         return result
+    }
+
+    // MARK: - تنبيه التجربة
+
+    /// تنبيه واحد بعد ثوانٍ ليطمئنّ صاحبه بأذنه لا بوعدٍ مكتوب. يحمل صوت الأذان
+    /// المختار حين يكون الأذان مفعّلًا — فتجربةٌ تمرّ في غير طريق الأذان لا تثبت شيئًا.
+    /// ويُعلن أنه تجربة في متنه كي لا يُحسب نداءَ وقتٍ لم يدخل.
+    @discardableResult
+    static func sendTestNotification(store: AtharStore) async -> Bool {
+        let content = UNMutableNotificationContent()
+        content.title = loc("تنبيه تجربة")
+        content.body = loc("هذه تجربة من أثر — ليست وقت صلاة. وصولها يعني أن التنبيهات تصلك.")
+        content.sound = store.athanAlerts ? athanSound(store) : .default
+        content.interruptionLevel = .timeSensitive
+        let request = UNNotificationRequest(
+            identifier: testId,
+            content: content,
+            trigger: UNTimeIntervalNotificationTrigger(timeInterval: 5, repeats: false))
+        do { try await UNUserNotificationCenter.current().add(request); return true }
+        catch { return false }
+    }
+
+    /// عدد ما هو معلّق الآن في النظام — تقرؤه صفحة الجاهزية لتقيسه بالسقف.
+    static func pendingCount() async -> Int {
+        await UNUserNotificationCenter.current().pendingNotificationRequests().count
     }
 
     private static func fireDate(_ request: UNNotificationRequest) -> Date? {
@@ -533,6 +617,19 @@ enum Reminders {
     static func rescheduleSunan(store: AtharStore) async { await rescheduleAll(store: store) }
 
 
+    /// موعدٌ كاملًا: يومه وساعته بأرقام لاتينية. تقرؤه صفحة الجاهزية وصفُّها في
+    /// الإعدادات. المنطقة تُمرَّر ولا تُفترض: نهاية التغطية موقّتة بمنطقة المكان
+    /// المحسوبة به المواقيت، وآخرُ تجديدٍ حدثٌ وقع بساعة الجهاز — وخلطهما يكذب على
+    /// المسافر مرّتين. والتقويم ميلاديّ صراحةً وإلا حلّه إقليم «ar_SA» هجريًّا.
+    static func momentText(_ date: Date, timeZone: TimeZone) -> String {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "ar_SA@numbers=latn")
+        f.calendar = Calendar(identifier: .gregorian)
+        f.timeZone = timeZone
+        f.dateFormat = "EEEE d MMMM · h:mm a"
+        return f.string(from: date)
+    }
+
     /// وقت الأذان بأرقام لاتينية في منطقة المكان المختار.
     private static func clockText(_ date: Date, store: AtharStore) -> String {
         let f = DateFormatter()
@@ -550,18 +647,18 @@ enum Reminders {
         switch prayer {
         case .fajr:
             return day.isMultiple(of: 2)
-                ? "«رَكْعَتَا الْفَجْرِ خَيْرٌ مِنَ الدُّنْيَا وَمَا فِيهَا» — رواه مسلم"
-                : "«مَنْ صَلَّى الْبَرْدَيْنِ دَخَلَ الْجَنَّةَ» — رواه البخاري"
+                ? loc("«رَكْعَتَا الْفَجْرِ خَيْرٌ مِنَ الدُّنْيَا وَمَا فِيهَا» — رواه مسلم")
+                : loc("«مَنْ صَلَّى الْبَرْدَيْنِ دَخَلَ الْجَنَّةَ» — رواه البخاري")
         case .asr:
             return day.isMultiple(of: 2)
-                ? "«مَنْ صَلَّى الْبَرْدَيْنِ دَخَلَ الْجَنَّةَ» — رواه البخاري"
-                : "﴿حَٰفِظُوا۟ عَلَى ٱلصَّلَوَٰتِ وَٱلصَّلَوٰةِ ٱلْوُسْطَىٰ﴾ — البقرة: 238"
+                ? loc("«مَنْ صَلَّى الْبَرْدَيْنِ دَخَلَ الْجَنَّةَ» — رواه البخاري")
+                : loc("﴿حَٰفِظُوا۟ عَلَى ٱلصَّلَوَٰتِ وَٱلصَّلَوٰةِ ٱلْوُسْطَىٰ﴾ — البقرة: 238")
         default:
             let lines = [
-                "﴿وَأَقِمِ ٱلصَّلَوٰةَ لِذِكْرِىٓ﴾ — طه: 14",
-                "﴿إِنَّ ٱلصَّلَوٰةَ تَنْهَىٰ عَنِ ٱلْفَحْشَآءِ وَٱلْمُنكَرِ﴾ — العنكبوت: 45",
-                "«مَثَلُ الصَّلَوَاتِ الْخَمْسِ كَمَثَلِ نَهَرٍ جَارٍ غَمْرٍ عَلَى بَابِ أَحَدِكُمْ يَغْتَسِلُ مِنْهُ كُلَّ يَوْمٍ خَمْسَ مَرَّاتٍ» — رواه مسلم",
-                "﴿حَٰفِظُوا۟ عَلَى ٱلصَّلَوَٰتِ وَٱلصَّلَوٰةِ ٱلْوُسْطَىٰ﴾ — البقرة: 238",
+                loc("﴿وَأَقِمِ ٱلصَّلَوٰةَ لِذِكْرِىٓ﴾ — طه: 14"),
+                loc("﴿إِنَّ ٱلصَّلَوٰةَ تَنْهَىٰ عَنِ ٱلْفَحْشَآءِ وَٱلْمُنكَرِ﴾ — العنكبوت: 45"),
+                loc("«مَثَلُ الصَّلَوَاتِ الْخَمْسِ كَمَثَلِ نَهَرٍ جَارٍ غَمْرٍ عَلَى بَابِ أَحَدِكُمْ يَغْتَسِلُ مِنْهُ كُلَّ يَوْمٍ خَمْسَ مَرَّاتٍ» — رواه مسلم"),
+                loc("﴿حَٰفِظُوا۟ عَلَى ٱلصَّلَوَٰتِ وَٱلصَّلَوٰةِ ٱلْوُسْطَىٰ﴾ — البقرة: 238"),
             ]
             return lines[day % lines.count]
         }
@@ -600,28 +697,29 @@ enum Reminders {
 
 // MARK: - خيارات التنبيه قبل الأذان
 
-/// كم دقيقة يسبق تنبيهُ الاستعداد الأذانَ — صفر يعني لا تنبيه. القيمة الخام
+/// كم دقيقة تفصل الإقامةَ عن الأذان — صفر يعني لا تنبيه للإقامة. القيمة الخام
 /// هي الدقائق نفسها فتُخزَّن في المتجر مباشرةً بلا جدول تحويل.
-/// تنبيه الإقامة بعد الأذان — خيارات بالدقائق.
 enum IqamahChoice: Int, CaseIterable, Identifiable, SettingsChoice {
     case off = 0, m5 = 5, m10 = 10, m15 = 15, m20 = 20, m25 = 25, m30 = 30
     var id: Int { rawValue }
     var title: String {
         switch self {
-        case .off: return "بدون"
-        case .m5:  return "بعد 5 دقائق"
-        case .m10: return "بعد 10 دقائق"
-        case .m15: return "بعد 15 دقيقة"
-        case .m20: return "بعد 20 دقيقة"
-        case .m25: return "بعد 25 دقيقة"
-        case .m30: return "بعد 30 دقيقة"
+        case .off: return loc("بدون")
+        case .m5:  return loc("بعد 5 دقائق")
+        case .m10: return loc("بعد 10 دقائق")
+        case .m15: return loc("بعد 15 دقيقة")
+        case .m20: return loc("بعد 20 دقيقة")
+        case .m25: return loc("بعد 25 دقيقة")
+        case .m30: return loc("بعد 30 دقيقة")
         }
     }
     var shortTitle: String { title }
-    var detail: String { self == .off ? "لا تنبيه للإقامة" : "تنبيه بنغمة النظام بعد الأذان بهذه المدة — اضبطه على عادة مسجدك" }
+    var detail: String { self == .off ? loc("لا تنبيه للإقامة") : loc("تنبيه بنغمة النظام بعد الأذان بهذه المدة — اضبطه على عادة مسجدك") }
     static func from(minutes: Int) -> IqamahChoice { allCases.min { abs($0.rawValue - minutes) < abs($1.rawValue - minutes) } ?? .off }
 }
 
+/// كم دقيقة يسبق تنبيهُ الاستعداد الأذانَ — صفر يعني لا تنبيه. القيمة الخام
+/// هي الدقائق نفسها كذلك.
 enum PreAthanChoice: Int, CaseIterable, SettingsChoice {
     case off = 0
     case m5 = 5

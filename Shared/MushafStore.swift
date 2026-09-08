@@ -71,7 +71,7 @@ extension AtharStore {
         static let wirdEnabled   = "athar.wird.enabled"
         static let wirdMinutes   = "athar.wird.reminderMinutes"
         static let highlights    = "athar.mushaf.highlights"
-        static let notes         = "athar.mushaf.notes"
+        // التدبّرات مفاتيحها في NoteArchive (أرشيف نسخٍ لا معجمًا)، فلا تُكرَّر هنا.
         static let readingMode   = "athar.mushaf.readingMode"
         static let spread        = "athar.mushaf.spread"
         static let khatmahDays   = "athar.khatmah.totalDays"
@@ -210,16 +210,33 @@ extension AtharStore {
 
     /// ما كتبه القارئ على الآية لنفسه. المفتاح مفتاح التظليل عينه («سورة:آية»)
     /// حتى يجتمع للآية الواحدة لونُها وتدبّرها على مرجعٍ واحد لا مرجعين.
+    /// والقراءة إسقاطةُ رؤوس الأرشيف لا معجمٌ مخزون — انظر NoteArchive.
     var notes: [String: String] {
-        get {
-            guard let d = defaults.data(forKey: MKey.notes),
-                  let v = try? JSONDecoder().decode([String: String].self, from: d) else { return [:] }
-            return v
-        }
+        get { NoteArchive.load(defaults).notes }
         set {
-            if let d = try? JSONEncoder().encode(newValue) { defaults.set(d, forKey: MKey.notes) }
+            var archive = NoteArchive.load(defaults)
+            let current = archive.notes
+            let origin = NoteArchive.origin(defaults)
+            // ما لم يتبدّل لا تُكتب له نسخة: وإلا خلّفت كتابةُ تدبّرٍ واحد نسخةً
+            // عن كل آيةٍ في المصحف كُتب عليها.
+            for ref in Set(current.keys).union(newValue.keys) where current[ref] != newValue[ref] {
+                archive.set(newValue[ref], for: ref, origin: origin)
+            }
+            archive.save(defaults)
             objectWillChange.send()
         }
+    }
+
+    var noteRecovery: [NoteRevision] { NoteArchive.load(defaults).recovery }
+
+    /// الاستعادة كتابةٌ جديدة لا رجوعٌ بالزمن: تنسخ ما هو قائم ويبقى القائم في
+    /// السجلّ — فلا تُفقد كلمةٌ لأجل استرجاع كلمة.
+    func restoreNote(_ revision: NoteRevision) {
+        var archive = NoteArchive.load(defaults)
+        guard archive.set(revision.text, for: revision.reference,
+                          origin: NoteArchive.origin(defaults)) else { return }
+        archive.save(defaults)
+        objectWillChange.send()
     }
 
     func note(for ref: AyahRef) -> String? {
@@ -228,11 +245,13 @@ extension AtharStore {
     }
 
     /// الفراغ محوٌ: «حفظٌ» على حقلٍ أُفرغ إزالةٌ لا تدبّرٌ من بياض.
-    func setNote(_ text: String?, for ref: AyahRef) {
-        let t = (text ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-        var all = notes
-        if t.isEmpty { all.removeValue(forKey: ref.id) } else { all[ref.id] = t }
-        notes = all
+    /// و`draft` للحفظ التلقائي وقت الكتابة: يُطوى بعضه في بعض فلا تُخلّف سكتاتُ
+    /// الكاتب عشر نسخٍ دائمة عن تدبّرٍ واحد.
+    func setNote(_ text: String?, for ref: AyahRef, draft: Bool = false) {
+        var archive = NoteArchive.load(defaults)
+        guard archive.set(text, for: ref.id, origin: NoteArchive.origin(defaults), draft: draft) else { return }
+        archive.save(defaults)
+        objectWillChange.send()
     }
 
     /// المكتوب عليها بترتيب المصحف — لا بترتيب القاموس المتقلّب من فتحةٍ إلى فتحة.

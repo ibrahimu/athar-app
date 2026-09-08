@@ -61,7 +61,7 @@ final class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
             case Self.prayedAction:
                 Self.recordOnTime(prayer: prayer, at: moment)
             case Self.snoozeAction:
-                await Self.snooze(prayer: prayer)
+                await Self.snooze(prayer: prayer, at: moment)
             case UNNotificationDefaultActionIdentifier:
                 // النقر على البطاقة نفسها: وجهةٌ معلّقة يستهلكها الجذر متى رُسم.
                 if let tab = Self.tab(for: identifier) {
@@ -102,7 +102,7 @@ final class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
     /// تنبيه واحد بعد عشر دقائق، بمعرّفٍ يحمل اسم الصلاة: تأجيلٌ ثانٍ لنفس الصلاة
     /// يحلّ محلّ الأول فلا يتراكم على المستخدم نداءان.
     @MainActor
-    private static func snooze(prayer: Prayer?) async {
+    private static func snooze(prayer: Prayer?, at moment: Date) async {
         guard let prayer else { return }
         let content = UNMutableNotificationContent()
         content.title = loc("تذكير %1$@", prayer.title)
@@ -111,7 +111,7 @@ final class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
         content.interruptionLevel = .timeSensitive
         content.categoryIdentifier = athanCategory
         content.userInfo = [prayerKey: prayer.rawValue,
-                            dateKey: Date().timeIntervalSinceReferenceDate]
+                            dateKey: moment.timeIntervalSinceReferenceDate]
 
         let request = UNNotificationRequest(
             identifier: "\(snoozePrefix)\(prayer.rawValue)",

@@ -13,7 +13,6 @@ struct PrayerSettingsView: View {
             VStack(spacing: 30) {
                 times
                 alerts
-                if store.athanAlerts { coverage }
             }
             .padding(.horizontal, Theme.gutter)
             .padding(.top, 8)
@@ -187,24 +186,41 @@ struct PrayerSettingsView: View {
                                 Task { await Reminders.rescheduleAthan(store: store) }
                             }))
                 }
+
+                // الجاهزية تُعرض ولو كان الأذان موقوفًا: الأذكار والورد والختمة تمرّ
+                // من الطريق نفسه، ومن لم يصله شيءٌ منها فسببه هنا لا في مفتاح الأذان.
+                SettingsDivider()
+                NavigationLink { NotificationHealthView() } label: {
+                    SettingsRow(icon: "checkmark.seal.fill", tint: Theme.accent(for: "sea"),
+                                title: loc("جاهزية التنبيهات"),
+                                subtitle: healthSubtitle) {
+                        chevron
+                    }
+                }
+                .buttonStyle(.plain)
             }
+            if store.athanAlerts { coverage }
         }
         .animation(Motion.smooth, value: store.athanAlerts)
     }
 
-    private var coverage: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Label("استمرار التنبيهات", systemImage: "calendar.badge.clock")
-                .font(Theme.display(14, weight: .semibold)).foregroundStyle(Theme.ink)
-            if let date = store.defaults.object(forKey: Reminders.coverageKey) as? Date {
-                Text("آخر أذان مجدول: \(date.formatted(.dateTime.locale(Locale(identifier: "ar_SA")).day().month(.wide).hour().minute()))")
-                    .font(Theme.display(12)).foregroundStyle(Theme.inkSoft)
-            }
-            Text("افتح أثر كل بضعة أيام لتجديد التنبيهات. سنذكّرك قبل انتهاء التغطية؛ استمرار التنبيهات يحتاج فتح التطبيق.")
-                .font(Theme.display(12)).foregroundStyle(Theme.inkSoft)
-                .fixedSize(horizontal: false, vertical: true)
+    /// مدى التغطية في سطر الصفّ نفسه: الرقم الذي يسأل عنه الناس أوّلًا يُرى بلا فتح صفحة.
+    private var healthSubtitle: String {
+        guard let date = store.defaults.object(forKey: Reminders.coverageKey) as? Date else {
+            return loc("الإذن والصوت وعدد التنبيهات المجدولة")
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        return loc("الأذان مجدول حتى %1$@", Reminders.momentText(date, timeZone: store.placeTimeZone))
+    }
+
+    /// تذكيرٌ صريح بأن التغطية منتهية: سقف النظام لا يحتمل أكثر من أيام، والتجديد
+    /// لا يقع إلا بفتح التطبيق — فقولُها مرّةً أصدق من صمتٍ يظنّه المستخدم ضمانًا.
+    private var coverage: some View {
+        Text(loc("افتح أثر كل بضعة أيام لتجديد التنبيهات. سنذكّرك قبل نهاية التغطية، لكن استمرارها يحتاج فتح التطبيق."))
+            .font(Theme.display(12))
+            .foregroundStyle(Theme.inkSoft)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 6)
     }
 
     private var chevron: some View {

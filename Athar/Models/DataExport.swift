@@ -114,7 +114,13 @@ enum DataExport {
     /// الكتابة — بعد التحقّق وحده، ودفعةً واحدة. فإمّا نسخةٌ كاملة أو لا شيء.
     @discardableResult
     static func apply(_ preview: Preview, into defaults: UserDefaults) -> Int {
-        for (key, value) in preview.values { defaults.set(value, forKey: key) }
+        var notes = NoteArchive.load(defaults)
+        notes.merge(NoteArchive.decode(preview.values[NoteArchive.key] as? Data))
+        notes.importLegacy(preview.values[NoteArchive.legacyKey] as? Data)
+        for (key, value) in preview.values where key != NoteArchive.key && key != NoteArchive.legacyKey {
+            defaults.set(value, forKey: key)
+        }
+        notes.save(defaults)
         return preview.values.count
     }
 
