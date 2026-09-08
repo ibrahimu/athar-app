@@ -46,6 +46,10 @@ struct StoryDesign: Equatable {
     var font: AppFont
     var signature: String = ""
     var stickerInk: StickerInk = .white
+    /// كلمة اليوم فوق المتن («جمعة مباركة»). فارغةٌ افتراضًا كالتوقيع: شاشة العبارات
+    /// ومعاينات المحفظة تبنيان بطاقاتهما بهذا التصميم نفسه، فلو نطقت من تلقائها
+    /// لتبدّلت صورٌ اعتادها الناس بلا أن يطلبوا. من أرادها سمّاها.
+    var eyebrow: String = ""
 
     /// الملصق: نصٌّ وحده على خلفية شفافة، يُلصق فوق أي صورة في سناب أو إنستغرام.
     var isSticker: Bool { layout == .sticker }
@@ -157,6 +161,7 @@ struct StoryCard: View {
 
     private var sticker: some View {
         VStack(spacing: 30) {
+            eyebrowLine(stickerInk.opacity(0.9))
             Text(text)
                 .font(phrase.isSacred ? Theme.dhikrFont(fixed: 58) : design.font.font(size: 58, weight: .medium))
                 .foregroundStyle(stickerInk)
@@ -270,6 +275,7 @@ struct StoryCard: View {
     private func textBlock(_ alignment: TextAlignment) -> some View {
         let frameAlignment: Alignment = alignment == .leading ? .leading : .center
         return VStack(alignment: alignment == .leading ? .leading : .center, spacing: 36) {
+            eyebrowLine(inkSoft)
             Text(text)
                 .font(textFont)
                 .foregroundStyle(ink)
@@ -285,6 +291,20 @@ struct StoryCard: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: frameAlignment)
             }
+        }
+    }
+
+    /// كلمة اليوم فوق المتن — بخط الواجهة لا بخط النسخ، فهي من عندنا لا من المصدر،
+    /// وسطرٌ واحد يتضاءل ولا يلتفّ حتى لا يزاحم النصّ الذي جاءت تُصدّره.
+    /// لا تُرسم البتّة ما لم تُسمَّ، فتبقى البطاقات القديمة على حالها.
+    @ViewBuilder private func eyebrowLine(_ color: Color) -> some View {
+        let eyebrow = design.eyebrow.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !eyebrow.isEmpty {
+            Text(eyebrow)
+                .font(design.font.font(size: 34, weight: .semibold))
+                .foregroundStyle(color)
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
         }
     }
 
