@@ -288,7 +288,7 @@ final class CloudKV {
     /// القانونية عمّا فيها، فرفعُ المِثل بالمِثل يوقظ الأجهزة بلا خبر.
     private func mergeAndUploadNotes(into defaults: UserDefaults) {
         mergeNotes(into: defaults)
-        var archive = NoteArchive.load(defaults)
+        let archive = NoteArchive.load(defaults)
 
         guard var data = archive.canonicalData() else { return }
         var near = false
