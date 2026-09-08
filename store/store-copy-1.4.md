@@ -8,6 +8,9 @@
 
 - **الأذان لا يفوتك**: تنبيهات الوقت صارت «حسّاسة للوقت» تخترق أوضاع التركيز، وتظهر وتُسمع والتطبيق مفتوح، وفيها «صلّيتها في وقتها» و«ذكّرني بعد 10 دقائق»، ونقرتها تفتح موضعها. وتتجدّد في الخلفية فلا تنقطع بعد أسبوع، وتُعاد جدولتها إذا بدّلت مدينتك، ومواعيدها مثبّتة على منطقة مكانك لا جهازك.
 - **يوم الجمعة في مكان واحد**: سننه سبعًا تُعلّمها وتُطوى من نفسها مع الجمعة القادمة، وكلّ سنّة بدليلها؛ وسورة الكهف بابها مفتوح تقرؤها صفحةً كالمصحف أو آيةً آية، ويُسجَّل تمامها؛ وعدّاد للصلاة على النبي ﷺ؛ وبطاقة الصدقة معها؛ وبطاقات جمعة جاهزة تُشارك في إكس وسناب وواتساب — بطاقةً كاملة أو ملصقًا شفّافًا تضعه فوق صورتك.
+- **دعاء الختمة**: مواضع الدعاء في القرآن نفسه تُقرأ عند الختم — من خاتمة سورة الناس، ومن بطاقة تمام الختمة، ومن باب المصحف. ولم يُكتب فيها دعاءٌ يُنسب إلى النبي ﷺ ولم يثبت عنه.
+- **شكل «اللوحة» للبطاقات**: ورقٌ مؤطَّر بأربع نقاط — بطاقةً كاملة، أو لوحةً شفّافة بلا خلفية تضعها فوق صورتك في سناب وإكس.
+- **المصحف يفتح على الصفحة التي يقولها**: كان «تابع القراءة» وفتحُ السورة في وضع الصفحة يعرضان أوّل المصحف والشريط يقول رقمًا آخر، وتُحتسب صفحةٌ لم تُقرأ في الختمة.
 - **الانتقال إلى صفحة أو جزء**: اكتب الرقم في بحث المصحف فتنتقل إليه، أو اضغط شريط الموضع في القارئ واختر صفحة أو جزءًا — بلا تقريبٍ ولا سحب.
 - **تدبّراتي**: ملاحظة خاصة على أي آية تبقى في جهازك، وعلامة خافتة عند رقمها، وصفحة تجمعها كلها.
 - **المصحف على الآيباد**: صفحتان متقابلتان تُقلَّبان معًا كالمصحف حين يُفتح، أو صفحة، أو صفحة مع التفسير.
@@ -30,6 +33,9 @@
 
 - **You won't miss the athan**: prayer alerts are now time-sensitive and cut through Focus, appear and sound while the app is open, carry «prayed on time» and «remind me in 10 minutes», and open the right screen when tapped. They refresh in the background so they never lapse, reschedule when you change city, and fire on your place's time zone.
 - **Friday, gathered in one place**: its seven sunan as a checklist that clears itself for next Friday, each with its evidence; al-Kahf one tap away, read as a Mushaf page or ayah by ayah, with completion recorded; a counter for salah upon the Prophet ﷺ; the sadaqah card alongside; and ready Friday cards to share on X, Snapchat and WhatsApp — a full card or a transparent sticker you place over your own photo.
+- **Khatmah supplication**: the Qur'an's own places of du'a, to read on completing it — from the end of Surat al-Nas, from the completion card, and from the Mushaf tab. No wording is attributed to the Prophet ﷺ that is not established from him.
+- **A new «plaque» card style**: framed cream paper with four dots — as a full card, or as a transparent plaque with no background to place over your own photo on Snapchat and X.
+- **The Mushaf opens on the page it names**: «continue reading» and opening a surah in page mode used to show the first page while the bar named another, and counted an unread page towards the khatmah.
 - **Go to a page or juz**: type the number in the Mushaf search, or tap the position bar in the reader.
 - **My reflections**: a private note on any ayah, kept on your device, with a page that gathers them.
 - **Mushaf on iPad**: two facing pages turned together like an open muṣḥaf, one page, or a page beside the tafsir.
