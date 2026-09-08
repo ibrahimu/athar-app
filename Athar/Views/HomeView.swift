@@ -8,6 +8,8 @@ struct HomeView: View {
     var embedded = false
 
     @State private var now = Date()
+    /// «الجمعة» شاشةٌ تُدفع من هنا، فرابطُ athar://open/friday يصل إليها عبر «اليوم».
+    @State private var openFriday = false
     private let ticker = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
 
     private var suggested: DhikrCategory? {
@@ -39,6 +41,10 @@ struct HomeView: View {
                     .readableWidth()
                 }
             }
+            // طلب الرابط قد يسبق ظهور الشاشة (إقلاع بارد) وقد يأتي وهي قائمة — يُستهلك في الحالين.
+            .navigationDestination(isPresented: $openFriday) { FridayView() }
+            .onAppear { consumeFridayRequest() }
+            .onChange(of: store.pendingFriday) { _, _ in consumeFridayRequest() }
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .principal) {
@@ -63,6 +69,14 @@ struct HomeView: View {
         // ولا إعادة تحميل للودجات هنا: الجذر (AtharApp) يعيدها عند الانتقال إلى الخلفية —
         // وهي اللحظة التي تُرى فيها الودجات — فكان نداؤها مع كل ظهورٍ لـ«اليوم» تكرارًا
         // يوقظ إضافة الودجة مع كل تبديل تبويب ورجوعٍ من قسم.
+    }
+
+    /// يُستهلك الطلب مرّة واحدة ثم يُخفض علَمُه، وإلا أُعيد فتح «الجمعة» مع كل
+    /// رجوعٍ إلى «اليوم» ما بقي التطبيق حيًّا.
+    private func consumeFridayRequest() {
+        guard store.pendingFriday else { return }
+        store.pendingFriday = false
+        openFriday = true
     }
 
     // MARK: بطاقات اليوم
@@ -186,39 +200,41 @@ struct HomeView: View {
 
     // MARK: الجمعة ورمضان
 
-    /// يوم الجمعة: الكهف والصلاة على النبي ﷺ والغسل — وحالة الكهف من الدفتر اليومي.
+    /// يوم الجمعة: بابٌ واحد إلى شاشتها، وفيه حصيلةُ سننها وحال الكهف من الدفتر —
+    /// كانت هنا قائمةُ سننٍ صمّاء لا تُعلَّم ولا تُتبَع، فصارت السنن تُعمل هناك.
     private var fridayCard: some View {
         let color = Theme.accent(for: "gold")
         let read = store.ledger(for: now).kahf
+        let p = store.fridayProgress
         return VStack(alignment: .leading, spacing: 10) {
             SectionHeader(title: loc("جمعة مباركة"), tint: color)
-            AtharCard(padding: 16, elevation: .e2, tint: color) {
-                VStack(alignment: .leading, spacing: 12) {
-                    NavigationLink { SurahReaderView(surahId: 18) } label: {
-                        HStack(spacing: 12) {
-                            IconChip(icon: read ? "checkmark.seal.fill" : "book.closed.fill", tint: color, size: .lg)
-                            VStack(alignment: .leading, spacing: 3) {
-                                Text(read ? loc("قرأت الكهف اليوم") : loc("سورة الكهف")).font(Theme.display(16, weight: .semibold)).foregroundStyle(Theme.ink)
-                                Text(read ? loc("تقبّل الله — نورٌ لك إلى الجمعة القادمة") : loc("افتحها الآن — يُسجَّل تمامها في إحصائك"))
-                                    .font(Theme.display(12)).foregroundStyle(Theme.inkSoft)
-                            }
-                            Spacer(minLength: 6)
-                            Image(systemName: "chevron.forward").font(.system(size: 12, weight: .semibold)).foregroundStyle(color)
+            NavigationLink { FridayView() } label: {
+                AtharCard(padding: 16, elevation: .e2, tint: color) {
+                    HStack(spacing: 14) {
+                        ZStack {
+                            ProgressRing(progress: p.fraction, color: color, lineWidth: 3, gradient: true)
+                                .frame(width: 46, height: 46)
+                            Image(systemName: p.isComplete ? "checkmark" : "sun.max.fill")
+                                .font(.system(size: 17, weight: .semibold))
+                                .foregroundStyle(color)
                         }
+                        .accessibilityHidden(true)
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(loc("%1$@ من %2$@ من سنن اليوم", p.done.counterText, p.total.counterText))
+                                .font(Theme.display(16, weight: .semibold))
+                                .foregroundStyle(Theme.ink)
+                            Text(read ? loc("قرأت الكهف اليوم") : loc("سورة الكهف تنتظرك"))
+                                .font(Theme.display(12))
+                                .foregroundStyle(Theme.inkSoft)
+                        }
+                        Spacer(minLength: 6)
+                        Image(systemName: "chevron.forward")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(color)
                     }
-                    .buttonStyle(.plain)
-                    SettingsDivider(inset: 0)
-                    VStack(alignment: .leading, spacing: 6) {
-                        Label(loc("الغسل والتطيّب والتبكير"), systemImage: "drop.fill")
-                        Label(loc("أكثِر من الصلاة على النبي ﷺ"), systemImage: "heart.fill")
-                        Label(loc("ساعة الإجابة آخر النهار"), systemImage: "hands.sparkles.fill")
-                    }
-                    .font(Theme.display(13)).foregroundStyle(Theme.inkSoft)
-                    Text("«غُسْلُ يَوْمَ الْجُمُعَةِ وَاجِبٌ عَلَى كُلِّ مُحْتَلِمٍ» — رواه البخاري")
-                        .font(Theme.display(11)).foregroundStyle(Theme.inkFaint)
-                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
+            .pressable()
         }
     }
 
@@ -633,9 +649,29 @@ struct HomeView: View {
         }
     }
 
-    /// «الصدقة تطفئ الخطيئة كما يطفئ الماء النار» — مدخل سريع لمنصة إحسان.
-    /// النصّ في الجهة القائدة (يمين العربية) وشعار إحسان في الجهة المقابلة.
-    private var sadaqahCard: some View {
+    /// بطاقة الصدقة نفسها تُعرض هنا وفي «الجمعة» — نسخةٌ واحدة، فلا يتبدّل نصّها
+    /// ولا شعارها في موضعٍ دون موضع.
+    private var sadaqahCard: some View { SadaqahCard() }
+
+    private var footerNote: some View {
+        Text("﴿ فَاذْكُرُونِي أَذْكُرْكُمْ ﴾")
+            .font(Theme.dhikrFont(size: 16))
+            .foregroundStyle(Theme.inkFaint)
+            .frame(maxWidth: .infinity)
+            .padding(.top, 8)
+    }
+}
+
+// MARK: - بطاقة الصدقة
+
+/// «الصدقة تطفئ الخطيئة كما يطفئ الماء النار» — مدخل سريع لمنصة إحسان.
+/// النصّ في الجهة القائدة (يمين العربية) وشعار إحسان في الجهة المقابلة.
+/// بطاقةٌ قائمة بذاتها لأن «اليوم» و«الجمعة» كلتيهما تعرضانها، ولفظُ الصدقة
+/// وشعارُها لا يُنسخان في موضعين فيفترقا.
+struct SadaqahCard: View {
+    @EnvironmentObject private var store: AtharStore
+
+    var body: some View {
         let gold = Theme.accent(for: "gold")
         return Link(destination: URL(string: "https://ehsan.sa")!) {
             AtharCard(padding: 16, tint: gold) {
@@ -678,14 +714,6 @@ struct HomeView: View {
             }
         }
         .pressable()
-    }
-
-    private var footerNote: some View {
-        Text("﴿ فَاذْكُرُونِي أَذْكُرْكُمْ ﴾")
-            .font(Theme.dhikrFont(size: 16))
-            .foregroundStyle(Theme.inkFaint)
-            .frame(maxWidth: .infinity)
-            .padding(.top, 8)
     }
 }
 

@@ -45,16 +45,32 @@ enum AppRoute: Equatable, Identifiable {
             if path[1] == "adhkar" { self = .adhkar(path[2]); return }
             if path[1] == "name", let n = Int(path[2]) { self = .name(n); return }
         }
+        // «الجمعة» شاشةٌ تدفعها بطاقةُ «اليوم»، لا تبويبٌ في الشريط ولا وجهةٌ قائمة
+        // بذاتها — فطريقها هو طريقها في التطبيق نفسه: يُطلب «اليوم» ويُرفع لها علَمٌ
+        // تستهلكه شاشته فتدفع الشاشة. وهي قبل سؤال التبويب كسائر المسارات الأخصّ.
+        if path[1] == "friday" { AtharStore.shared.pendingFriday = true; self = .tab(.home); return }
         if let t = AppTab(rawValue: path[1]) { self = .tab(t); return }
         return nil
     }
 }
 
 private var pendingRoutes: [ObjectIdentifier: AppRoute] = [:]
+private var pendingFridays: Set<ObjectIdentifier> = []
 extension AtharStore {
     /// وجهة معلّقة يستهلكها الجذر — في الذاكرة لا في التفضيلات.
     var pendingRoute: AppRoute? {
         get { pendingRoutes[ObjectIdentifier(self)] }
         set { pendingRoutes[ObjectIdentifier(self)] = newValue; objectWillChange.send() }
+    }
+
+    /// طلبٌ معلّق لفتح «الجمعة» تستهلكه شاشة «اليوم» مرّة واحدة — في الذاكرة
+    /// كأخيه، فالطلب يموت مع الجلسة ولا يفتح الشاشة في إقلاعٍ بعد أسبوع.
+    var pendingFriday: Bool {
+        get { pendingFridays.contains(ObjectIdentifier(self)) }
+        set {
+            if newValue { pendingFridays.insert(ObjectIdentifier(self)) }
+            else { pendingFridays.remove(ObjectIdentifier(self)) }
+            objectWillChange.send()
+        }
     }
 }
