@@ -8,7 +8,6 @@ struct DhikrSessionView: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var index = 0
-    @ObservedObject private var speaker = DhikrSpeaker.shared
     @ObservedObject private var ayahAudio = AyahAudio.shared
     @ObservedObject private var recorded = DhikrAudio.shared
     /// ما بقي من تكرار التلاوة القرآنية — العدّ يقع عند تمام المقطع لا عند كل آية.
@@ -62,7 +61,6 @@ struct DhikrSessionView: View {
             // خلف ورقة الإتمام تبقى الصفحة في شجرة الإتاحة، فتُحجب عن VoiceOver ما دامت الورقة ظاهرة.
             .accessibilityHidden(showCompletion)
         }
-        .safeAreaInset(edge: .bottom) { voiceQualityNote }
         // ملاحظة مستخدم: الدائرة وحدها تُلزم بمدّ الإبهام إلى أسفل الشاشة.
         .contentShape(Rectangle())
         .onTapGesture { if store.countTapArea == .screen { step() } }
@@ -72,13 +70,15 @@ struct DhikrSessionView: View {
         .onDisappear { stopSound() }
         .toolbar {
             // قراءة الذكر بصوت الجهاز وعدّه تلقائيًّا — لمن يداه مشغولتان.
-            ToolbarItem(placement: .topBarLeading) {
-                Button {
-                    if sounding { stopSound() } else { startSound() }
-                } label: { Image(systemName: sounding ? "speaker.slash.fill" : "speaker.wave.2.fill") }
-                .accessibilityLabel(sounding ? loc("إيقاف الصوت")
-                                             : (quranRange != nil ? loc("تلاوة الذكر مع العدّ")
-                                                                  : loc("قراءة الذكر بالصوت مع العدّ")))
+            // لا يُعرض إلا حيث خلفه صوتُ إنسان: تسجيلٌ أو تلاوة. وما لا صوت له فلا زرّ
+            // له — وعرضُ زرٍّ ينطق بصوت آلةٍ خشن أسوأ من ألّا يكون.
+            if hasHumanVoice {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button {
+                        if sounding { stopSound() } else { startSound() }
+                    } label: { Image(systemName: sounding ? "speaker.slash.fill" : "speaker.wave.2.fill") }
+                    .accessibilityLabel(sounding ? loc("إيقاف الصوت") : loc("تلاوة الذكر مع العدّ"))
+                }
             }
             // أزرار الشاشات المدفوعة تأتي في الطرف الأخير، بعيدًا عن سهم الرجوع.
             ToolbarItem(placement: .topBarTrailing) {
@@ -306,21 +306,6 @@ struct DhikrSessionView: View {
         remaining = Dictionary(uniqueKeysWithValues: category.items.map { ($0.id, $0.count) })
     }
 
-    /// ما ليس قرآنًا يُنطق بصوت الجهاز، وأصوات العربية المضغوطة خشنةٌ تُنفّر.
-    /// فيُقال لصاحبها مرّةً أين يجد الأجود بدل أن يظنّ الخشونة من التطبيق —
-    /// ولا سبيل إلى فتح صفحة الأصوات مباشرةً، فيُدلّ عليها بالطريق.
-    @ViewBuilder private var voiceQualityNote: some View {
-        if speaker.speaking, !speaker.hasGoodVoice {
-            Text(loc("صوت العربية في جهازك مضغوط. لصوتٍ أوضح: الإعدادات ← تسهيلات الاستخدام ← المحتوى المنطوق ← الأصوات ← العربية."))
-                .font(Theme.display(11))
-                .foregroundStyle(Theme.inkFaint)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, Theme.gutter)
-                .padding(.bottom, 6)
-                .transition(.opacity)
-        }
-    }
-
     // MARK: الصوت — القرآن يُتلى، وسواه يُنطَق
 
     /// موضع الذكر من المصحف إن كان قرآنًا (مستخرَجٌ من عزو الدليل).
@@ -328,7 +313,12 @@ struct DhikrSessionView: View {
         DhikrRecitation.range(category: category.id, dhikr: current.id)
     }
 
-    private var sounding: Bool { speaker.speaking || recitingLeft > 0 || recorded.playing }
+    private var sounding: Bool { recitingLeft > 0 || recorded.playing }
+
+    /// أصوات الأذكار المسجَّلة لم تُنجَز بعد، والنطق المركَّب لا يليق بذكرٍ يُتعبَّد به —
+    /// فيُخفى الزرّ إلا حيث يوجد تسجيلٌ في الحزمة أو تلاوةٌ لقرآن. ومتى أُضيفت
+    /// التسجيلات عاد الزرّ من نفسه بلا تعديل، فالشرط هو وجود الملف.
+    private var hasHumanVoice: Bool { hasRecording || quranRange != nil }
 
     /// أفضل ما يُسمع به هذا الذكر: تسجيلٌ إن وُجد، فتلاوةٌ إن كان قرآنًا، فنطقٌ أخيرًا.
     private var hasRecording: Bool { DhikrAudio.has(category: category.id, dhikr: current.id) }
@@ -342,10 +332,7 @@ struct DhikrSessionView: View {
             recorded.start(category: category.id, dhikr: current.id, times: max(1, left)) { step() }
             return
         }
-        guard let range = quranRange else {
-            speaker.start(current.text, times: max(1, left), onEach: { step() }, onDone: {})
-            return
-        }
+        guard let range = quranRange else { return }
         recitingLeft = max(1, left)
         reciteOnce(range)
     }
@@ -362,7 +349,6 @@ struct DhikrSessionView: View {
     }
 
     private func stopSound() {
-        speaker.stop()
         recorded.stop()
         if recitingLeft > 0 { recitingLeft = 0; ayahAudio.stop() }
     }
