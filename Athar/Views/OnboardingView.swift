@@ -28,6 +28,11 @@ struct OnboardingView: View {
     /// حالة إذن الإشعارات كما يراها نظام التشغيل — تُقرأ عند دخول خطوة الأذان وعند العودة من
     /// إعدادات الجهاز، حتى لا يوهم مفتاح مفعّل بأذان لن يصل لأن الإذن لم يُمنح.
     @State private var notifStatus: UNAuthorizationStatus = .notDetermined
+    /// الأيقونة والنقش يُختاران هنا كما يُختار الطابع، لكنّ الأيقونة لا تُلبَس إلا عند
+    /// «ابدأ»: تبديلها يُطلق تنبيه النظام «تم تغيير أيقونة التطبيق»، فلو طُبّق مع كل
+    /// ضغطة لقاطع التنبيهُ الترحيبَ مرّةً بعد مرّة. تُجمع النيّة هنا وتُنفَّذ مرّة واحدة.
+    @State private var iconMode: AppIconMode = .theme
+    @State private var pickedIcon: AppIconChoice = .original
 
     var body: some View {
         ZStack {
@@ -443,6 +448,10 @@ struct OnboardingView: View {
                 .accessibilityLabel(loc("colorTheme"))
             }
 
+            backgroundSection
+
+            iconSection
+
             VStack(spacing: 8) {
                 SettingsGroupTitle(text: loc("lighting"))
                 HStack(spacing: 10) {
@@ -452,6 +461,127 @@ struct OnboardingView: View {
                 .accessibilityLabel(loc("lighting"))
             }
         }
+    }
+
+    // MARK: النقش والأيقونة
+
+    /// نقش الورق: يُختار من أول تشغيل كما يُختار اللون، فالخلفية نصف ما تراه العين.
+    private var backgroundSection: some View {
+        VStack(spacing: 8) {
+            SettingsGroupTitle(text: loc("خلفية التطبيق"), tint: Theme.accent(for: "sea"))
+            ScrollView(.horizontal) {
+                HStack(spacing: 10) {
+                    ForEach(BackgroundPattern.allCases) { patternTile($0) }
+                }
+                .padding(.horizontal, 4)
+                .padding(.vertical, 6)
+            }
+            .scrollIndicators(.hidden)
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel(loc("خلفية التطبيق"))
+        }
+    }
+
+    private func patternTile(_ pattern: BackgroundPattern) -> some View {
+        let on = store.backgroundPattern == pattern
+        return Button {
+            withAnimation(Motion.gentle) { store.backgroundPattern = pattern }
+            Haptics.tap(enabled: store.hapticsEnabled)
+        } label: {
+            VStack(spacing: 6) {
+                ZStack {
+                    RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous).fill(Theme.canvas)
+                    PaperMotif(tint: Theme.accent, pattern: pattern, intensity: 9)
+                        .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous))
+                    if on {
+                        Image(systemName: "checkmark.circle.fill")
+                            .font(.system(size: 18, weight: .bold))
+                            .foregroundStyle(Theme.accent)
+                            .background(Circle().fill(Theme.surface).padding(2))
+                    }
+                }
+                .frame(width: 76, height: 60)
+                .overlay(RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous)
+                    .strokeBorder(on ? Theme.accent : Theme.hairline.opacity(0.6), lineWidth: on ? 2.5 : 1))
+                Text(pattern.title)
+                    .font(Theme.display(12, weight: on ? .semibold : .regular))
+                    .foregroundStyle(on ? Theme.accent : Theme.inkSoft)
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(pattern.title)
+        .accessibilityAddTraits(on ? .isSelected : [])
+    }
+
+    /// أيقونة التطبيق: إمّا أن تمشي مع الطابع المختار، وإمّا أن يخصّها باختيار.
+    /// وتُطوى حيث يمنع النظام البدائل — خيارٌ لا يُنفَّذ خُلفٌ للوعد.
+    @ViewBuilder private var iconSection: some View {
+        if AppIconManager.supported {
+            VStack(spacing: 8) {
+                SettingsGroupTitle(text: loc("أيقونة التطبيق"), tint: Theme.accent(for: "dusk"))
+                Picker("", selection: $iconMode) {
+                    ForEach(AppIconMode.allCases) { Text($0.title).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .accessibilityLabel(loc("أيقونة التطبيق"))
+
+                if iconMode == .theme {
+                    Text(loc("تلبس أيقونتك لون الطابع الذي اخترته — وتتبعه كلّما بدّلته."))
+                        .font(Theme.display(11))
+                        .foregroundStyle(Theme.inkFaint)
+                        .multilineTextAlignment(.center)
+                        .frame(maxWidth: .infinity)
+                } else {
+                    ScrollView(.horizontal) {
+                        HStack(spacing: 12) {
+                            ForEach(AppIconChoice.allCases) { iconChoiceTile($0) }
+                        }
+                        .padding(.horizontal, 6)
+                        .padding(.vertical, 7)
+                    }
+                    .scrollIndicators(.hidden)
+                    .accessibilityElement(children: .contain)
+                    .accessibilityLabel(loc("أيقونة التطبيق"))
+                }
+            }
+            .animation(reduceMotion ? nil : Motion.smooth, value: iconMode)
+        }
+    }
+
+    private func iconChoiceTile(_ choice: AppIconChoice) -> some View {
+        let on = pickedIcon == choice
+        let side: CGFloat = 54
+        let corner = side * 0.22
+        return Button {
+            withAnimation(Motion.gentle) { pickedIcon = choice }
+            Haptics.tap(enabled: store.hapticsEnabled)
+        } label: {
+            VStack(spacing: 6) {
+                Group {
+                    if let image = UIImage(named: choice.previewAsset) ?? UIImage(named: choice.assetName ?? "AppIcon") {
+                        Image(uiImage: image).resizable().scaledToFill()
+                    } else {
+                        RoundedRectangle(cornerRadius: corner, style: .continuous).fill(Theme.surfaceAlt)
+                    }
+                }
+                .frame(width: side, height: side)
+                .clipShape(RoundedRectangle(cornerRadius: corner, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: corner, style: .continuous)
+                    .strokeBorder(Theme.hairline.opacity(0.7), lineWidth: 0.5))
+                .overlay(RoundedRectangle(cornerRadius: corner + 5, style: .continuous)
+                    .strokeBorder(Theme.accent, lineWidth: 2.5)
+                    .padding(-5)
+                    .opacity(on ? 1 : 0))
+                Text(choice.title)
+                    .font(Theme.display(11, weight: on ? .semibold : .regular))
+                    .foregroundStyle(on ? Theme.accent : Theme.inkSoft)
+                    .lineLimit(1)
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(choice.title)
+        .accessibilityAddTraits(on ? .isSelected : [])
     }
 
     /// بلاطة خط: العيّنة بالخط نفسه لا بخط الواجهة الحالي — هذا ما سيراه المستخدم إن اختاره.
@@ -668,8 +798,22 @@ struct OnboardingView: View {
         preview.stop()
         // «تخطّي» من خطوة الأذان يحترم ما قلبه المستخدم في المفتاح كما تفعل «لاحقًا».
         if step == .athan { commitAthan() }
+        commitIcon()
         store.didOnboard = true
         dismiss()
+    }
+
+    /// تُلبَس الأيقونة مرّةً واحدة عند الخروج من الترحيب لا مع كل ضغطة، فتنبيه النظام
+    /// «تم تغيير أيقونة التطبيق» يقع مرّةً بعد أن يفرغ المستخدم، لا في وجهه وهو يختار.
+    /// ويُمهَل لحظة بعد انزياح الغطاء: تنبيهُ نظامٍ يُطلَق على شاشةٍ تُغادر قد يضيع.
+    private func commitIcon() {
+        guard AppIconManager.supported else { return }
+        store.appIconMode = iconMode
+        let wanted = iconMode == .theme ? AppIconChoice.matching(store.appTheme) : pickedIcon
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(600))
+            try? await AppIconManager.set(wanted)
+        }
     }
 }
 

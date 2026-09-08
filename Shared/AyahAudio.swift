@@ -47,6 +47,7 @@ final class AyahAudio: NSObject, ObservableObject {
     private var statusObserver: NSKeyValueObservation?
     private var playedTimes = 0
     private var onAdvance: ((AyahRef) -> Void)?
+    private var onFinish: (() -> Void)?
 
     var isActive: Bool { current != nil }
     var reciter: AyahReciter { AyahReciters.reciter(id: reciterId) }
@@ -149,8 +150,11 @@ final class AyahAudio: NSObject, ObservableObject {
     }
 
     /// يبدأ من آية ويتابع آيةً آية حتى نهاية السورة أو حدّ الوقوف.
-    func play(from ref: AyahRef, onAdvance: ((AyahRef) -> Void)? = nil) {
+    /// `onFinish` يُنادى حين ينتهي المقطع من تلقائه لا حين يوقفه المستخدم — به تعرف
+    /// جلسةُ الأذكار أن التلاوة تمّت فتعدّ مرّةً وتعيد إن بقي من عددها شيء.
+    func play(from ref: AyahRef, onAdvance: ((AyahRef) -> Void)? = nil, onFinish: (() -> Void)? = nil) {
         self.onAdvance = onAdvance
+        self.onFinish = onFinish
         Recitation.shared.pause()                     // لا يتداخل صوتان
         NotificationCenter.default.post(name: .atharAudioStarted, object: nil)
         let session = AVAudioSession.sharedInstance()
@@ -195,8 +199,10 @@ final class AyahAudio: NSObject, ObservableObject {
             return
         }
         playedTimes = 0
-        if let stopAt, ref >= stopAt { stop(); return }
-        guard let next = Quran.next(after: ref), next.surah == ref.surah else { stop(); return }
+        if let stopAt, ref >= stopAt { let done = onFinish; stop(); done?(); return }
+        guard let next = Quran.next(after: ref), next.surah == ref.surah else {
+            let done = onFinish; stop(); done?(); return
+        }
         load(next)
     }
 
@@ -217,6 +223,7 @@ final class AyahAudio: NSObject, ObservableObject {
     }
 
     func stop() {
+        onFinish = nil
         tearDown()
         current = nil
         isPlaying = false

@@ -17,9 +17,21 @@ final class DhikrSpeaker: NSObject, ObservableObject, AVSpeechSynthesizerDelegat
 
     private override init() { super.init(); synth.delegate = self }
 
+    /// أجود ما في الجهاز من أصوات العربية: المميّز ثم المحسّن ثم المضغوط. والمضغوط
+    /// هو «البححة» التي تُسمع على جهازٍ لم يُنزَّل فيه صوتٌ أجود — فيُعرف حاله ليُقال للمستخدم.
     private var voice: AVSpeechSynthesisVoice? {
         let ar = AVSpeechSynthesisVoice.speechVoices().filter { $0.language.hasPrefix("ar") }
-        return ar.first { $0.quality == .enhanced } ?? ar.first ?? AVSpeechSynthesisVoice(language: "ar-SA")
+        return ar.first { $0.quality == .premium }
+            ?? ar.first { $0.quality == .enhanced }
+            ?? ar.first
+            ?? AVSpeechSynthesisVoice(language: "ar-SA")
+    }
+
+    /// هل في الجهاز صوتٌ عربيٌّ جيّد؟ إن لم يكن فالنطق مضغوطٌ خشن، ويُنبَّه صاحبه
+    /// إلى أنّ في إعدادات النظام صوتًا أجود يُنزَّل مرّة.
+    var hasGoodVoice: Bool {
+        AVSpeechSynthesisVoice.speechVoices()
+            .contains { $0.language.hasPrefix("ar") && $0.quality != .default }
     }
 
     /// يقرأ النص `times` مرة؛ بعد كل مرة يُستدعى onEach (للعدّ)، وفي النهاية onDone.

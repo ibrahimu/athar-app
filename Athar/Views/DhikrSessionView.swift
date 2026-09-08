@@ -9,6 +9,9 @@ struct DhikrSessionView: View {
 
     @State private var index = 0
     @ObservedObject private var speaker = DhikrSpeaker.shared
+    @ObservedObject private var ayahAudio = AyahAudio.shared
+    /// ما بقي من تكرار التلاوة القرآنية — العدّ يقع عند تمام المقطع لا عند كل آية.
+    @State private var recitingLeft = 0
     @State private var remaining: [String: Int] = [:]
     @State private var showCompletion = false
     /// الذكر المفتوح في مصمّم بطاقة الصورة، وبطاقة المحفظة المعروضة — كلاهما يُبنى
@@ -58,21 +61,23 @@ struct DhikrSessionView: View {
             // خلف ورقة الإتمام تبقى الصفحة في شجرة الإتاحة، فتُحجب عن VoiceOver ما دامت الورقة ظاهرة.
             .accessibilityHidden(showCompletion)
         }
+        .safeAreaInset(edge: .bottom) { voiceQualityNote }
         // ملاحظة مستخدم: الدائرة وحدها تُلزم بمدّ الإبهام إلى أسفل الشاشة.
         .contentShape(Rectangle())
         .onTapGesture { if store.countTapArea == .screen { step() } }
         .navigationTitle(category.title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.hidden, for: .tabBar)
-        .onDisappear { speaker.stop() }
+        .onDisappear { stopSound() }
         .toolbar {
             // قراءة الذكر بصوت الجهاز وعدّه تلقائيًّا — لمن يداه مشغولتان.
             ToolbarItem(placement: .topBarLeading) {
                 Button {
-                    if speaker.speaking { speaker.stop() }
-                    else { speaker.start(current.text, times: max(1, left), onEach: { step() }, onDone: {}) }
-                } label: { Image(systemName: speaker.speaking ? "speaker.slash.fill" : "speaker.wave.2.fill") }
-                .accessibilityLabel(speaker.speaking ? loc("إيقاف القراءة") : loc("قراءة الذكر بالصوت مع العدّ"))
+                    if sounding { stopSound() } else { startSound() }
+                } label: { Image(systemName: sounding ? "speaker.slash.fill" : "speaker.wave.2.fill") }
+                .accessibilityLabel(sounding ? loc("إيقاف الصوت")
+                                             : (quranRange != nil ? loc("تلاوة الذكر مع العدّ")
+                                                                  : loc("قراءة الذكر بالصوت مع العدّ")))
             }
             // أزرار الشاشات المدفوعة تأتي في الطرف الأخير، بعيدًا عن سهم الرجوع.
             ToolbarItem(placement: .topBarTrailing) {
@@ -93,7 +98,7 @@ struct DhikrSessionView: View {
         }
         .onAppear(perform: seed)
         // السحب يغيّر الصفحة دون عدّ، فنحفظ الموضع أيضًا ليعود المستخدم حيث ترك.
-        .onChange(of: index) { _, _ in saveSession(); speaker.stop() }   // لا يُكمل قراءة الذكر السابق على عدّ اللاحق
+        .onChange(of: index) { _, _ in saveSession(); stopSound() }   // لا يُكمل قراءة الذكر السابق على عدّ اللاحق
         .overlay { if showCompletion { completionOverlay } }
         .animation(Motion.smooth, value: showCompletion)
         .sheet(item: $designing) { phrase in
@@ -298,6 +303,58 @@ struct DhikrSessionView: View {
         // نستعيد عدّ اليوم إن وُجد: مَن بلغ ٣٤٠ من ٣٦٧ ثم خرج لا يُطالَب بالبدء من الصفر.
         guard !restoreSession() else { return }
         remaining = Dictionary(uniqueKeysWithValues: category.items.map { ($0.id, $0.count) })
+    }
+
+    /// ما ليس قرآنًا يُنطق بصوت الجهاز، وأصوات العربية المضغوطة خشنةٌ تُنفّر.
+    /// فيُقال لصاحبها مرّةً أين يجد الأجود بدل أن يظنّ الخشونة من التطبيق —
+    /// ولا سبيل إلى فتح صفحة الأصوات مباشرةً، فيُدلّ عليها بالطريق.
+    @ViewBuilder private var voiceQualityNote: some View {
+        if speaker.speaking, !speaker.hasGoodVoice {
+            Text(loc("صوت العربية في جهازك مضغوط. لصوتٍ أوضح: الإعدادات ← تسهيلات الاستخدام ← المحتوى المنطوق ← الأصوات ← العربية."))
+                .font(Theme.display(11))
+                .foregroundStyle(Theme.inkFaint)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, Theme.gutter)
+                .padding(.bottom, 6)
+                .transition(.opacity)
+        }
+    }
+
+    // MARK: الصوت — القرآن يُتلى، وسواه يُنطَق
+
+    /// موضع الذكر من المصحف إن كان قرآنًا (مستخرَجٌ من عزو الدليل).
+    private var quranRange: AyahRange? {
+        DhikrRecitation.range(category: category.id, dhikr: current.id)
+    }
+
+    private var sounding: Bool { speaker.speaking || recitingLeft > 0 }
+
+    /// صوتُ آلةٍ يقرأ القرآن نشاز، فما كان قرآنًا يُتلى بصوت قارئٍ من محرّك التلاوة
+    /// نفسه الذي في المصحف، وما سواه يبقى على النطق. والعدّ في الحالين عند التمام.
+    private func startSound() {
+        stopSound()
+        guard let range = quranRange else {
+            speaker.start(current.text, times: max(1, left), onEach: { step() }, onDone: {})
+            return
+        }
+        recitingLeft = max(1, left)
+        reciteOnce(range)
+    }
+
+    private func reciteOnce(_ range: AyahRange) {
+        ayahAudio.repeatCount = 1
+        ayahAudio.stopAt = range.last
+        ayahAudio.play(from: range.first, onAdvance: nil) {
+            // تمّ المقطع: يُعدّ مرّة، فإن بقي من عدده شيء أُعيد.
+            step()
+            recitingLeft = max(0, recitingLeft - 1)
+            if recitingLeft > 0 { reciteOnce(range) }
+        }
+    }
+
+    private func stopSound() {
+        speaker.stop()
+        if recitingLeft > 0 { recitingLeft = 0; ayahAudio.stop() }
     }
 
     private func step() {
