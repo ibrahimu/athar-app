@@ -243,11 +243,18 @@ struct HomeView: View {
         let color = Theme.accent(for: "dusk")
         let t = store.prayerTimes(for: now)
         let fajr = t?[.fajr], maghrib = t?[.maghrib]
+        // بعد المغرب ينقضي فجرُ اليوم فيسقط العدّ كلّه — وتلك ساعاتُ السحور التي
+        // يُسأل فيها «كم بقي على الإمساك». فيُقرأ فجرُ الغد كما تفعل «الصلاة القادمة».
+        let tomorrowFajr = Calendar.current.date(byAdding: .day, value: 1, to: now)
+            .flatMap { store.prayerTimes(for: $0)?[.fajr] }
         let target: (label: String, date: Date)? = {
             if let m = maghrib, m > now { return (loc("الإفطار"), m) }
             if let f = fajr, f > now { return (loc("الإمساك"), f) }
+            if let f = tomorrowFajr { return (loc("الإمساك"), f) }
             return nil
         }()
+        // ورقمُ الإمساك المعروض يتبعه: بعد المغرب يُعرض فجرُ الغد لا فجرٌ مضى.
+        let imsak = (fajr.map { $0 > now } ?? false) ? fajr : (tomorrowFajr ?? fajr)
         return VStack(alignment: .leading, spacing: 10) {
             SectionHeader(title: loc("رمضان كريم"), tint: color)
             AtharCard(padding: 16, elevation: .e2, tint: color) {
@@ -255,7 +262,7 @@ struct HomeView: View {
                     HStack(spacing: 0) {
                         VStack(spacing: 3) {
                             Text(loc("الإمساك")).font(Theme.display(12)).foregroundStyle(Theme.inkSoft)
-                            Text(fajr.map(clockText) ?? "—").font(.system(size: 20, weight: .bold, design: .rounded)).foregroundStyle(Theme.ink).monospacedDigit()
+                            Text(imsak.map(clockText) ?? "—").font(.system(size: 20, weight: .bold, design: .rounded)).foregroundStyle(Theme.ink).monospacedDigit()
                         }.frame(maxWidth: .infinity)
                         Rectangle().fill(Theme.hairline).frame(width: 1, height: 36)
                         VStack(spacing: 3) {
@@ -654,7 +661,11 @@ struct HomeView: View {
     private var sadaqahCard: some View { SadaqahCard() }
 
     private var footerNote: some View {
-        Text("﴿ فَاذْكُرُونِي أَذْكُرْكُمْ ﴾")
+        // النصّ يُحلّ من quran.json بمعرّفه: كان مكتوبًا بالرسم الإملائي فيختلف
+        // حرفُه عن الآية نفسها في المصحف (٢:١٥٢) داخل التطبيق الواحد.
+        Text("﴿ " + (Quran.text(AyahRef(surah: 2, ayah: 152)).map {
+            $0.split(separator: " ").prefix(2).joined(separator: " ")
+        } ?? "") + " ﴾")
             .font(Theme.dhikrFont(size: 16))
             .foregroundStyle(Theme.inkFaint)
             .frame(maxWidth: .infinity)

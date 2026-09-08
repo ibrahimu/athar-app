@@ -37,8 +37,15 @@ enum AppIconChoice: String, CaseIterable, Identifiable {
     }
 
     /// ما يوافق طابع التطبيق الحالي — يُقترح على من بدّل طابعه ولم يبدّل أيقونته.
+    /// المطابقة بالاسم الخام وحدها كانت تُسقط طابعين من اثني عشر إلى «الأصل» صامتةً:
+    /// «عسليّ» (amber) وأيقونته موجودة باسم honey، و«إردوازيّ» (slate) ولا أيقونة باسمه.
+    /// فيَعِد «تتبع الطابع» بما لا يقع، ويُلحّ على صاحبهما بالعودة إلى الخضراء.
     static func matching(_ theme: AppTheme) -> AppIconChoice {
-        AppIconChoice(rawValue: theme.rawValue) ?? .original
+        switch theme {
+        case .amber: return .honey
+        case .slate: return .charcoal
+        default:     return AppIconChoice(rawValue: theme.rawValue) ?? .original
+        }
     }
 
     init(assetName: String?) {

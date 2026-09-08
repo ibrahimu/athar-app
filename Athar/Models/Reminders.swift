@@ -95,7 +95,7 @@ enum Reminders {
             let cal = placeCalendar(store)
             for dayOffset in 0..<4 {
                 guard let day = cal.date(byAdding: .day, value: dayOffset, to: planningDate), let t = store.prayerTimes(for: day) else { continue }
-                for (prayer, id, title, body) in [(Prayer.fajr, morningId, loc("أذكار الصباح"), loc("﴿ فَاذْكُرُونِي أَذْكُرْكُمْ ﴾ — بعد الفجر أطيبُ وقتٍ لها.")),
+                for (prayer, id, title, body) in [(Prayer.fajr, morningId, loc("أذكار الصباح"), loc("﴿ فَٱذْكُرُونِىٓ أَذْكُرْكُمْ ﴾ — بعد الفجر أطيبُ وقتٍ لها.")),
                                                    (Prayer.asr, eveningId, loc("أذكار المساء"), loc("حصّن يومك قبل أن يغيب — أذكار المساء بانتظارك."))] {
                     guard let base = t[prayer] else { continue }
                     let fire = base.addingTimeInterval(20 * 60)
@@ -110,7 +110,7 @@ enum Reminders {
 
         add(id: morningId,
                   title: loc("أذكار الصباح"),
-                  body: loc("﴿ فَاذْكُرُونِي أَذْكُرْكُمْ ﴾ — دقيقتان تكفيك اليوم كله."),
+                  body: loc("﴿ فَٱذْكُرُونِىٓ أَذْكُرْكُمْ ﴾ — دقيقتان تكفيك اليوم كله."),
                   minutes: store.morningReminderMinutes)
 
         add(id: eveningId,

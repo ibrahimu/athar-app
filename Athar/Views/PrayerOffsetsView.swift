@@ -4,6 +4,7 @@ import WidgetKit
 /// ضبط المواقيت يدويًّا: دقائق تُزاد أو تُنقص لكل فريضة حتى تطابق تقويم مسجد الحيّ.
 /// يُطبَّق في المخزن مرة واحدة فتراه كل الشاشات والودجات والتنبيهات.
 struct PrayerOffsetsView: View {
+    @State private var confirmReset = false
     @EnvironmentObject private var store: AtharStore
     private let prayers: [Prayer] = [.fajr, .dhuhr, .asr, .maghrib, .isha]
 
@@ -27,10 +28,9 @@ struct PrayerOffsetsView: View {
                 }
 
                 if store.hasPrayerOffsets {
+                    // ضبطٌ قضى فيه دقائق يذهب بلمسة، فيُستأذن كما يُستأذن سائرُ التصفير.
                     Button {
-                        withAnimation(Motion.snappy) { store.resetPrayerOffsets() }
-                        Haptics.done(enabled: store.hapticsEnabled)
-                        Task { await Reminders.rescheduleAll(store: store) }
+                        confirmReset = true
                     } label: {
                         Text(loc("إعادة الضبط إلى الحساب الفلكي"))
                             .font(Theme.display(14, weight: .semibold))
@@ -48,6 +48,16 @@ struct PrayerOffsetsView: View {
         .scrollIndicators(.hidden)
         .modifier(PaperTopEdge())
         .background { AtharBackground() }
+        .confirmationDialog(loc("إعادة الضبط إلى الحساب الفلكي؟"), isPresented: $confirmReset, titleVisibility: .visible) {
+            Button(loc("إعادة الضبط"), role: .destructive) {
+                withAnimation(Motion.snappy) { store.resetPrayerOffsets() }
+                Haptics.done(enabled: store.hapticsEnabled)
+                Task { await Reminders.rescheduleAll(store: store) }
+            }
+            Button(loc("cancel"), role: .cancel) {}
+        } message: {
+            Text(loc("تُمحى الدقائق التي ضبطتها للفرائض كلّها، ولا رجوع."))
+        }
         .navigationTitle(loc("ضبط المواقيت"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.hidden, for: .tabBar)
@@ -66,8 +76,10 @@ struct PrayerOffsetsView: View {
             }
             Spacer(minLength: 8)
             HStack(spacing: 0) {
+                // الإزاحة الموجبة تُضاف إلى الوقت فتؤخّره، والسالبة تطرح منه فتقدّمه —
+                // وكان الوسمان معكوسين، فمن سمعهما بـVoiceOver فعل ضدّ ما أراد.
                 step("minus", enabled: offset > -30) { change(p, -1) }
-                    .accessibilityLabel(loc("تأخير %1$@ دقيقة", p.title))
+                    .accessibilityLabel(loc("تقديم %1$@ دقيقة", p.title))
                 Text(offsetText(offset))
                     .font(.system(size: 15, weight: .semibold, design: .rounded))
                     .foregroundStyle(offset == 0 ? Theme.inkFaint : Theme.ink)
@@ -76,7 +88,7 @@ struct PrayerOffsetsView: View {
                     .contentTransition(.numericText())
                     .animation(Motion.snappy, value: offset)
                 step("plus", enabled: offset < 30) { change(p, 1) }
-                    .accessibilityLabel(loc("تقديم %1$@ دقيقة", p.title))
+                    .accessibilityLabel(loc("تأخير %1$@ دقيقة", p.title))
             }
             .background(Capsule().fill(Theme.surfaceAlt))
             .overlay(Capsule().strokeBorder(Theme.hairline.opacity(0.5), lineWidth: 0.5))

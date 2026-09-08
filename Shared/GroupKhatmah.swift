@@ -136,6 +136,9 @@ final class GroupKhatmahService: ObservableObject {
     }
 
     func refresh() async {
+        // خطأ محاولةٍ انقضت لا يُعرض على شاشةٍ فُتحت من جديد: الخدمة واحدة تعبر
+        // حالتُها بين الفتحات، وكان «لا ختمة بهذا الرمز» يبقى معلّقًا تحت حقلين فارغين.
+        error = nil
         guard let code = joinedCode else { return }
         fetchFailed = false
         do {

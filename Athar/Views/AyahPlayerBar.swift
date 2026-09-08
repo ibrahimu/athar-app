@@ -47,8 +47,12 @@ struct AyahPlayerBar: View {
             // الاتجاه ثابت LTR كأزرار المشغّل الكبير: السابق يسارًا والتالي يمينًا.
             HStack(spacing: 2) {
                 control("backward.end.fill", label: loc("الآية السابقة")) { audio.previous() }
+                    .disabled(!audio.canGoPrevious)
+                    .opacity(audio.canGoPrevious ? 1 : 0.35)
                 control(audio.isPlaying ? "pause.fill" : "play.fill", size: 18, label: audio.isPlaying ? loc("إيقاف مؤقت") : loc("تشغيل")) { audio.toggle() }
                 control("forward.end.fill", label: loc("الآية التالية")) { audio.next() }
+                    .disabled(!audio.canGoNext)
+                    .opacity(audio.canGoNext ? 1 : 0.35)
             }
             .environment(\.layoutDirection, .leftToRight)
 

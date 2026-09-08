@@ -208,7 +208,9 @@ struct NotificationHealthView: View {
                 SettingsRow(icon: "calendar.badge.clock", tint: Theme.accent(for: "night"),
                             title: loc("التغطية حتى"),
                             subtitle: loc("آخر أذانٍ مجدول — وبعده يسكت النداء حتى تفتح أثر")) {
+                    // التاريخ الطويل كان يتشظّى سطرين أو ثلاثة ويزاحم العنوان.
                     SettingsValue(text: coverageText)
+                        .lineLimit(1).minimumScaleFactor(0.8)
                 }
                 .accessibilityElement(children: .combine)
 

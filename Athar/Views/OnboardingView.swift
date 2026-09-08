@@ -31,6 +31,8 @@ struct OnboardingView: View {
     /// الأيقونة والنقش يُختاران هنا كما يُختار الطابع، لكنّ الأيقونة لا تُلبَس إلا عند
     /// «ابدأ»: تبديلها يُطلق تنبيه النظام «تم تغيير أيقونة التطبيق»، فلو طُبّق مع كل
     /// ضغطة لقاطع التنبيهُ الترحيبَ مرّةً بعد مرّة. تُجمع النيّة هنا وتُنفَّذ مرّة واحدة.
+    /// هل بلغ المستخدمُ خطوةَ المظهر فرأى قسم الأيقونة؟
+    @State private var sawAppearance = false
     @State private var iconMode: AppIconMode = .theme
     @State private var pickedIcon: AppIconChoice = .original
 
@@ -54,6 +56,7 @@ struct OnboardingView: View {
                         page { athan }
                     case .appearance:
                         page { appearance }
+                            .onAppear { sawAppearance = true }
                     }
                 }
             }
@@ -800,6 +803,12 @@ struct OnboardingView: View {
         if step == .athan { commitAthan() }
         commitIcon()
         store.didOnboard = true
+        // من لم يعرف إصدارًا قبل هذا لا يُعرض عليه «ما الجديد» يعدّد عليه جديدًا هو
+        // عنده قديم: تُختم نسخته هنا، فلا يفاجئه الغطاء في فتحه الثاني.
+        store.whatsNewShownVersion = WhatsNewView.version
+        // من لم يعرف إصدارًا قبل هذا لا يُعرض عليه «ما الجديد» يعدّد عليه جديدًا
+        // هو عنده قديم: تُختم نسخته هنا، فلا يفاجئه الغطاء في فتحه الثاني.
+        store.whatsNewShownVersion = WhatsNewView.version
         dismiss()
     }
 
@@ -807,6 +816,9 @@ struct OnboardingView: View {
     /// «تم تغيير أيقونة التطبيق» يقع مرّةً بعد أن يفرغ المستخدم، لا في وجهه وهو يختار.
     /// ويُمهَل لحظة بعد انزياح الغطاء: تنبيهُ نظامٍ يُطلَق على شاشةٍ تُغادر قد يضيع.
     private func commitIcon() {
+        // خطوةٌ تُتخطّى لا تترك أثرًا: من ضغط «تخطّي» قبل «المظهر» لم يرَ قسم الأيقونة
+        // قطّ، فلا تُقلَب نيّتُه نيابةً عنه فتتبدّل أيقونتُه لاحقًا بلا أن يطلب.
+        guard sawAppearance else { return }
         guard AppIconManager.supported else { return }
         store.appIconMode = iconMode
         let wanted = iconMode == .theme ? AppIconChoice.matching(store.appTheme) : pickedIcon

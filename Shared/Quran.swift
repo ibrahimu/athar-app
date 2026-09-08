@@ -206,6 +206,10 @@ extension String {
             let v = u.value
             if (0x064B...0x065F).contains(v) || v == 0x0670 || v == 0x0640 { continue } // تشكيل + ألف خنجرية + تطويل
             if (0x06D6...0x06ED).contains(v) { continue }                                // علامات وقف وتجويد
+            // الأرقام الهندية والفارسية تُردّ إلى الغربية: من كتب «٥٥» بلوحته العربية
+            // كان بحثُه يخيب وإن كان البحث بالرقم مدعومًا.
+            if (0x0660...0x0669).contains(v) { out.append(Unicode.Scalar(v - 0x0660 + 48)!); continue }
+            if (0x06F0...0x06F9).contains(v) { out.append(Unicode.Scalar(v - 0x06F0 + 48)!); continue }
             out.append(u)
         }
         return String(out)

@@ -143,7 +143,9 @@ struct DhikrWidgetView: View {
             }
 
             Text(entry.dhikr.text)
-                .font(.system(size: textSize))
+                // نصٌّ شرعي بخطّ النسخ كالحديث واسم اليوم في الحزمة نفسها — وكان
+                // بخطّ النظام فيخرج تشكيلُه أضعف ويختلف عن جاره على الشاشة.
+                .font(.custom("NotoNaskhArabic-Regular", size: textSize))
                 .foregroundStyle(entry.moment.ink)
                 .lineSpacing(7)
                 .lineLimit(lines)

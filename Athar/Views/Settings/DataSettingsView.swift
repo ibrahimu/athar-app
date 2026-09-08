@@ -7,7 +7,12 @@ struct DataSettingsView: View {
     @EnvironmentObject private var store: AtharStore
     @State private var exportURL: URL?
     @State private var showImporter = false
+    /// لا حساب iCloud على الجهاز — تُقال ولا يُدَّعى نجاحٌ لم يقع.
+    @State private var noICloudAccount = false
     @State private var importMessage: String?
+    /// عذر التصدير يُعرض تحت صفّ التصدير: كان يُكتب في رسالة الاستيراد فيقرأ
+    /// المستخدم «تعذّر التصدير» تحت «استيراد نسخة» وهو لم يستورد شيئًا.
+    @State private var exportMessage: String?
     /// ملفٌ قُرئ وتُحقّق منه ولم يُكتب بعد — بقاؤه هنا هو ما يفتح ورقة التأكيد.
     @State private var pending: DataExport.Preview?
     @State private var showResetConfirm = false
@@ -76,10 +81,38 @@ struct DataSettingsView: View {
             SettingsCard {
                 SettingsRow(icon: "icloud.fill", tint: Theme.accent(for: "sea"), title: loc("مزامنة iCloud"),
                             subtitle: loc("اختيارية، وما يخرج من جهازك مكتوبٌ تحتها")) {
-                    Toggle("", isOn: Binding(get: { store.cloudSyncEnabled }, set: { store.cloudSyncEnabled = $0 }))
+                    Toggle("", isOn: Binding(
+                        get: { store.cloudSyncEnabled },
+                        set: { on in
+                            // بلا حساب iCloud على الجهاز لا يُرفع شيء ولا يُنزَّل، وكان
+                            // المفتاح يثبت مفتوحًا والجذر يعلن «مزامنة مفعّلة» — فيبدّل
+                            // صاحبه جهازه فيجد تدبّراته ضائعة. فيُسأل النظام قبل الوعد.
+                            if on, FileManager.default.ubiquityIdentityToken == nil {
+                                noICloudAccount = true
+                                return
+                            }
+                            noICloudAccount = false
+                            store.cloudSyncEnabled = on
+                        }))
                         .labelsHidden()
                         .accessibilityLabel(loc("مزامنة iCloud"))
                         .accessibilityHint(syncDisclosure)
+                }
+                if noICloudAccount {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(loc("لا يوجد حساب iCloud على هذا الجهاز — سجّل الدخول من إعدادات الجهاز لتعمل المزامنة."))
+                            .font(Theme.display(12)).foregroundStyle(Theme.danger)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Button(loc("فتح الإعدادات")) {
+                            if let url = URL(string: UIApplication.openSettingsURLString) {
+                                UIApplication.shared.open(url)
+                            }
+                        }
+                        .font(Theme.display(13, weight: .semibold))
+                        .foregroundStyle(Theme.accent)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 16).padding(.bottom, 12)
                 }
                 // البيان تحت المفتاح لا في صفحة أخرى: من يفتحه يفتحه على بيّنة بما يخرج،
                 // والتدبّرات أوّل ما يُسمّى فيه لأنها كلامه هو لا تفضيلًا يُعوَّض.
@@ -87,7 +120,8 @@ struct DataSettingsView: View {
                 SettingsDivider()
                 Button { exportData() } label: {
                     SettingsRow(icon: "square.and.arrow.up.on.square.fill", tint: Theme.accent(for: "sea"),
-                                title: loc("تصدير بياناتي"), subtitle: loc("ملف واحد: المفضّلة والسجلات والتدبّرات والختمة والإعدادات")) { EmptyView() }
+                                title: loc("تصدير بياناتي"),
+                                subtitle: exportMessage ?? loc("ملف واحد: المفضّلة والسجلات والتدبّرات والختمة والإعدادات")) { EmptyView() }
                 }
                 .buttonStyle(.plain)
                 SettingsDivider()
@@ -185,7 +219,7 @@ struct DataSettingsView: View {
     }
 
     private func exportData() {
-        do { exportURL = try DataExport.export(from: store.defaults) } catch { importMessage = loc("تعذّر التصدير") }
+        do { exportMessage = nil; exportURL = try DataExport.export(from: store.defaults) } catch { exportMessage = loc("تعذّر التصدير") }
     }
 
     /// الكتابة أخيرًا، ثم إيقاظ كل ما يقرأ التفضيلات: الطابع والسحابة والودجات
@@ -272,7 +306,9 @@ private struct ImportConfirmSheet: View {
                     .font(.system(size: 16))
                     .foregroundStyle(Theme.danger)
                     .accessibilityHidden(true)
-                Text(loc("ما في هذا الملف يحلّ محلّ ما عندك الآن، ولا رجوع عنه. وما لا ذكر له في الملف يبقى كما هو."))
+                // التدبّرات وحدها تُدمج ولا تُستبدل (أرشيفُ مراجعاتٍ لا قيمةٌ تُكتب)،
+                // فكان النصّ يَعِد باستبدالٍ لا يقع فيها ويظنّ صاحبُها المحذوفَ عائدًا.
+                Text(loc("ما في هذا الملف يحلّ محلّ ما عندك الآن، ولا رجوع عنه. وما لا ذكر له في الملف يبقى كما هو. إلّا تدبّراتك فتُضاف ولا تُستبدل: ما كتبتَه بعد هذه النسخة يبقى."))
                     .font(Theme.display(13))
                     .foregroundStyle(Theme.ink)
                     .fixedSize(horizontal: false, vertical: true)

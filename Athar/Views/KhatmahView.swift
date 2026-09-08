@@ -425,14 +425,23 @@ struct KhatmahView: View {
         let names = store.khatmahMode.slotNames
         let lower = window.base + 1
         let total = max(1, window.upper - lower + 1)
-        let per = max(1, Int((Double(total) / Double(max(1, names.count))).rounded(.up)))
+        // توزيعٌ متوازن لا رفعَ فيه للكسر: الرفع كان يستهلك الصفحات قبل آخر موقِت
+        // فتسقط العشاء من الخمسة والوصفُ يَعِد بها — وأوائل الصفوف تأخذ الزائد.
+        let n = max(1, names.count)
+        let base = total / n, extra = total % n
+        let spans: [(Int, Int)] = (0..<n).reduce(into: []) { acc, i in
+            let start = (acc.last?.1 ?? lower - 1) + 1
+            let size = base + (i < extra ? 1 : 0)
+            acc.append((start, start + max(0, size - 1)))
+        }
         return VStack(spacing: 8) {
             SettingsGroupTitle(text: loc("توزيع اليوم"))
             SettingsCard {
-                ForEach(Array(names.enumerated()), id: \.offset) { i, name in
-                    let from = lower + i * per
-                    let to = min(window.upper, from + per - 1)
-                    if from <= window.upper {
+                let shown = Array(names.enumerated()).filter { spans[$0.offset].0 <= window.upper }
+                ForEach(shown, id: \.offset) { i, name in
+                    let from = spans[i].0
+                    let to = min(window.upper, spans[i].1)
+                    do {
                         HStack {
                             Text(name).font(Theme.display(14, weight: .medium)).foregroundStyle(Theme.ink)
                             Spacer()
@@ -441,7 +450,9 @@ struct KhatmahView: View {
                                 .foregroundStyle(Theme.inkSoft).monospacedDigit()
                         }
                         .padding(.horizontal, 14).padding(.vertical, 10)
-                        if i < names.count - 1 { SettingsDivider() }
+                        // الفاصل بين الصفوف الظاهرة فعلًا لا بعدد الأسماء — وكان يُرسم
+                        // تحت آخر صفٍّ معلّقًا لا شيء بعده.
+                        if i != shown.last?.offset { SettingsDivider() }
                     }
                 }
             }
@@ -482,9 +493,15 @@ struct KhatmahView: View {
     /// موعدٌ افتراضي حين يُشعل الخيار: آخر أيام التحدي القائم — أقرب ما في ذهنه،
     /// فلا يبدأ من تاريخ اليوم ثم يُطالَب بستمئة صفحة قبل الغروب.
     private var suggestedTarget: Date {
-        let left = max(1, store.khatmahTotalDays - store.khatmahDayIndex + 1)
         let cal = Calendar.current
-        return cal.date(byAdding: .day, value: left - 1, to: cal.startOfDay(for: Date())) ?? Date()
+        // ما بقي من المدّة يصير يومًا واحدًا عند آخر التحدي وبعده، فيقترح «اليوم»
+        // على من بقي عليه ثلثا المصحف — عينُ ما يقول التعليق إنّه يتجنّبه. فالاقتراح
+        // من الصفحات الباقية بوردٍ معقول (عشرون صفحة)، وبأسبوعٍ حدًّا أدنى.
+        let leftByPlan = store.khatmahTotalDays - store.khatmahDayIndex + 1
+        let pagesLeft = max(0, Quran.pageCount - store.khatmahPagesDone)
+        let byPages = Int((Double(pagesLeft) / 20.0).rounded(.up))
+        let days = max(leftByPlan, byPages, pagesLeft > 0 ? 7 : 1)
+        return cal.date(byAdding: .day, value: days - 1, to: cal.startOfDay(for: Date())) ?? Date()
     }
 
     /// «آخر رمضان» لا يُعرض إلا إذا كان في مدى ختمةٍ معقولة — عرضُه قبله بأحد

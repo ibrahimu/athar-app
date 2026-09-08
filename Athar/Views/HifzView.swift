@@ -130,7 +130,7 @@ struct HifzView: View {
                         ayahCard(ref)
 
                         if let card = store.card(for: ref), card.lapses > 0 {
-                            Label(lapseText(card.lapses), systemImage: "arrow.trianglehead.counterclockwise")
+                            Label(lapseText(card.lapses), systemImage: "arrow.counterclockwise")
                                 .font(Theme.display(12, weight: .medium))
                                 .foregroundStyle(Theme.gold)
                                 .padding(.horizontal, 12).padding(.vertical, 6)

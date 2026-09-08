@@ -434,7 +434,9 @@ struct PrayerView: View {
         let f = DateFormatter()
         f.locale = Locale(identifier: "ar_SA@numbers=latn")
         f.timeZone = TimeZone(identifier: tz) ?? .current
-        f.dateFormat = "h:mm"
+        // بعلامة الفترة كبقيّة الشاشة: بطاقةٌ وُضعت لمعرفة وقت بلدٍ آخر لا تُخفي
+        // نصفَ الخبر — «9:30» لا يُدرى أصباحٌ هو أم مساء.
+        f.dateFormat = "h:mm a"
         return f.string(from: d)
     }
 
@@ -507,9 +509,14 @@ struct PrayerView: View {
                         qiyamSlot(loc("ينتهي بالفجر"), q.end)
                     }
 
+                    // نصٌّ شرعي: يُعرض بخطّ النسخ لا بخطّ الواجهة المختار، كما في سائر
+                    // التطبيق — وكان يتبع اختيار المستخدم فيُقرأ بـ«ثمانية» أو خطّ النظام،
+                    // بحجمٍ صغير وحبرٍ خافت. ولم يُمسّ منه حرف: ليس في hadith.json ليُحلّ
+                    // بمعرّفه، ولا يُكتب نصٌّ شرعي من غير بياناته.
                     Text("«ينزل ربنا إلى السماء الدنيا حين يبقى ثلث الليل الآخر» — متفق عليه")
-                        .font(Theme.display(11))
-                        .foregroundStyle(Theme.inkFaint)
+                        .font(Theme.naskhFont(size: 13, scale: store.fontScale))
+                        .foregroundStyle(Theme.inkSoft)
+                        .fixedSize(horizontal: false, vertical: true)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
@@ -639,7 +646,9 @@ struct LocationPickerView: View {
                 ScrollView {
                     VStack(spacing: 14) {
                         if !secondary { deviceLocationCard }
-                        Text(loc("موقعك يُستخدم على جهازك فقط لحساب أوقات الصلاة، ولا يُرسل إلى أي جهة."))
+                        // الوعد يطابق ما يفعله الكود: CLGeocoder نداءٌ شبكيّ يحمل الإحداثيات إلى Apple
+                        // لاستخراج اسم المدينة وحده — والحساب نفسه على الجهاز.
+                        Text(loc("المواقيت تُحسب على جهازك ولا تُرسل إلى خادم لنا. ولاستخراج اسم مدينتك وحده يُسلَّم الموقع إلى خدمة الخرائط في Apple."))
                             .font(Theme.display(12))
                             .foregroundStyle(Theme.inkFaint)
                             .fixedSize(horizontal: false, vertical: true)
@@ -681,6 +690,15 @@ struct LocationPickerView: View {
             }
             .onChange(of: store.usesDeviceLocation) { _, uses in
                 if uses {
+                    WidgetCenter.shared.reloadAllTimelines()
+                    dismiss()
+                }
+            }
+            // من كان على موقع الجهاز أصلًا لا يتبدّل العلَم عنده، فلا يُغلَق شيء ولا
+            // يظهر أثرٌ لضغطته — فيضغط ثانيةً وثالثة وهي قد عملت. فالإغلاق يتبع
+            // وصولَ اسم مكانٍ جديد أيضًا.
+            .onChange(of: store.placeName) { _, _ in
+                if store.usesDeviceLocation {
                     WidgetCenter.shared.reloadAllTimelines()
                     dismiss()
                 }
@@ -747,7 +765,9 @@ struct LocationPickerView: View {
             HStack(spacing: 12) {
                 Image(systemName: on ? "checkmark.circle.fill" : "circle")
                     .font(.system(size: 17))
-                    .foregroundStyle(on ? Theme.accent : Theme.hairline)
+                    // hairline يكاد يختفي على الورق الفاتح (تباين ١٫٣:١)، فتبدو
+                    // صفوفُ المدن نصًّا لا خيارًا — كما عولج في سائر قوائم الاختيار.
+                    .foregroundStyle(on ? Theme.accent : Theme.inkFaint)
                 Text(city.name)
                     .font(Theme.display(15, weight: on ? .semibold : .regular))
                     .foregroundStyle(Theme.ink)

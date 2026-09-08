@@ -356,7 +356,14 @@ extension AtharStore {
     /// فقد أُتمَّت تلك الصفحة فتُحتسب. خطوة واحدة فقط ولا قفز، حتى لا يُحتسب
     /// فتحُ سورةٍ بعيدة قراءةً لكل ما قبلها.
     func noteReaderPage(_ page: Int) {
-        guard khatmahActive, page == khatmahPagesDone + 2 else { return }
+        guard khatmahActive else { return }
+        // آخر صفحةٍ في المصحف لا صفحةَ بعدها تُبلَغ، فكانت لا تُحتسب أبدًا: يقف
+        // العدّاد عند ٦٠٣ والنسبة تُقرَّب إلى ١٠٠٪، ولا تكتمل ختمةُ من ختم قراءةً.
+        if page == Quran.pageCount, khatmahPagesDone == Quran.pageCount - 1 {
+            khatmahPagesDone = Quran.pageCount
+            return
+        }
+        guard page == khatmahPagesDone + 2 else { return }
         khatmahPagesDone = page - 1
     }
 
@@ -463,7 +470,9 @@ extension AtharStore {
     }
 
     var wirdReminderMinutes: Int {
-        get { defaults.integer(forKey: MKey.wirdMinutes) == 0 ? 20 * 60 : defaults.integer(forKey: MKey.wirdMinutes) }
+        // الصفر دقيقةٌ صحيحة (منتصف الليل) لا «لا قيمة»: كان من يضبطه على ١٢ ص
+        // يرى العجلة ترتدّ أمامه إلى ٨ م، ولا سبيل له إلى ضبطه بحال.
+        get { (defaults.object(forKey: MKey.wirdMinutes) as? Int) ?? (20 * 60) }
         set { defaults.set(newValue, forKey: MKey.wirdMinutes); objectWillChange.send() }
     }
 }

@@ -23,6 +23,8 @@ struct AdhkarIndexView: View {
             ZStack {
                 AtharBackground()
                 ScrollView {
+                    // الشبكة الكسولة تخبّئ صفوفها فلا تُعاد صبغتها مع الطابع وإن مُرِّر
+                    // اللون قيمةً — والمفتاح يعيد بناءها، كما في «اليوم» و«الأقسام».
                     LazyVStack(spacing: 12) {
                         ForEach(Array(filtered.enumerated()), id: \.element.id) { i, category in
                             NavigationLink {
@@ -41,6 +43,7 @@ struct AdhkarIndexView: View {
                                 .padding(.top, 60)
                         }
                     }
+                    .id("\(store.appTheme.rawValue)-\(store.unifyIcons)")
                     .padding(.horizontal, Theme.gutter)
                     .padding(.bottom, 32)
                     .readableWidth()

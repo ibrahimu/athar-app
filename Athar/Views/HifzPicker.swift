@@ -34,6 +34,13 @@ struct HifzPicker: View {
                     ScrollView {
                         VStack(spacing: 16) {
                             SettingsGroupTitle(text: loc("السورة"), tint: sea)
+                            // بلا فرعٍ للفراغ كانت البطاقة تُرسم خاليةً بحدٍّ شعري لا غير،
+                            // فلا يدري الباحث أبَحثُه لم يطابق شيئًا أم أنّ الورقة تعطّلت.
+                            if filtered.isEmpty {
+                                ContentUnavailableView(loc("لا توجد نتائج"), systemImage: "magnifyingglass",
+                                                       description: Text(loc("جرّب كلمة أخرى")))
+                                    .padding(.vertical, 30)
+                            } else {
                             SettingsCard {
                                 ForEach(Array(filtered.prefix(query.isEmpty ? 114 : 12).enumerated()), id: \.element.id) { i, s in
                                     Button {
@@ -70,6 +77,7 @@ struct HifzPicker: View {
                                     .accessibilityAddTraits(surahId == s.id ? .isSelected : [])
                                     if i < filtered.prefix(query.isEmpty ? 114 : 12).count - 1 { SettingsDivider() }
                                 }
+                            }
                             }
 
                             if let s = surah {

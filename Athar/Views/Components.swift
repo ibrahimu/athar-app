@@ -242,14 +242,20 @@ struct ProgressRing: View {
             Circle().stroke(color.opacity(0.16), lineWidth: lineWidth)
 
             if ticks > 0 {
-                ForEach(0..<ticks, id: \.self) { i in
-                    Capsule()
-                        .fill(color.opacity(0.22))
-                        .frame(width: lineWidth * 0.14, height: lineWidth * 0.5)
-                        .offset(y: -0.5)
-                        .rotationEffect(.degrees(Double(i) / Double(ticks) * 360))
+                // العلامات على محيط الحلقة لا في مركزها: كانت الإزاحة نصفَ نقطةٍ لا
+                // نصفَ قطر، فتكدّست كلّها بقعةً تحت الرقم ولم يُرَ على المسار شيء.
+                GeometryReader { geo in
+                    let r = min(geo.size.width, geo.size.height) / 2
+                    ForEach(0..<ticks, id: \.self) { i in
+                        Capsule()
+                            .fill(color.opacity(0.22))
+                            .frame(width: lineWidth * 0.14, height: lineWidth * 0.5)
+                            .offset(y: -(r - lineWidth / 2))
+                            .rotationEffect(.degrees(Double(i) / Double(ticks) * 360))
+                            .position(x: geo.size.width / 2, y: geo.size.height / 2)
+                    }
                 }
-                .padding(lineWidth / 2)
+                .allowsHitTesting(false)
             }
 
             let arc = Circle()

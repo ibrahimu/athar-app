@@ -4,6 +4,8 @@ import WidgetKit
 /// The reading screen: one dhikr at a time, tap anywhere to count down.
 struct DhikrSessionView: View {
     let category: DhikrCategory
+    /// ذكرٌ يُفتح عليه الباب — من نتيجة بحثٍ ضُغطت. لا شيء افتراضًا: يُستأنف الموضع.
+    var startAt: String? = nil
     @EnvironmentObject private var store: AtharStore
     @Environment(\.dismiss) private var dismiss
 
@@ -14,6 +16,9 @@ struct DhikrSessionView: View {
     @State private var recitingLeft = 0
     /// تعذّرت التلاوة (المقطع يُجلب من الشبكة ولا يُنزَّل) — تُقال ولا تُبتلع.
     @State private var recitationFailed = false
+    @State private var confirmReset = false
+    /// تكرار الآية كما ضبطه القارئ قبل أن تستعمله الجلسة — يُردّ إليه بعدها.
+    @State private var savedRepeat: Int?
     @State private var remaining: [String: Int] = [:]
     @State private var showCompletion = false
     /// الذكر المفتوح في مصمّم بطاقة الصورة، وبطاقة المحفظة المعروضة — كلاهما يُبنى
@@ -70,6 +75,12 @@ struct DhikrSessionView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.hidden, for: .tabBar)
         .onDisappear { stopSound() }
+        .confirmationDialog(loc("إعادة عدّ هذا الباب؟"), isPresented: $confirmReset, titleVisibility: .visible) {
+            Button(loc("إعادة العدّ"), role: .destructive) { resetCounts() }
+            Button(loc("cancel"), role: .cancel) {}
+        } message: {
+            Text(loc("يُصفَّر عدّ اليوم في هذا الباب وحده، ولا يمسّ إحصاءك ولا تتابعك."))
+        }
         // تلاوة الآيات تُجلب من الشبكة ولا تُنزَّل، فالفشل واردٌ ويُقال بدل أن يُبتلع.
         .alert(loc("تعذّر تشغيل التلاوة"), isPresented: $recitationFailed) {
             Button(loc("حسنًا"), role: .cancel) {}
@@ -91,7 +102,8 @@ struct DhikrSessionView: View {
             // أزرار الشاشات المدفوعة تأتي في الطرف الأخير، بعيدًا عن سهم الرجوع.
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
-                    Button(loc("إعادة العدّ"), systemImage: "arrow.counterclockwise") { resetCounts() }
+                    // جهد اليوم كلّه يذهب بلمسة، وسائر التصفير في التطبيق يُستأذن قبله.
+                Button(loc("إعادة العدّ"), systemImage: "arrow.counterclockwise") { confirmReset = true }
                     ShareLink(item: shareText) { Label(loc("مشاركة الذكر"), systemImage: "square.and.arrow.up") }
                     Button(loc("بطاقة صورة"), systemImage: "photo") { designing = dhikrPhrase }
                     // البطاقة الموقَّعة موجودة في قسم المحفظة؛ نقرّبها إلى الذكر الذي يُقرأ
@@ -313,8 +325,15 @@ struct DhikrSessionView: View {
     private func seed() {
         guard remaining.isEmpty else { return }
         // نستعيد عدّ اليوم إن وُجد: مَن بلغ ٣٤٠ من ٣٦٧ ثم خرج لا يُطالَب بالبدء من الصفر.
-        guard !restoreSession() else { return }
-        remaining = Dictionary(uniqueKeysWithValues: category.items.map { ($0.id, $0.count) })
+        let restored = restoreSession()
+        if !restored {
+            remaining = Dictionary(uniqueKeysWithValues: category.items.map { ($0.id, $0.count) })
+        }
+        // ومن جاء من نتيجة بحثٍ ضغطها، يُفتح له الذكرُ الذي ضغطه لا موضعُ أمسِ:
+        // كان يرى نصّ ذكرٍ في البطاقة ويُفتح له غيرُه.
+        if let startAt, let i = category.items.firstIndex(where: { $0.id == startAt }) {
+            index = i
+        }
     }
 
     // MARK: الصوت — القرآن يُتلى، وسواه يُنطَق
@@ -349,6 +368,9 @@ struct DhikrSessionView: View {
     }
 
     private func reciteOnce(_ range: AyahRange) {
+        // تكرار الآية تفضيلٌ محفوظ للقارئ يضبطه في المصحف للحفظ — فلا تدهسه جلسةُ
+        // الأذكار: يُحفظ قبل التلاوة ويُردّ بعدها (انظر stopSound).
+        if savedRepeat == nil { savedRepeat = ayahAudio.repeatCount }
         ayahAudio.repeatCount = 1
         ayahAudio.stopAt = range.last
         ayahAudio.play(from: range.first, onAdvance: nil) {
@@ -368,6 +390,7 @@ struct DhikrSessionView: View {
     private func stopSound() {
         recorded.stop()
         if recitingLeft > 0 { recitingLeft = 0; ayahAudio.stop() }
+        if let r = savedRepeat { ayahAudio.repeatCount = r; savedRepeat = nil }
     }
 
     private func step() {

@@ -2,6 +2,8 @@ import SwiftUI
 
 /// تخصيص تنبيه كل فريضة: تشغيل أو إيقاف، الصوت (أذان / نغمة / صامت)، وتنبيه قبلي خاص.
 struct PrayerAlertsView: View {
+    /// إعادةُ الفرائض الخمس إلى الإعداد العام تمحو ضبطًا مفصَّلًا — فتُستأذن.
+    @State private var confirmResetAll = false
     @EnvironmentObject private var store: AtharStore
     private let prayers: [Prayer] = [.fajr, .dhuhr, .asr, .maghrib, .isha]
     private let preChoices = [0, 5, 10, 15, 20, 30]
@@ -21,7 +23,7 @@ struct PrayerAlertsView: View {
 
                 if store.hasCustomPrayerPrefs {
                     Button {
-                        for p in prayers { store.setPrayerPrefs(AtharStore.PrayerAlertPrefs(), for: p) }
+                        confirmResetAll = true
                         Task { await Reminders.rescheduleAthan(store: store) }
                         Haptics.done(enabled: store.hapticsEnabled)
                     } label: {
@@ -35,6 +37,17 @@ struct PrayerAlertsView: View {
         .scrollIndicators(.hidden)
         .modifier(PaperTopEdge())
         .background { AtharBackground() }
+        .confirmationDialog(loc("إعادة الفرائض الخمس إلى الإعداد العام؟"),
+                            isPresented: $confirmResetAll, titleVisibility: .visible) {
+            Button(loc("إعادة الكل"), role: .destructive) {
+                for p in prayers { store.setPrayerPrefs(AtharStore.PrayerAlertPrefs(), for: p) }
+                Haptics.tap(enabled: store.hapticsEnabled)
+                Task { await Reminders.rescheduleAthan(store: store) }
+            }
+            Button(loc("cancel"), role: .cancel) {}
+        } message: {
+            Text(loc("يُمحى ما خصّصته لكل فريضة من صوتٍ وتنبيهٍ قبليّ، ولا رجوع."))
+        }
         .navigationTitle(loc("تخصيص كل صلاة"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.hidden, for: .tabBar)

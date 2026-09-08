@@ -156,7 +156,9 @@ struct AyahNoteEditor: View {
                         .opacity(text.isEmpty ? 0 : 1)
                         .animation(Motion.gentle, value: saved)
 
-                    if store.notesNearCloudLimit {
+                    // إنذارٌ عن ميزةٍ مطفأة لا معنى له: الراية تُرفع في الرفع ولا تُخفض إلا فيه،
+        // فمن أطفأ المزامنة بقيت معلّقة عليه أبدًا. فتُقيَّد بحال المزامنة كما في «بياناتك».
+        if store.cloudSyncEnabled, store.notesNearCloudLimit {
                         Text(loc("قاربت التدبّرات سعة المزامنة؛ هي محفوظة على جهازك، وصدّر نسخةً من بياناتك."))
                             .font(Theme.display(12))
                             .foregroundStyle(Theme.danger)

@@ -109,7 +109,10 @@ struct GroupKhatmahView: View {
                 HStack {
                     Text(loc("المدة")).font(Theme.display(15)).foregroundStyle(Theme.ink)
                     Spacer()
-                    Picker("", selection: $days) { ForEach([7, 15, 30, 60], id: \.self) { Text(loc("%1$@ يومًا", $0.counterText)).tag($0) } }
+                    Picker("", selection: $days) { ForEach([7, 15, 30, 60], id: \.self) {
+                    // تمييز العدد كما في شاشة الختمة: «٧ أيام» لا «٧ يومًا».
+                    Text(loc("%1$@ %2$@", $0.counterText, (3...10).contains($0) ? loc("أيام") : loc("يومًا"))).tag($0)
+                } }
                         .pickerStyle(.menu).tint(tint)
                 }
                 .padding(.horizontal, 16).padding(.vertical, 8)
@@ -156,8 +159,14 @@ struct GroupKhatmahView: View {
                 ProgressRing(progress: min(1, Double(total) / Double(Quran.pageCount)), color: tint, lineWidth: 8)
                     .frame(width: 70, height: 70)
                     .overlay(Text("\(Int(min(100, Double(total) / Double(Quran.pageCount) * 100)).counterText)٪").font(.system(size: 13, weight: .bold, design: .rounded)).foregroundStyle(Theme.ink))
-                Text(loc("%1$@ صفحة من %2$@ — خلال %3$@ يومًا", total.counterText, Quran.pageCount.counterText, g.goalDays.counterText))
+                // صفحات كلّ عضوٍ تُعدّ من أوّل المصحف، فجمعُها يحسب الصفحةَ الواحدة
+                // مرارًا — فلا يصحّ نسبتُه إلى ٦٠٤. يُقال ما هو: مجموعُ ما قرأوه.
+                // (والحلقة تبقى مؤشّرًا مقيَّدًا لا كسرًا دقيقًا.)
+                Text(loc("مجموع ما قرأه الأعضاء: %1$@ صفحة — خلال %2$@ %3$@",
+                         total.counterText, g.goalDays.counterText,
+                         (3...10).contains(g.goalDays) ? loc("أيام") : loc("يومًا")))
                     .font(Theme.display(12)).foregroundStyle(Theme.inkSoft)
+                    .fixedSize(horizontal: false, vertical: true)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }

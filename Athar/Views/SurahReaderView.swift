@@ -386,7 +386,10 @@ struct SurahReaderView: View {
                                  onVisible: {
                                      store.lastRead = $0
                                      if $0 == AyahRef(surah: 18, ayah: 110), Calendar.current.component(.weekday, from: Date()) == 6 { store.noteKahfRead() }
-                                     store.noteReaderPage(Quran.page(of: $0))   // الختمة تتقدّم بالقراءة
+                                     // الاحتساب نفسه في الوضعين: كان وضعُ الآيات يقدّم
+                                     // الختمة ولا يمسّ دفتر اليوم، فمن قرأ شهرًا فيه
+                                     // وجد إحصاءه «٠ صفحة من المصحف».
+                                     countPage(Quran.page(of: $0))
                                      currentRef = $0
                                  })
 
@@ -1258,6 +1261,9 @@ struct ReaderControls: View {
                         }
                     }
 
+                    // الإخفاء لا يُطبَّق إلا في وضعَي الصفحة والمؤطَّرة (AyahListPage لا تعرفه)،
+                    // فكان الخيار يُعرض في وضع الآيات ويَعِد «المخفيّ يظهر بالنقر» ولا يُخفى شيء.
+                    if store.readingMode != .ayah {
                     // وضع الحفظ: يخفي بعض الكلمات فيُسمّع القارئ نفسه، والنقر على الآية يكشفها.
                     VStack(alignment: .leading, spacing: 10) {
                         Text(loc("وضع الحفظ")).font(Theme.display(15, weight: .semibold)).foregroundStyle(Theme.ink)
@@ -1285,6 +1291,9 @@ struct ReaderControls: View {
                         Text(loc("المخفيّ يظهر بالنقر على آيته — ومع التكرار الصوتي يصير الحفظ تدريبًا."))
                             .font(Theme.display(11)).foregroundStyle(Theme.inkFaint)
                     }
+                    }
+
+
 
                     VStack(alignment: .leading, spacing: 10) {
                         Text(loc("pageTheme")).font(Theme.display(15, weight: .semibold)).foregroundStyle(Theme.ink)
@@ -1480,6 +1489,11 @@ struct GoToPageSheet: View {
             try? await Task.sleep(for: .milliseconds(350))
             typing = true
         }
+        // تبديل الوضع ينقل الرقم إلى مقابله: كان رقمُ الصفحة يبقى في حقل الجزء
+        // فيقع خارج ١–٣٠، فيتعطّل «اذهب» ويقول المنزلق شيئًا والحقل شيئًا آخر.
+        .onChange(of: mode) { _, m in
+            text = String(m == .page ? start : Quran.juz(of: Quran.firstAyah(ofPage: start)))
+        }
         .environment(\.layoutDirection, AppConfig.arabicOnly ? .rightToLeft : store.appLanguage.layoutDirection)
     }
 
@@ -1518,6 +1532,11 @@ struct GoToPageSheet: View {
 // MARK: - إجراءات الآية
 
 struct AyahActions: View {
+    /// جارٍ تصيير بطاقة الآية — ImageRenderer بعرض ١٠٨٠ على الخيط الرئيسي.
+    @State private var rendering = false
+    @State private var renderFailed = false
+    /// إزالة الآية من الحفظ تمحو سجلّ مراجعتها كلّه — فيُستأذن قبلها.
+    @State private var confirmForget = false
     @Environment(\.colorScheme) private var actionScheme
 
     @ViewBuilder
@@ -1759,7 +1778,9 @@ struct AyahActions: View {
                             SettingsRow(icon: "square.and.pencil",
                                         tint: Theme.accent(for: "dusk"),
                                         title: noteGlimpse == nil ? loc("اكتب تدبّرك") : loc("تدبّرك في هذه الآية"),
-                                        subtitle: noteGlimpse ?? loc("ملاحظة خاصة تبقى في جهازك"))
+                                        subtitle: noteGlimpse ?? (store.cloudSyncEnabled
+                                                                  ? loc("ملاحظة خاصّة لك — تُزامَن إلى حسابك في iCloud")
+                                                                  : loc("ملاحظة خاصة تبقى في جهازك")))
                         }
                         .buttonStyle(.plain)
 
@@ -1768,9 +1789,7 @@ struct AyahActions: View {
                             // المضافة سلفًا تُزال من هنا: كان الصف يُعطَّل فلا مخرج من الحفظ
                             // في التطبيق كلّه، ولا حتى «تصفير الإحصائيات» يمسّ البطاقات.
                             Button(role: .destructive) {
-                                store.forget(ref)
-                                Haptics.tap(enabled: store.hapticsEnabled)
-                                dismiss()
+                                confirmForget = true
                             } label: {
                                 SettingsRow(icon: "brain.head.profile", tint: Theme.danger,
                                             title: loc("إزالة من الحفظ"),
@@ -1801,16 +1820,27 @@ struct AyahActions: View {
                             .buttonStyle(.plain)
                         } else {
                             Button {
+                                rendering = true
                                 let snippet = Tafsir.entry(.saadi, for: ref).map { e -> String in
                                     // «» لا ﴿﴾: القوسان المزخرفان غير موجودين في خطّ Noto فيُرسمان مربّعين.
                                     let clean = e.text.replacingOccurrences(of: "{", with: "«").replacingOccurrences(of: "}", with: "»")
                                     return clean.count > 220 ? String(clean.prefix(220)).trimmingCharacters(in: .whitespaces) + "…" : clean
                                 }
-                                shareImage = AyahShareCard.render(ref: ref, tafsir: snippet, scheme: actionScheme)
+                                // الضغطة الأولى كانت تُصيّر فقط ثم ينقلب الصفّ إلى مشاركة،
+                                // فزرٌّ اسمه «مشاركة» لا يشارك حين يُضغط، ولا مؤشّر انتظار،
+                                // ولو عادت الصورة nil لم يقع شيء أبدًا بلا خبر.
+                                let img = AyahShareCard.render(ref: ref, tafsir: snippet, scheme: actionScheme)
+                                rendering = false
+                                if let img { shareImage = img } else { renderFailed = true }
                             } label: {
-                                SettingsRow(icon: "photo.on.rectangle.angled", tint: Theme.accent(for: "sea"), title: loc("مشاركة كصورة"), subtitle: loc("بطاقة بخط المصحف مع سطر من التفسير"))
+                                SettingsRow(icon: "photo.on.rectangle.angled", tint: Theme.accent(for: "sea"),
+                                            title: loc("مشاركة كصورة"),
+                                            subtitle: rendering ? loc("جارٍ التحضير…") : loc("بطاقة بخط المصحف مع سطر من التفسير")) {
+                                    if rendering { ProgressView().controlSize(.small) }
+                                }
                             }
                             .buttonStyle(.plain)
+                            .disabled(rendering)
                         }
                         ShareLink(item: "\(text)\n\n[\(surahName): \(ref.ayah)]\n\nمن تطبيق أثر") {
                             SettingsRow(icon: "square.and.arrow.up.fill", tint: Theme.accent, title: loc("مشاركة الآية"))
@@ -1825,6 +1855,21 @@ struct AyahActions: View {
                 .padding(.bottom, 16)
             }
             .scrollIndicators(.hidden)
+        }
+        .alert(loc("تعذّر إنشاء الصورة"), isPresented: $renderFailed) {
+            Button(loc("حسنًا"), role: .cancel) {}
+        } message: {
+            Text(loc("حاول مرة أخرى، أو شارك الآية كنص."))
+        }
+        .confirmationDialog(loc("إزالة الآية من الحفظ؟"), isPresented: $confirmForget, titleVisibility: .visible) {
+            Button(loc("إزالة"), role: .destructive) {
+                store.forget(ref)
+                Haptics.tap(enabled: store.hapticsEnabled)
+                dismiss()
+            }
+            Button(loc("cancel"), role: .cancel) {}
+        } message: {
+            Text(loc("يضيع سجلّ مراجعتها كلّه — وإن أعدتها بدأت بطاقةً جديدة من الصندوق الأول."))
         }
         .sheet(isPresented: $showTafsir) {
             TafsirSheet(ref: ref)

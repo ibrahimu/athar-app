@@ -217,6 +217,17 @@ final class AyahAudio: NSObject, ObservableObject {
         load(next)
     }
 
+    /// هل بعد الآية الجارية آيةٌ في سورتها؟ (وقبلها؟) — الزرّان كانا حيَّين في
+    /// المظهر ميّتين في العمل عند طرفَي السورة، فيظنّهما القارئ معطوبين.
+    var canGoNext: Bool {
+        guard let ref = current, let n = Quran.next(after: ref) else { return false }
+        return n.surah == ref.surah
+    }
+    var canGoPrevious: Bool {
+        guard let ref = current, let p = Quran.previous(before: ref) else { return false }
+        return p.surah == ref.surah
+    }
+
     func toggle() {
         guard let p = player else { return }
         // على مشغّلٍ فاشل لا يُرفع علم التشغيل: الرمز لا يقول ما ليس بواقع.

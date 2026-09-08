@@ -339,8 +339,9 @@ struct WalletCardSheet: View {
                     if let pass, PKPassLibrary.isPassLibraryAvailable(), PKPassLibrary().containsPass(pass) {
                         Haptics.done(enabled: store.hapticsEnabled)
                     }
+                    // «إلغاء» تُلغي الإضافة لا التصفّح: كانت الورقة تُغلق في الحالين
+                    // سواء، فيُقذف من تراجع إلى القائمة. ومن أضاف تنقلب أزراره وحدها.
                     onChange()
-                    dismiss()
                 }
                 .ignoresSafeArea()
                 .environment(\.layoutDirection, direction)

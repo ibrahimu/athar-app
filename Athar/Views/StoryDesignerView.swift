@@ -348,6 +348,9 @@ struct StoryDesignerView: View {
             }
             .pressable()
             .disabled(!canShare)
+            // softButton يفرض لونه وpressable تستبدل نمط الزرّ، فلا يُبهته SwiftUI
+            // من عنده — فكان يبدو صالحًا ولا يقع بضغطه شيء، بخلاف زرّ المشاركة فوقه.
+            .opacity(canShare ? 1 : 0.5)
         }
         .padding(.top, 6)
     }

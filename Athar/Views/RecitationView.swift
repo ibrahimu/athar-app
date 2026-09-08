@@ -37,6 +37,8 @@ private func downloadedSurahsText(_ n: Int) -> String {
 
 /// لوحة الاستماع: ما يُتلى الآن، والقارئ، والمحمَّل، ثم السور.
 struct RecitationView: View {
+    /// أُوقف الطابور: ما بدأ يُكمل، فيُقال ذلك ويُعطَّل الزرّ بدل أن يبقى لا يستجيب.
+    @State private var queueStopped = false
     var isRootTab = false
 
     @EnvironmentObject private var store: AtharStore
@@ -62,7 +64,7 @@ struct RecitationView: View {
         }
         guard !q.isEmpty else { return out }
         let n = q.strippedForSearch
-        return out.filter { $0.name.strippedForSearch.contains(n) || String($0.id) == q }
+        return out.filter { $0.name.strippedForSearch.contains(n) || String($0.id) == n }
     }
 
     var body: some View {
@@ -112,9 +114,13 @@ struct RecitationView: View {
             Button(loc("نزّل %1$@", surahCountText(114))) { audio.downloadMany(Array(1...114)) }
             Button(loc("cancel"), role: .cancel) {}
         } message: {
-            Text(loc("يقارب حجمه %1$@ لهذا القارئ. يُفضَّل أن تكون على شبكة واي‑فاي.",
-                     (Int64(800) * 1_048_576).fileSizeText))
+            // الحجم يختلف باختلاف القارئ اختلافًا كبيرًا (من ٤٠ ك.ب/ث إلى ١٩٢)،
+            // والرقم الواحد كان يُنسب إلى «هذا القارئ» فيدّعي دقّةً لا يملكها.
+            Text(loc("يقارب حجمه %1$@ إلى %2$@ بحسب القارئ. يُفضَّل أن تكون على شبكة واي‑فاي.",
+                     (Int64(800) * 1_048_576).fileSizeText,
+                     (Int64(1600) * 1_048_576).fileSizeText))
         }
+        .onChange(of: pendingHere) { _, n in if n == 0 { queueStopped = false } }
         .navigationTitle(loc("التلاوة"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(isRootTab ? .visible : .hidden, for: .tabBar)
@@ -141,7 +147,9 @@ struct RecitationView: View {
         if let s = audio.surah, let su = Quran.surah(s) {
             heroCard(su: su, caption: audio.isPlaying ? loc("يُتلى الآن") : loc("متوقّف"), resume: false)
         } else if let s = audio.lastPlayed, let su = Quran.surah(s) {
-            heroCard(su: su, caption: loc("متابعة الاستماع"), resume: true)
+            // المحفوظ رقمُ السورة وحده لا موضعُ التلاوة، فالضغطة تبدأ من أوّلها.
+            // فتُسمّى بما هي: «آخر ما استمعت» — لا وعدَ متابعةٍ لا يقع.
+            heroCard(su: su, caption: loc("آخر ما استمعت"), resume: true)
         } else {
             AtharCard(padding: 20, elevation: .e2, tint: Theme.accent) {
                 VStack(spacing: 10) {
@@ -195,10 +203,12 @@ struct RecitationView: View {
                         SurahDisc(number: su.id, size: 58, playing: audio.isPlaying)
                     }
                     if !resume {
+                        // بلا سحبٍ هنا: الشريط قصير بلا مقبض، وهو داخل بطاقةٍ هي زرّ —
+                        // فكانت لمسةُ فتح الصفحة تقع عليه فتقفز التلاوة. والسحب موضعُه
+                        // صفحةُ المشغّل حيث الشريط طويل وله مقبض (كما أُطفئ في المصغّر).
                         ProgressStrip(progress: audio.progress,
-                                      elapsed: audio.elapsed, duration: audio.duration) {
-                            audio.seek(to: $0)
-                        }
+                                      elapsed: audio.elapsed, duration: audio.duration,
+                                      seekable: false) { _ in }
                     }
                 }
             }
@@ -321,7 +331,7 @@ struct RecitationView: View {
             Button(loc("تنزيل جزء عمّ"), systemImage: "text.book.closed") {
                 audio.downloadMany(Array(78...114))
             }
-            if audio.pendingCount > 0 {
+            if pendingHere > 0 {
                 Divider()
                 Button(loc("إيقاف التنزيل"), systemImage: "stop.circle", role: .destructive) {
                     audio.cancelQueue()
@@ -339,15 +349,20 @@ struct RecitationView: View {
     /// شريط تقدّم التنزيل الجماعي — يظهر ما دام في الطابور شيء.
     @ViewBuilder
     private var queueBar: some View {
-        if audio.pendingCount > 0 {
+        if pendingHere > 0 {
             HStack(spacing: 9) {
                 ProgressView().controlSize(.small)
-                Text(loc("يجري تنزيل %1$@…", surahCountText(audio.pendingCount, genitive: true)))
+                Text(queueStopped
+                     ? loc("يُكمل ما بدأ: %1$@", surahCountText(pendingHere, genitive: true))
+                     : loc("يجري تنزيل %1$@…", surahCountText(pendingHere, genitive: true)))
                     .font(Theme.display(12)).foregroundStyle(Theme.inkSoft)
                 Spacer(minLength: 4)
-                Button(loc("إيقاف")) { audio.cancelQueue() }
+                // ما بدأ من المهامّ يُكمل، فالزرّ يقول ذلك ويُعطَّل بعده بدل أن يبقى
+                // معروضًا لا يستجيب فيظنّه المستخدم معطوبًا.
+                Button(loc("إيقاف")) { audio.cancelQueue(reciter: audio.reciterId); queueStopped = true }
                     .font(Theme.display(12, weight: .medium))
-                    .foregroundStyle(Theme.accent)
+                    .foregroundStyle(queueStopped ? Theme.inkFaint : Theme.accent)
+                    .disabled(queueStopped)
             }
             .padding(.horizontal, 13).padding(.vertical, 10)
             .background(RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous)
@@ -360,9 +375,12 @@ struct RecitationView: View {
     private var selectionBar: some View {
         if selecting {
             HStack(spacing: 10) {
-                Button(picked.count == surahs.count ? loc("إلغاء الكل") : loc("تحديد الكل")) {
+                // المحمَّل لا يُختار فرادى ولا يُنزَّل ثانيةً، فلا يُعدّ في «تحديد الكل»
+                // وإلا وعد الزرّ بمئةٍ وأربع عشرة ونزّل أربعًا وثمانين.
+                Button(picked.count == selectableIds.count && !picked.isEmpty
+                       ? loc("إلغاء الكل") : loc("تحديد الكل")) {
                     withAnimation(Motion.snappy) {
-                        picked = picked.count == surahs.count ? [] : Set(surahs.map(\.id))
+                        picked = picked.count == selectableIds.count ? [] : selectableIds
                     }
                 }
                 .font(Theme.display(13, weight: .medium))
@@ -397,13 +415,27 @@ struct RecitationView: View {
         }
     }
 
+    /// المنتظر للقارئ المعروض وحده — لا لطابور القرّاء كلّهم.
+    private var pendingHere: Int { audio.pendingCount(reciter: audio.reciterId) }
+
+    /// ما يقبل التنزيل من المعروض — المحمَّل ليس منه.
+    private var selectableIds: Set<Int> {
+        Set(surahs.filter { !RecitationLibrary.isDownloaded(reciter: audio.reciterId, surah: $0.id) }.map(\.id))
+    }
+
     private var emptyList: some View {
+        // البحث يتقدّم على الترشيح في الوصف: من بحث في «المحمَّل» عمّا لم ينزّله
+        // كان يُقال له «لم تنزّل شيئًا بعد» وفوقه رقاقةٌ تقول إنّ عنده خمسًا.
         ContentUnavailableView(
-            onlyDownloaded ? loc("لم تنزّل شيئًا بعد") : loc("لا توجد نتائج"),
-            systemImage: onlyDownloaded ? "arrow.down.circle" : "magnifyingglass",
-            description: Text(onlyDownloaded
-                              ? loc("نزّل سورةً لتسمعها بلا إنترنت.")
-                              : loc("جرّب اسم سورة أخرى.")))
+            !query.isEmpty ? loc("لا توجد نتائج")
+            : (onlyDownloaded ? loc("لم تنزّل شيئًا بعد") : loc("لا توجد نتائج")),
+            systemImage: !query.isEmpty ? "magnifyingglass"
+            : (onlyDownloaded ? "arrow.down.circle" : "magnifyingglass"),
+            description: Text(!query.isEmpty
+                              ? (onlyDownloaded ? loc("لا سورة محمَّلة بهذا الاسم — جرّب «الكل».")
+                                 : loc("جرّب اسم سورة أخرى."))
+                              : (onlyDownloaded ? loc("نزّل سورةً لتسمعها بلا إنترنت.")
+                                 : loc("جرّب اسم سورة أخرى."))))
             .padding(.top, 30)
     }
 
@@ -525,7 +557,9 @@ struct PlayerView: View {
             }
             .sheet(isPresented: $showSpeed) {
                 SpeedSheet()
-                    .presentationDetents([.height(240)])
+                    // مقاسٌ بديل: خطوطها تتبع حجم خطّ النظام إلى ١٫٩ ضعفًا، فكان الصفّ الثاني
+        // يُقصّ عند حافّة الورقة بلا سحبٍ يُظهره — كما عولج في ورقة مؤقّت النوم.
+        .presentationDetents([.height(240), .large])
                     .atharSheetChrome()
             }
             // خليّة «محمَّلة» تجاور خلايا حالةٍ لا تُضغط فتُقرأ حالةً، ولمسةٌ عابرة تُسقط نحو ١٠ م.ب.

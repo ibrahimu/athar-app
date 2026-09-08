@@ -103,7 +103,8 @@ struct GlobalSearchView: View {
     private var adhkarGroup: some View {
         group(loc("الأذكار"), tint: Theme.accent(for: "sea"), bucket: results.adhkar,
               more: loc("المزيد من الأذكار")) { hit in
-            NavigationLink { DhikrSessionView(category: hit.category) } label: {
+            // يُفتح على الذكر الذي ضُغط لا على أوّل الباب — كما تهبط نتيجةُ الآية على آيتها.
+                NavigationLink { DhikrSessionView(category: hit.category, startAt: hit.dhikr.id) } label: {
                 resultCard(caption: hit.category.title,
                            tint: Theme.accent(for: hit.category.accent),
                            sacred: hit.dhikr.text,

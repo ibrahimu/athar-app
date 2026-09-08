@@ -10,6 +10,8 @@ struct MushafView: View {
     @State private var query = ""
     /// نتائج البحث في نصّ المصحف — تُحسب مرّةً واحدة لكل استعلام لا مع كل رسم.
     @State private var hits: [AyahRef] = []
+    /// البحث في النصّ جارٍ — تُميَّز عن «لا نتائج».
+    @State private var searching = false
 
     /// رقمٌ مجرّد كتبه الباحث: مقصده موضعٌ في المصحف لا كلمةٌ في آية —
     /// «أذكر رقم الصفحة، وما في إلّا أن أقرّب لأرى أقرب صورة ثم أسحب».
@@ -90,7 +92,11 @@ struct MushafView: View {
 
                         if query.isEmpty { sourceCredit }
 
-                        if filtered.isEmpty && hits.isEmpty && pageJump == nil && !query.isEmpty {
+                        // البحث في النصّ مؤجَّل ثم يجري خارج الخيط الرئيسي، وكانت الحالة الفارغة
+            // تتحقّق أثناءه فتقفز «لا توجد نتائج» في وجه من لم يُبحث له بعد.
+            if searching {
+                ProgressView().controlSize(.small).frame(maxWidth: .infinity).padding(.top, 40)
+            } else if filtered.isEmpty && hits.isEmpty && pageJump == nil && !query.isEmpty {
                             ContentUnavailableView(loc("لا توجد نتائج"), systemImage: "magnifyingglass",
                                                    description: Text(loc("جرّب اسم سورة أو جزءًا من آية")))
                                 .padding(.top, 50)
@@ -107,6 +113,7 @@ struct MushafView: View {
                 // مع كل حرف لتقطّعت الكتابة. فيُمهَل ربع ثانية ويُلغى بالحرف
                 // التالي، ثم يجري خارج الخيط الرئيسي مرّةً واحدة لكل استعلام.
                 .task(id: query) {
+                    searching = false
                     let q = query.trimmingCharacters(in: .whitespaces)
                     // الرقم المجرّد مقصده الصفحة والسورة، ولا رقم في الرسم العثماني
                     // يُطابَق — فلا يُمشى به على ٦٢٣٦ آية.
@@ -118,6 +125,8 @@ struct MushafView: View {
                         hits = []
                         return
                     }
+                    searching = true
+                    defer { searching = false }
                     try? await Task.sleep(for: .milliseconds(250))
                     guard !Task.isCancelled else { return }
                     let found = await Task.detached(priority: .userInitiated) {
@@ -437,6 +446,8 @@ struct MushafView: View {
         VStack(spacing: 8) {
             SettingsGroupTitle(text: loc("علاماتي"))
             SettingsCard {
+                // العلامات محفوظة بترتيب المصحف، فالخمسةُ الأولى هي أوائله دائمًا — ومن
+                // علّم في جزء عمّ لم يرَ علامته قط ولا خبرَ بأنّ ثمّة غيرها.
                 ForEach(Array(store.bookmarks.prefix(5).enumerated()), id: \.element) { i, ref in
                     NavigationLink { SurahReaderView(surahId: ref.surah, scrollTo: ref) } label: {
                         HStack(spacing: 12) {

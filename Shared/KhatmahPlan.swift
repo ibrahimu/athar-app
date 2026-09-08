@@ -151,8 +151,8 @@ extension AtharStore {
     /// دقائق من منتصف الليل — الافتراض ٢٠:٣٠: بعد العشاء وقبل أن يثقل النعاس.
     var khatmahReminderMinutes: Int {
         get {
-            let v = defaults.integer(forKey: PKey.reminderMins)
-            return v == 0 ? 20 * 60 + 30 : v
+            // الصفر دقيقةٌ صحيحة (منتصف الليل) لا «لا قيمة» — كان يرتدّ إلى ٨:٣٠ م.
+            return (defaults.object(forKey: PKey.reminderMins) as? Int) ?? (20 * 60 + 30)
         }
         set { defaults.set(newValue, forKey: PKey.reminderMins); objectWillChange.send() }
     }

@@ -571,6 +571,22 @@ final class Recitation: NSObject, ObservableObject {
     /// لما في الطابور أيضًا، وعدّها هنا كان يوقف الضخّ قبل أن يبدأ.
     var pendingCount: Int { queue.count + tasks.count }
 
+    /// المنتظر لقارئٍ بعينه: الشريط كان يعدّ طابور القرّاء كلّهم، فيُعرض في شاشةٍ
+    /// صارت عن غيره ويقول «يجري تنزيل ٩٧ سورة» ولا شيء ينزل فيها.
+    func pendingCount(reciter id: String) -> Int {
+        let prefix = id + "/"
+        return queue.filter { $0.reciter.id == id }.count
+            + tasks.values.filter { $0.hasPrefix(prefix) }.count
+    }
+
+    /// ويُلغى طابورُ قارئٍ بعينه لا طابور الجميع.
+    func cancelQueue(reciter id: String) {
+        for item in queue where item.reciter.id == id {
+            downloads.removeValue(forKey: Self.key(id, item.surah))
+        }
+        queue.removeAll { $0.reciter.id == id }
+    }
+
     private var activeCount: Int { tasks.count }
 
     /// يضيف سورًا إلى طابور التنزيل ثم يبدأ ما يتّسع له.
