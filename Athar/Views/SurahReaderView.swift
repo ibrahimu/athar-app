@@ -580,6 +580,8 @@ struct MushafPager: View {
     var onFacingPage: (Int) -> Void = { _ in }
 
     @State private var current: Int?
+    /// هل بلغ العرضُ صفحةَ البداية فعلًا؟ قبلها لا يُصدَّق موضعُه ولا يُبلَّغ به.
+    @State private var landed = false
 
     /// مبادئ العَرضات: كلٌّ تبدأ بصفحة وترية (١ مع ٢، ٣ مع ٤) كالمصحف المطبوع.
     /// والوقوف عند ٦٠٣ يضمن لكل مبدأٍ مقابلةً، فلا تبقى صفحةٌ وحدها. ثابتة
@@ -609,14 +611,12 @@ struct MushafPager: View {
             .scrollTargetBehavior(.paging)
             .scrollPosition(id: $current)
             .scrollIndicators(.hidden)
-            .onAppear {
-                let target = leaf(of: startPage)
-                proxy.scrollTo(target, anchor: .center)
-                current = target
-                report(target)
-            }
+            .task { await land(proxy) }
             .onChange(of: current) { _, page in
-                if let page { report(page) }
+                // قبل البلوغ يكتب العرضُ موضعَه الحقيقي (أول صفحة) فوق ما طُلب،
+                // فلو صُدِّق لَحُسبت صفحةٌ لم تُقرأ ولَضاع موضع القراءة المحفوظ.
+                guard landed, let page else { return }
+                report(page)
             }
             // القفزة كالفتح تمامًا: بلا حركةٍ تمرّ على مئات الصفحات — الوصول
             // مقصود لا رحلة. وتغيّر `current` يبلّغ القارئ بالموضع الجديد.
@@ -630,6 +630,28 @@ struct MushafPager: View {
                 jumpTo = nil
             }
         }
+    }
+
+    /// بلوغ صفحة البداية: القفزة الأولى تقع قبل أن يبني LazyHStack صفحاتِه فتسقط
+    /// صامتة، ويستقرّ العرض على أوّل صفحة بينما يقول الشريط رقمَ المطلوبة — فتُعاد
+    /// المحاولة إطارًا بعد إطار حتى يستجيب. بلا حركة: الوصول مقصود لا رحلة.
+    @MainActor
+    private func land(_ proxy: ScrollViewProxy) async {
+        let target = leaf(of: startPage)
+        landed = false
+        // العرض لا يخبر أنّ القفزة سقطت — يبقى `current` على المطلوب والصفحةُ أوّلُ صفحة —
+        // فلا سبيل إلى التحقّق، والعلاج إعادةُ الطلب على مدى إطارات حتى يعرف العرضُ قياسَه.
+        // ثلاث محاولات في جزءٍ من العُشر، تقع كلّها تحت حركة الدفع فلا تُرى، وبلا تحريك.
+        for delay in [0, 16, 100] {
+            if delay > 0 {
+                try? await Task.sleep(for: .milliseconds(delay))
+                if Task.isCancelled { return }
+            }
+            proxy.scrollTo(target, anchor: .center)
+            current = target
+        }
+        landed = true
+        report(target)
     }
 
     /// أولى صفحتَي العَرضة التي تقع فيها الصفحة — وهي نفسها في الصفحة المفردة.
