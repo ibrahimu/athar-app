@@ -25,6 +25,7 @@
 - **بطاقات المحفظة بلون قسمها**، و«أضف الكل» يعمل كما ينبغي.
 - **سيري**: «سجّل صلاة الظهر» و«أين ختمتي» بلا فتح التطبيق.
 - **الساعة**: عدّ المسبحة بالتاج الرقمي، وتعقيدتان جديدتان للذكر ولعدّاد اليوم.
+- **علل عولجت من مراجعة التطبيق كلّه**: شاشة الإعدادات لم تعد تُطوى مع كل تبديل خط؛ والمصحف يفتح على الصفحة التي يقولها لا على أوّله؛ وتلاوة الآيات تقول تعذّرها بدل أن تصمت؛ ولا يجتمع صوتان؛ و«حدّث موقعي» لا تختفي قبل أن تُحدّث؛ والختمة الجماعية لا يمحو تصفيرُ ختمتك تقدّمَك عند أهلك؛ وحذف تنزيلات القارئ يُستأذن؛ وتصفير الإحصائيات يعدّ ما يمحوه؛ ونصوص الودجات لا تنكسر ولا تُبتر.
 - **بطارية أهدأ**: البوصلة لا تعمل خلفك، والنشاط الحيّ لا يظهر إلا قبل الأذان بنصف ساعة ويمكن إيقافه، ومشغّل البثّ يُهدم حين تغادره.
 - **إتاحة أفضل**: أحجام الخط الكبيرة تعمل فعلًا، وأهداف لمس أوسع، ووصف صوتي للعدّادات والبطاقات.
 - وخط النسخ في الودجات، ومزامنة العلامات والتظليل، وترحيب فيه صوت الأذان واختيار المؤذّن.
@@ -48,6 +49,7 @@
 - **Wallet cards in their section's colour**, and «add all» works properly.
 - **Siri**: log a prayer, ask where your khatmah stands.
 - **Watch**: count the tasbih with the Digital Crown, plus two new complications.
+- **Fixes from a full pass over the app**: Settings no longer collapses when you change the interface font; the Mushaf opens on the page it names; ayah-by-ayah recitation says when it cannot play instead of falling silent; two audio sources never overlap; «update my location» stays until it actually updates; resetting your own khatmah no longer wipes your progress for the rest of your group; deleting a reciter's downloads asks first; resetting statistics lists what it erases; and widget text no longer breaks or truncates.
 - **Calmer battery**: the compass no longer runs behind you, the Live Activity appears only 30 minutes before the athan and can be switched off, and stream players are torn down when you leave.
 - **Better accessibility**: large text sizes actually work, wider tap targets, spoken descriptions for counters and cards.
 
