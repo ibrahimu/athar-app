@@ -66,6 +66,20 @@ struct NoteArchive: Codable {
 
     /// مدوّنةٌ لا تُفكّ ترجعُ فارغةً لا خطأً — وهذا آمن: الدمج يضيف ولا يحذف،
     /// فمدوّنةٌ فاسدة تُتجاهل ولا تمحو حرفًا مما عند القارئ.
+    /// ترميزٌ قانونيّ: مفاتيح مرتَّبة وبايتاتٌ لا تتبدّل بين تشغيلٍ وآخر. مُعجم Swift
+    /// يُرتّب مفاتيحه عشوائيًّا في كل عملية، فأرشيفان متطابقان يُنتجان بايتين مختلفين —
+    /// ولو رُفع أحدهما لظنّه الجهاز الآخر تغيّرًا فسحب ورفع، فدارت المزامنة على نفسها
+    /// بلا حرفٍ جديد. فالمقارنة والرفع لا يكونان إلا بهذا.
+    static func canonicalEncode(_ value: NoteArchive) -> Data? {
+        var v = value
+        v.absorbed.sort()                     // المصفوفة تتفرّق بالدمج، فتُرتَّب قبل الوزن
+        let e = JSONEncoder()
+        e.outputFormatting = [.sortedKeys]
+        return try? e.encode(v)
+    }
+
+    func canonicalData() -> Data? { Self.canonicalEncode(self) }
+
     static func decode(_ data: Data?) -> NoteArchive {
         guard let data, let value = try? JSONDecoder().decode(Self.self, from: data) else { return Self() }
         return value
@@ -100,7 +114,7 @@ struct NoteArchive: Codable {
 
     mutating func save(_ defaults: UserDefaults) {
         prune()
-        guard let data = try? JSONEncoder().encode(self) else { return }
+        guard let data = Self.canonicalEncode(self) else { return }
         let projection = (try? JSONEncoder().encode(notes)) ?? Data("{}".utf8)
         defaults.set(data, forKey: Self.key)
         // الإسقاطة تُكتب دائمًا ولا تُصحَّح بها: الأرشيف يصحّحها، لا هي إيّاه.
@@ -250,7 +264,11 @@ struct NoteArchive: Codable {
         if let head = sole, head.draft == true,
            let origin, head.origin == origin,
            now >= head.date, now.timeIntervalSince(head.date) <= Self.coalesceWindow {
-            parents = Array(Set(head.parents).union([head.id]))
+            // لا يُحمل من آباء المسوّدة إلا ما قد يكون بلغ جهازًا آخر: آخرُ مستقرٍّ
+            // نُسخ، والمسوّدةُ التي تُطوى الآن. ولولا هذا الحدّ لتضخّم النسب مع كل
+            // سكتةٍ في مجلسٍ طويل — النافذة تتجدّد بتاريخ الرأس فلا تنغلق أثناء الكتابة.
+            let stable = head.parents.filter { revisions[$0]?.draft != true }
+            parents = Array(Set(stable).union([head.id])).sorted()
             revisions.removeValue(forKey: head.id)
         }
         let revision = NoteRevision(id: UUID().uuidString, reference: ref, text: clean,
@@ -305,7 +323,7 @@ struct NoteArchive: Codable {
     /// والقياس بالوزن لا بالعدّ، والبحث ثنائيٌّ لأن الترميز على كل خطوةٍ ثقيل.
     mutating func fit(byteBudget: Int) -> Bool {
         dropHistory()
-        if let d = try? JSONEncoder().encode(self), d.count <= byteBudget { return true }
+        if let d = canonicalData(), d.count <= byteBudget { return true }
 
         let ordered = revisions.values.sorted(by: Self.newerFirst)
         let tombstones = ordered.filter { $0.text == nil }
@@ -316,7 +334,7 @@ struct NoteArchive: Codable {
             let mid = (lo + hi) / 2
             var trial = self
             trial.revisions = Dictionary(uniqueKeysWithValues: (tombstones + live.prefix(mid)).map { ($0.id, $0) })
-            if let d = try? JSONEncoder().encode(trial), d.count <= byteBudget {
+            if let d = Self.canonicalEncode(trial), d.count <= byteBudget {
                 best = trial.revisions; lo = mid + 1
             } else { hi = mid - 1 }
         }

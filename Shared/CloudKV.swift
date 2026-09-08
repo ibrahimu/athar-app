@@ -65,6 +65,39 @@ enum CloudMerge {
     }
 }
 
+
+// MARK: - سجلّ المرفوع
+
+/// الاتحاد يجمع ولا يطرح، فعلامةٌ رفعها صاحبها تعود إليه من نسخة السحابة في أوّل
+/// مزامنة. فيُقيَّد المرفوع في سجلٍّ يُزامَن معها ويُطرح من حاصل الاتحاد. والسجلّ
+/// محدود بمئتَي مُدخَل — أحدثها يبقى — فلا ينمو بلا أفق.
+enum RemovalLedger {
+    static let cap = 200
+    static func key(for unionKey: String) -> String { unionKey + ".removed" }
+
+    static func decode(_ value: Any?) -> [String: Double] {
+        guard let d = value as? Data,
+              let v = try? JSONDecoder().decode([String: Double].self, from: d) else { return [:] }
+        return v
+    }
+
+    static func encode(_ ledger: [String: Double]) -> Data? {
+        var l = ledger
+        if l.count > cap {
+            // الأقدم يسقط: رفعٌ قديمٌ بلغ الأجهزةَ كلَّها لا يحتاج شاهدًا بعد.
+            for k in l.sorted(by: { $0.value < $1.value }).prefix(l.count - cap).map(\.key) { l.removeValue(forKey: k) }
+        }
+        let e = JSONEncoder(); e.outputFormatting = [.sortedKeys]
+        return try? e.encode(l)
+    }
+
+    static func merged(_ a: Any?, _ b: Any?) -> [String: Double] {
+        var out = decode(a)
+        for (k, v) in decode(b) where (out[k] ?? 0) < v { out[k] = v }
+        return out
+    }
+}
+
 final class CloudKV {
     static let shared = CloudKV()
     private let kv: CloudKeyValueStorage
@@ -98,6 +131,41 @@ final class CloudKV {
     static let unionKeys: Set<String> = [
         "athar.hadith.favorites", "athar.mushaf.bookmarks", "athar.mushaf.highlights",
     ]
+
+    /// لقطةُ ما استقرّ عليه آخرُ مزامنة — محليّة لا تُرفع. بالفرق بينها وبين الحاضر
+    /// يُعرف ما رفعه صاحبه فيُقيَّد في السجلّ، وما أضافه فيُشطب من السجلّ إن كان فيه.
+    static func snapshotKey(_ unionKey: String) -> String { unionKey + ".synced" }
+
+    /// معرّفات القيمة أيًّا كان شكلها — قائمةَ نصوصٍ كانت أو مراجعَ أو معجمًا.
+    static func ids(_ key: String, _ value: Any?) -> Set<String> {
+        switch key {
+        case "athar.hadith.favorites": return Set(value as? [String] ?? [])
+        case "athar.mushaf.bookmarks":
+            guard let d = value as? Data, let v = try? JSONDecoder().decode([AyahRef].self, from: d) else { return [] }
+            return Set(v.map(\.id))
+        case "athar.mushaf.highlights":
+            guard let d = value as? Data, let v = try? JSONDecoder().decode([String: String].self, from: d) else { return [] }
+            return Set(v.keys)
+        default: return []
+        }
+    }
+
+    /// يطرح المرفوع من حاصل الاتحاد.
+    static func subtract(_ key: String, _ value: Any?, _ removed: Set<String>) -> Any? {
+        guard !removed.isEmpty else { return value }
+        switch key {
+        case "athar.hadith.favorites":
+            return (value as? [String] ?? []).filter { !removed.contains($0) }
+        case "athar.mushaf.bookmarks":
+            guard let d = value as? Data, let v = try? JSONDecoder().decode([AyahRef].self, from: d) else { return value }
+            return try? JSONEncoder().encode(v.filter { !removed.contains($0.id) })
+        case "athar.mushaf.highlights":
+            guard let d = value as? Data, var v = try? JSONDecoder().decode([String: String].self, from: d) else { return value }
+            for id in removed { v.removeValue(forKey: id) }
+            return try? JSONEncoder().encode(v)
+        default: return value
+        }
+    }
 
     /// الدمج بحسب شكل القيمة؛ `preferred` صاحب الأولوية عند تنازع المفتاح الواحد.
     static func union(_ key: String, preferred: Any?, over other: Any?) -> Any? {
@@ -148,7 +216,7 @@ final class CloudKV {
     /// يدفع المفاتيح المحلية إلى السحابة (عند الذهاب للخلفية وعند كل تغيير مهم).
     func push(from defaults: UserDefaults) {
         guard observer != nil, !pulling else { return }
-        mergeNotes(into: defaults)
+        mergeAndUploadNotes(into: defaults)
         var touchedLocal = false
         for key in Self.keys {
             // التدبّرات دُفعت في mergeNotes بأرشيفها، لا بنسخ المفتاح كما هو.
@@ -156,8 +224,23 @@ final class CloudKV {
             let local = defaults.object(forKey: key)
             if Self.unionKeys.contains(key) {
                 // الدفع يضمّ ما في السحابة قبل أن يكتب: بغيره يمحو الدفعُ ما لم يبلغه بعد.
-                guard let merged = Self.union(key, preferred: local, over: kv.object(forKey: key)) else { continue }
+                // ثم يُطرح ما رفعه صاحبه — يُعرف بالفرق عن لقطة آخر مزامنة — وإلا عاد إليه.
+                let ledgerKey = RemovalLedger.key(for: key)
+                let snapshotKey = Self.snapshotKey(key)
+                let before = Self.ids(key, defaults.object(forKey: snapshotKey))
+                let now = Self.ids(key, local)
+                var ledger = RemovalLedger.merged(defaults.object(forKey: ledgerKey), kv.object(forKey: ledgerKey))
+                let stamp = Date().timeIntervalSince1970
+                for id in before.subtracting(now) { ledger[id] = stamp }   // رُفع هنا
+                for id in now.subtracting(before) { ledger.removeValue(forKey: id) }  // أُعيد فيُشطب شاهده
+                guard let union = Self.union(key, preferred: local, over: kv.object(forKey: key)) else { continue }
+                let merged = Self.subtract(key, union, Set(ledger.keys)) ?? union
                 if !Self.same(merged, local) { defaults.set(merged, forKey: key); touchedLocal = true }
+                defaults.set(merged, forKey: snapshotKey)
+                if let data = RemovalLedger.encode(ledger) {
+                    defaults.set(data, forKey: ledgerKey)
+                    if (kv.object(forKey: ledgerKey) as? Data) != data { kv.set(data, forKey: ledgerKey) }
+                }
                 kv.set(merged, forKey: key)
                 continue
             }
@@ -174,8 +257,13 @@ final class CloudKV {
             if key == NoteArchive.key { mergeNotes(into: defaults); continue }
             let remote = kv.object(forKey: key)
             if Self.unionKeys.contains(key) {
-                if let merged = Self.union(key, preferred: remote, over: defaults.object(forKey: key)) {
+                let ledgerKey = RemovalLedger.key(for: key)
+                let ledger = RemovalLedger.merged(defaults.object(forKey: ledgerKey), kv.object(forKey: ledgerKey))
+                if let data = RemovalLedger.encode(ledger) { defaults.set(data, forKey: ledgerKey) }
+                if let union = Self.union(key, preferred: remote, over: defaults.object(forKey: key)) {
+                    let merged = Self.subtract(key, union, Set(ledger.keys)) ?? union
                     defaults.set(merged, forKey: key)
+                    defaults.set(merged, forKey: Self.snapshotKey(key))
                 }
                 continue
             }
@@ -187,13 +275,22 @@ final class CloudKV {
     /// اللقاء بين أرشيف الجهاز وأرشيف السحابة. الترتيب مقصود: يُقرأ المحلي أوّلًا،
     /// ثم تُستوعب الصيغة القديمة إن بقيت في السحابة من بناءٍ أقدم، ثم يُضمّ أرشيفها.
     /// وكلّها إضافة: مدوّنةٌ فاسدة أو غائبة في السحابة تُقرأ فارغةً فلا تمحو شيئًا.
+    /// يضمّ ما في السحابة إلى أرشيف الجهاز ويحفظه — بلا رفع. يُستدعى في السحب:
+    /// سحبٌ يكتب في السحابة يوقظ الجهازَ الآخر فيسحب فيكتب، فتدور المزامنة على نفسها.
     private func mergeNotes(into defaults: UserDefaults) {
         var archive = NoteArchive.load(defaults)
         archive.importLegacy(kv.object(forKey: NoteArchive.legacyKey) as? Data)
         archive.merge(NoteArchive.decode(kv.object(forKey: NoteArchive.key) as? Data))
         archive.save(defaults)   // يقلّم قبل أن يكتب
+    }
 
-        guard var data = try? JSONEncoder().encode(archive) else { return }
+    /// الضمّ ثم الرفع — للدفع وحده. ولا يُكتب في السحابة إلا إذا اختلفت البايتات
+    /// القانونية عمّا فيها، فرفعُ المِثل بالمِثل يوقظ الأجهزة بلا خبر.
+    private func mergeAndUploadNotes(into defaults: UserDefaults) {
+        mergeNotes(into: defaults)
+        var archive = NoteArchive.load(defaults)
+
+        guard var data = archive.canonicalData() else { return }
         var near = false
         if data.count > Self.notesByteBudget {
             // ضاقت الحصّة: يُضيَّق المرفوع إلى ما يسعها — سجلّ التراجع أوّلًا ثم
@@ -201,13 +298,14 @@ final class CloudKV {
             near = true
             var live = archive
             guard live.fit(byteBudget: Self.notesByteBudget),
-                  let slim = try? JSONEncoder().encode(live) else {
+                  let slim = live.canonicalData() else {
                 defaults.set(true, forKey: Self.notesCapacityKey)
                 return
             }
             data = slim
         }
-        kv.set(data, forKey: NoteArchive.key)
+        // لا يُوقَظ الطرف الآخر إلا بجديد.
+        if (kv.object(forKey: NoteArchive.key) as? Data) != data { kv.set(data, forKey: NoteArchive.key) }
         if near { defaults.set(true, forKey: Self.notesCapacityKey) }
         else { defaults.removeObject(forKey: Self.notesCapacityKey) }
     }

@@ -62,8 +62,12 @@ extension PrayerTimesTests {
     }
 
     /// كل وقت على رأس دقيقة: لا ثوانٍ تُقصّ عند العرض فيسبق التنبيهُ الوقتَ المعروض.
+    /// اليوم مسمّر لا مأخوذ من «الآن» — اختبارٌ يتغيّر مدخلُه كل يوم لا يشهد على شيء.
     func testTimesAreWholeMinutes() {
-        let t = PrayerTimes(date: Date(), coordinate: CLLocationCoordinate2D(latitude: 24.69, longitude: 46.72), timeZone: TimeZone(identifier: "Asia/Riyadh")!)!
+        let tz = TimeZone(identifier: "Asia/Riyadh")!
+        var cal = Calendar(identifier: .gregorian); cal.timeZone = tz
+        let day = cal.date(from: DateComponents(year: 2026, month: 9, day: 5, hour: 12))!
+        let t = PrayerTimes(date: day, coordinate: CLLocationCoordinate2D(latitude: 24.69, longitude: 46.72), timeZone: tz)!
         for (_, d) in t.times { XCTAssertEqual(d.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 60), 0) }
     }
 }

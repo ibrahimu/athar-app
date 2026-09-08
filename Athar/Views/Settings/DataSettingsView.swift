@@ -110,9 +110,10 @@ struct DataSettingsView: View {
             Text(loc("ولا تخرج عدّاداتك ولا إحصاءاتك ولا سجلّا الصلاة والقراءة. المزامنة إلى حسابك وحده عبر Apple، لا إلى خادم لنا؛ وإيقافها يوقف ما بعده ولا يمحو ما بلغ iCloud."))
                 .font(Theme.display(11))
                 .foregroundStyle(Theme.inkFaint)
-            // وعدٌ لا يُوفى يُقال: إن امتلأ المخزن توقّف رفع التدبّرات، فلا يُترك القارئ يظنّها مصونة.
-            if store.cloudSyncEnabled, store.defaults.bool(forKey: "athar.cloudSync.notesCapacity") {
-                Text(loc("بلغت تدبّراتك سعة مخزن iCloud فتوقّف رفعها. هي محفوظة على هذا الجهاز — صدّر نسخة تحفظها."))
+            // يُقال ما يفعله الكود لا ما يُطمئن: عند ضيق الحصّة يضيق المرفوع ولا يقف —
+            // يُطرح سجلّ التراجع أوّلًا ثم أقدم التدبّرات، ويبقى الحيّ منها يُزامَن.
+            if store.cloudSyncEnabled, store.notesNearCloudLimit {
+                Text(loc("قاربت تدبّراتك حصّة iCloud، فلم يعد يُرفع منها إلا الأحدث ونسخُها السابقة تُطرح أوّلًا. وكلّها محفوظة على هذا الجهاز — صدّر نسخة تحفظها."))
                     .font(Theme.display(11))
                     .foregroundStyle(Theme.danger)
             }
