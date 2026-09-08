@@ -8,7 +8,7 @@ struct WhatsNewView: View {
     var onClose: () -> Void = {}
 
     /// يُرفع مع كل إصدار يستحق العرض.
-    static let version = "1.3"
+    static let version = "1.4"
 
     private struct Item: Identifiable {
         let id: String
@@ -20,34 +20,32 @@ struct WhatsNewView: View {
     }
 
     private let items: [Item] = [
-        .init(id: "tafsir", icon: "text.book.closed.fill", accent: "sea", title: "التفسير لكل آية",
-              detail: "السعدي والجلالين — انقر أي آية في المصحف ثم «التفسير».", tab: .mushaf),
-        .init(id: "hadith", icon: "quote.opening", accent: "sea", title: "الحديث",
-              detail: "رياض الصالحين والأربعون النووية، وحديث اليوم في الرئيسية.", tab: .hadith),
-        .init(id: "names", icon: "sparkle", accent: "dusk", title: "الأسماء الحسنى",
-              detail: "التسعة والتسعون بشرح موجز من كلام الشيخ السعدي.", tab: .names),
-        .init(id: "ahkam", icon: "list.bullet.clipboard.fill", accent: "green", title: "أحكام العبادات",
-              detail: "الطهارة والصلاة والصيام والجنازة والاستخارة بدليلها.", tab: .ahkam),
-        .init(id: "sunan", icon: "rays", accent: "dawn", title: "السنن الرواتب",
-              detail: "يومك مع الرواتب والوتر والضحى على خطّ زمني.", tab: .sunan),
-        .init(id: "tools", icon: "wrench.and.screwdriver.fill", accent: "calm", title: "أدوات",
-              detail: "الزكاة، التقويم الهجري، سجل الصلاة، وتنبيه قبل الأذان والإقامة.", tab: .calendar),
-        .init(id: "custom", icon: "slider.horizontal.3", accent: "gold", title: "رتّبه على كيفك",
-              detail: "أي قسم يصلح تبويبًا في الشريط، وبطاقات «اليوم» تُرتَّب وتُخفى.", tab: .settings),
-        .init(id: "ayah-audio", icon: "waveform.and.mic", accent: "dusk", title: "تلاوة آية بآية والتسميع",
-              detail: "ثمانية قرّاء مع تظليل الموضع وتكرار للحفظ، وسمّع بصوتك فيُظلَّل ما صحّ وما فاتك.", tab: .hifz),
-        .init(id: "prayer-alerts", icon: "bell.badge.fill", accent: "noon", title: "التنبيهات كما تريدها",
-              detail: "لكل صلاة صوتُها وتنبيهها القبلي، وضبط المواقيت بالدقائق ليطابق مسجدك، وتنبيه الإقامة، وأذكار الصباح والمساء بوقت الصلاة.", tab: .settings),
-        .init(id: "watch", icon: "applewatch", accent: "green", title: "على الساعة وشاشة القفل",
-              detail: "الصلاة القادمة والمسبحة وذكر اليوم على Apple Watch، وودجات شاشة القفل لحديث اليوم واسم اليوم والراتبة القادمة.", tab: nil),
-        .init(id: "group", icon: "person.3.fill", accent: "gold", title: "ختمة مع الأهل وتقرير شهري",
-              detail: "ختمة برمزٍ تتقاسمونها مع الأهل والأصدقاء، وتقرير شهري هجري لأذكارك وصفحاتك وصلواتك، وتصدير بياناتك ملفًا واحدًا.", tab: .khatmah),
-        .init(id: "live", icon: "dot.radiowaves.left.and.right", accent: "sea", title: "البث المباشر",
-              detail: "المسجد الحرام والمسجد النبوي مباشرة، وإذاعة القرآن الكريم من بثّ هيئة الإذاعة والتلفزيون الرسمي — تستمرّ في الخلفية وتتحكّم بها من شاشة القفل.", tab: .live),
-        .init(id: "phrases", icon: "text.quote", accent: "gold", title: "عبارات للنسخ والمشاركة",
-              detail: "آيات وأدعية وتهانٍ جاهزة للنسخ أو مشاركتها صورةً على واتساب وسناب", tab: .phrases),
-        .init(id: "wallet", icon: "wallet.pass.fill", accent: "gold", title: "بطاقات Apple Wallet",
-              detail: "آية الكرسي وخواتيم البقرة وأذكارك في بطاقات تُضاف إلى المحفظة", tab: .wallet),
+        .init(id: "athan", icon: "bell.and.waves.left.and.right.fill", accent: "gold", title: "الأذان لا يفوتك",
+              detail: "تنبيهات حسّاسة للوقت تخترق أوضاع التركيز، وفيها «صلّيتها في وقتها» و«ذكّرني بعد ١٠ دقائق» — ومواعيدها مثبّتة على منطقة مكانك لا جهازك.", tab: .prayer),
+        .init(id: "friday", icon: "sun.max.fill", accent: "gold", title: "يوم الجمعة في مكان واحد",
+              detail: "سبع سنن تُعلّمها كلٌّ بدليلها، وسورة الكهف صفحةً أو آيةً آية، وعدّاد الصلاة على النبي ﷺ، وبطاقات جمعة تُشارك.", tab: .home),
+        .init(id: "khatmah-dua", icon: "hands.sparkles.fill", accent: "gold", title: "دعاء الختمة",
+              detail: "مواضع الدعاء في القرآن نفسه تُقرأ إذا ختمت — من خاتمة الناس، ومن بطاقة تمام الختمة، ومن باب المصحف.", tab: .mushaf),
+        .init(id: "jump", icon: "arrow.uturn.forward.circle.fill", accent: "sea", title: "الانتقال إلى صفحة أو جزء",
+              detail: "اكتب الرقم في بحث المصحف فتنتقل إليه، أو اضغط شريط الموضع في القارئ — بلا تقريبٍ ولا سحب.", tab: .mushaf),
+        .init(id: "notes", icon: "square.and.pencil", accent: "dusk", title: "تدبّراتي",
+              detail: "ملاحظة خاصة على أي آية، وعلامة خافتة عند رقمها، وصفحة تجمعها كلها.", tab: .mushaf),
+        .init(id: "ipad", icon: "ipad.landscape", accent: "sea", title: "المصحف على الآيباد",
+              detail: "صفحتان متقابلتان تُقلَّبان معًا كالمصحف حين يُفتح، أو صفحة، أو صفحة مع التفسير.", tab: .mushaf),
+        .init(id: "search", icon: "magnifyingglass", accent: "calm", title: "بحث واحد لكل شيء",
+              detail: "آية وحديثًا وذكرًا واسمًا وحكمًا وسورة من حقل واحد.", tab: .mushaf),
+        .init(id: "icons", icon: "app.badge", accent: "dusk", title: "أيقونة التطبيق بلونك",
+              detail: "اثنتا عشرة أيقونة بالرسم نفسه — تتبع طابعك أو تختارها مستقلة، ولون الودجت بيدك.", tab: .settings),
+        .init(id: "tasbih-widget", icon: "circle.grid.3x3.fill", accent: "green", title: "مسبحة في الودجة",
+              detail: "تعدّ بضغطة من الشاشة الرئيسية وتُصفَّر من مكانها، وودجة للتاريخ الهجري وأخرى للذكر.", tab: .tasbih),
+        .init(id: "cards", icon: "photo.on.rectangle.angled", accent: "gold", title: "بطاقات تصمّمها",
+              detail: "شكلٌ ولونٌ ونقشٌ وخط — ومنها «لوحة» مؤطَّرة، وملصقٌ شفّاف تضعه فوق صورتك في سناب وإكس.", tab: .phrases),
+        .init(id: "khatmah-plan", icon: "calendar.badge.clock", accent: "gold", title: "خطة ختمة بموعد",
+              detail: "تختار يوم الختم فيوزّع الورد ويذكّرك به، وتضبط التاريخ الهجري ليوافق تقويم بلدك.", tab: .khatmah),
+        .init(id: "siri-watch", icon: "applewatch", accent: "green", title: "سيري والساعة",
+              detail: "«سجّل صلاة الظهر» و«أين ختمتي» بلا فتح التطبيق، وعدّ المسبحة بالتاج الرقمي.", tab: nil),
+        .init(id: "fixes", icon: "checkmark.seal.fill", accent: "sea", title: "وإصلاحات كثيرة",
+              detail: "المصحف يفتح على الصفحة التي يقولها، والإعدادات لا تُطوى مع تبديل الخط، والتلاوة تقول تعذّرها بدل أن تصمت، ونصوص الودجات لا تنكسر.", tab: nil),
     ]
 
     var onOpen: ((AppTab) -> Void)? = nil
@@ -62,7 +60,7 @@ struct WhatsNewView: View {
                         Text(loc("جديد أثر %1$@", Self.version))
                             .font(Theme.display(24, weight: .bold))
                             .foregroundStyle(Theme.ink)
-                        Text(loc("أقسام وأدوات جديدة للقراءة والذكر والمشاركة، مع بث وخدمات سحابية اختيارية."))
+                        Text(loc("الجمعة ودعاء الختمة وتدبّراتك، وتنبيهاتٌ لا يفوتك معها الأذان، وإصلاحاتٌ كثيرة."))
                             .font(Theme.display(13))
                             .foregroundStyle(Theme.inkSoft)
                             .multilineTextAlignment(.center)

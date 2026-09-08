@@ -56,6 +56,8 @@ struct AtharApp: App {
                 // فتُعاد كتابته مع كل عودة.
                 WindowStyle.apply(preferredScheme)
                 SpotlightIndexer.indexIfNeeded()  // مرة لكل إصدار من الفهرس
+                // سؤالُ المتجر عن آخر إصدار — مرّة كل يوم على الأكثر، وفشلُه صامت.
+                UpdateCheck.shared.refresh()
                 store.startCloudSync()            // لا يفعل شيئًا إن كانت المزامنة مطفأة
                 WatchSync.shared.activate()       // الساعة تأخذ مدينتك وطريقة حسابك من هنا
                 WatchSync.shared.push(store: store)

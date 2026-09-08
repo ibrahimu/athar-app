@@ -3,6 +3,7 @@ import SwiftUI
 struct HomeView: View {
     @Environment(\.horizontalSizeClass) private var sizeClass
     @EnvironmentObject private var store: AtharStore
+    @StateObject private var updates = UpdateCheck.shared
     var onOpenTab: (AppTab) -> Void
     /// حين تُفتح من شاشة «الأقسام» تكون داخل مكدّس قائم، فلا تصنع مكدّسًا آخر.
     var embedded = false
@@ -30,6 +31,9 @@ struct HomeView: View {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 26) {
                         header.appearStagger(0)
+                        // تحديثٌ في المتجر لم يبلغه: بطاقةٌ فوق كل شيء تُغلق ولا تعود،
+                        // ولا تُعرض إلا إن وُجد أحدثُ ولم يُغلقها صاحبها.
+                        updateBanner
                         // «اليوم على كيفي»: البطاقات وترتيبها من اختيار المستخدم (المظهر ← بطاقات اليوم).
                         ForEach(Array(store.homeCards.enumerated()), id: \.element) { i, card in
                             homeCard(card).appearStagger(i + 1)
@@ -659,6 +663,45 @@ struct HomeView: View {
     /// بطاقة الصدقة نفسها تُعرض هنا وفي «الجمعة» — نسخةٌ واحدة، فلا يتبدّل نصّها
     /// ولا شعارها في موضعٍ دون موضع.
     private var sadaqahCard: some View { SadaqahCard() }
+
+    /// «فيه تحديث»: من أطفأ التحديث التلقائي يبقى على نسخته أشهرًا، فتُصلَح العلّة
+    /// ولا تصل إليه. تُقال له هنا مرّةً — بطاقةٌ تُغلق ولا تعود، لا جدارٌ يمنعه.
+    @ViewBuilder
+    private var updateBanner: some View {
+        if let v = updates.available, !updates.dismissed {
+            AtharCard(padding: 14, elevation: .e2, tint: Theme.gold) {
+                HStack(spacing: 12) {
+                    IconChip(icon: "arrow.down.circle.fill", tint: Theme.gold, size: .md)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(loc("تحديث جديد من أثر"))
+                            .font(Theme.display(15, weight: .semibold))
+                            .foregroundStyle(Theme.ink)
+                        Text(loc("الإصدار %1$@ في المتجر — فيه إصلاحات وإضافات.", v))
+                            .font(Theme.display(12))
+                            .foregroundStyle(Theme.inkSoft)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    Spacer(minLength: 4)
+                    VStack(spacing: 6) {
+                        Button(loc("حدّث")) {
+                            Haptics.tap(enabled: store.hapticsEnabled)
+                            UIApplication.shared.open(SettingsView.appStoreURL)
+                        }
+                        .font(Theme.display(13, weight: .semibold))
+                        .foregroundStyle(Theme.onAccent)
+                        .padding(.horizontal, 14).padding(.vertical, 7)
+                        .background(Capsule().fill(Theme.gold))
+                        .buttonStyle(.plain)
+                        Button(loc("لاحقًا")) { withAnimation(Motion.smooth) { updates.dismiss() } }
+                            .font(Theme.display(12))
+                            .foregroundStyle(Theme.inkFaint)
+                            .buttonStyle(.plain)
+                    }
+                }
+            }
+            .transition(.opacity.combined(with: .move(edge: .top)))
+        }
+    }
 
     private var footerNote: some View {
         // النصّ يُحلّ من quran.json بمعرّفه: كان مكتوبًا بالرسم الإملائي فيختلف

@@ -8,6 +8,7 @@ struct SettingsView: View {
     var embedded = false
 
     @EnvironmentObject private var store: AtharStore
+    @StateObject private var updates = UpdateCheck.shared
 
     var body: some View {
         if embedded { content } else { NavigationStack { content } }
@@ -397,8 +398,24 @@ struct SettingsView: View {
                 }
                 .buttonStyle(.plain)
                 SettingsDivider()
-                SettingsRow(icon: "info.circle.fill", tint: Theme.inkSoft, title: loc("rowVersion")) {
-                    SettingsValue(text: appVersion)
+                // الإصدار وحاله: من فتح «عن التطبيق» يسأل عن نسخته، فيُقال له معها
+                // أهي الأحدث أم في المتجر ما بعدها — وبابُ التحديث معها لا في شاشة أخرى.
+                if let v = updates.available {
+                    Button {
+                        Haptics.tap(enabled: store.hapticsEnabled)
+                        UIApplication.shared.open(SettingsView.appStoreURL)
+                    } label: {
+                        SettingsRow(icon: "arrow.down.circle.fill", tint: Theme.gold,
+                                    title: loc("rowVersion"),
+                                    subtitle: loc("الإصدار %1$@ في المتجر — اضغط للتحديث", v)) {
+                            SettingsValue(text: appVersion)
+                        }
+                    }
+                    .buttonStyle(.plain)
+                } else {
+                    SettingsRow(icon: "info.circle.fill", tint: Theme.inkSoft, title: loc("rowVersion")) {
+                        SettingsValue(text: appVersion)
+                    }
                 }
             }
         }
