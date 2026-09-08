@@ -2,7 +2,8 @@ import SwiftUI
 import WidgetKit
 
 /// المظهر: الطابع اللوني، لون الأيقونات والخلفية، وترتيب الشريط السفلي وبطاقات اليوم.
-/// (خط الواجهة والإضاءة في بطاقة «المظهر والخط» بجذر الإعدادات — مصدر واحد لا اثنان.)
+/// (خط الواجهة في بطاقة «المظهر والخط» بجذر الإعدادات. والإضاءة هنا وهناك جميعًا:
+/// مفتاحٌ واحد في المخزن يكتبه الموضعان، ومن قصد شاشة «المظهر» يطلبها وجدها.)
 struct AppearanceView: View {
     @EnvironmentObject private var store: AtharStore
     @State private var editing = false
@@ -24,6 +25,7 @@ struct AppearanceView: View {
                     homeCards.id("homeCards")
                     tabBar
                 } else {
+                    lightingPicker
                     themes
                     appIconPicker
                     widgetPalettePicker
@@ -394,6 +396,54 @@ struct AppearanceView: View {
     }
 
     // MARK: لون الأيقونات
+
+    // MARK: الإضاءة
+
+    /// فاتح أو داكن أو حسب الجهاز. المفتاح نفسه الذي في جذر الإعدادات — الموضعان
+    /// يكتبان قيمةً واحدة في المخزن فلا يفترقان — وإنما زِيد هنا لأن من طلب الإضاءة
+    /// قصد شاشة «المظهر» فلم يجدها فيها.
+    private var lightingPicker: some View {
+        VStack(spacing: 8) {
+            SettingsGroupTitle(text: loc("lighting"), tint: Theme.accent(for: "night"))
+            HStack(spacing: 8) {
+                ForEach(AppearanceMode.allCases) { mode in lightingOption(mode) }
+            }
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel(loc("lighting"))
+        }
+    }
+
+    private func lightingOption(_ mode: AppearanceMode) -> some View {
+        let on = store.appearance == mode
+        return Button {
+            withAnimation(Motion.smooth) { store.appearance = mode }
+            Haptics.tap(enabled: store.hapticsEnabled)
+        } label: {
+            HStack(spacing: 6) {
+                Image(systemName: mode == .system ? "circle.lefthalf.filled"
+                                : mode == .light ? "sun.max.fill" : "moon.fill")
+                    .font(.system(size: 13))
+                Text(mode.title).font(Theme.display(13, weight: on ? .semibold : .regular))
+            }
+            .foregroundStyle(on ? Theme.onAccent : Theme.inkSoft)
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 11)
+            .background(
+                RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous)
+                    .fill(on ? AnyShapeStyle(Theme.accentGradient) : AnyShapeStyle(Theme.surfaceAlt))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.Radius.sm, style: .continuous)
+                    .strokeBorder(on ? Color.clear : Theme.hairline, lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+        .pressable()
+        .accessibilityLabel(mode.title)
+        .accessibilityAddTraits(on ? [.isSelected] : [])
+    }
 
     private var iconStylePicker: some View {
         VStack(spacing: 8) {

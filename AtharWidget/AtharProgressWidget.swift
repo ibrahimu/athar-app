@@ -105,28 +105,31 @@ struct ProgressWidgetView: View {
                     }
                 }
                 Spacer(minLength: 0)
+                // المربّع الصغير يسع ١٠٩ نقاط عرضًا على أضيق الشاشات، ويقتطع منها زرّ
+                // التصفير وحدوده. فلا تجتمع فيه كلمة «سبّح» والعدّ معًا: كانت الكلمة
+                // تنكسر حرفًا حرفًا — والحرف العربي إذا انفرد على سطره انفصل عن جاره
+                // وخرج مشوَّهًا — ويُبتر العدّ إلى «…». فبقي العدّ وعلامةُ الزيادة،
+                // وهما يقولان ما تقوله الكلمة، واسمُها في وصف الزرّ لقارئ الشاشة.
                 HStack(spacing: 6) {
                     tasbihButton {
-                        HStack(spacing: 7) {
+                        HStack(spacing: 6) {
                             Image(systemName: "plus.circle.fill")
-                                .font(.system(size: 13, weight: .semibold))
+                                .font(.system(size: 15, weight: .semibold))
                                 .foregroundStyle(entry.moment.tint)
-                            Text(loc("سبّح"))
-                                .font(.system(size: 13, weight: .semibold))
-                                .foregroundStyle(entry.moment.ink)
-                            Spacer(minLength: 0)
-                            // «من ٣٣» تُبيّن أن العدّ شوطٌ لا رقمٌ مبهم يزيد بلا غاية.
-                            Text(loc("%1$@ من %2$@", roundCount.counterText, entry.tasbihTarget.counterText))
-                                .font(.system(size: 14, weight: .bold, design: .rounded))
-                                .foregroundStyle(entry.moment.tint)
-                                .contentTransition(.numericText())
-                                .lineLimit(1).minimumScaleFactor(0.7)
+                            // ثلاث صيغ للعدّ ينزل إليها كلّما ضاق المقاس، فيختار النظام
+                            // أوّل ما يسع: «٠ من ٣٣» ثم «٠/٣٣» ثم العددُ وحده. وبلا هذا
+                            // كان يُبتر إلى «…» على كل الآيفونات — والمبتور هو مقصود الودجة.
+                            ViewThatFits(in: .horizontal) {
+                                count(loc("%1$@ من %2$@", plain(roundCount), plain(entry.tasbihTarget)))
+                                count("\(plain(roundCount))/\(plain(entry.tasbihTarget))")
+                                count(plain(roundCount))
+                            }
                         }
-                        .padding(.horizontal, 12)
-                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .frame(maxWidth: .infinity, minHeight: 42)
+                        .padding(.horizontal, 8)
                         .background(tasbihShell)
                     }
-                    resetButton(side: 44)
+                    resetButton(side: 42)
                 }
             }
             .environment(\.layoutDirection, .rightToLeft)
@@ -139,12 +142,15 @@ struct ProgressWidgetView: View {
                     Text(loc("أثرك اليوم"))
                         .font(.system(size: 15, weight: .bold))
                         .foregroundStyle(entry.moment.ink)
+                        .lineLimit(1).minimumScaleFactor(0.8)
                     Text(loc("%1$@ من %2$@ أذكار", entry.completedToday.counterText, entry.dailyGoal.counterText))
                         .font(.system(size: 12))
                         .foregroundStyle(entry.moment.inkSoft)
+                        .lineLimit(1).minimumScaleFactor(0.8)
                     Text(loc("%1$@ ذكر بإذن الله", entry.total.counterText))
                         .font(.system(size: 12))
                         .foregroundStyle(entry.moment.tint)
+                        .lineLimit(1).minimumScaleFactor(0.8)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -162,6 +168,8 @@ struct ProgressWidgetView: View {
                             Text(loc("سبّح"))
                                 .font(.system(size: 11, weight: .semibold))
                                 .foregroundStyle(entry.moment.inkSoft)
+                                // حدُّ السطر يمنع الانكسار الحرفيّ مهما ضاق الإطار.
+                                .lineLimit(1).minimumScaleFactor(0.7)
                         }
                         .frame(width: 74, height: 74)
                         .background(tasbihShell)
@@ -206,6 +214,19 @@ struct ProgressWidgetView: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(loc("تتابعك"))
         .accessibilityValue(streakCaption(entry.streak))
+    }
+
+    /// رقمٌ بلا فاصلة تجميع: «1,000» تكلّف حرفين في مقاسٍ يُحسب فيه كلّ نقطة.
+    private func plain(_ n: Int) -> String { String(n) }
+
+    /// صيغة العدّ في المربّع الصغير — واحدة من ثلاث تنزل إليها ViewThatFits.
+    private func count(_ text: String) -> some View {
+        Text(text)
+            .font(.system(size: 15, weight: .bold, design: .rounded))
+            .foregroundStyle(entry.moment.ink)
+            .contentTransition(.numericText())
+            .lineLimit(1)
+            .frame(maxWidth: .infinity)
     }
 
     /// قِشرة المسبحة: تستطيل كبسولةً في الصفّ وتستدير في المربّع — حدٌّ خافت من لون

@@ -175,16 +175,24 @@ struct PrayerWidgetView: View {
                         Image(systemName: up.prayer.icon)
                             .font(.system(size: 13))
                             .foregroundStyle(entry.moment.tint)
+                        // الصفّ أعرض من الودجة على الشاشات الصغيرة، فيُضغط ما فيه: و«المغرب»
+                        // كلمةٌ لا فرصةَ كسرٍ فيها فتنكسر حرفًا حرفًا، و«م»/«ص» تهبط سطرًا.
+                        // فحدُّ السطر على كلٍّ منها، والأولويةُ لاسم الصلاة ووقتها.
                         Text(up.prayer.title)
                             .font(.system(size: 19, weight: .bold))
                             .foregroundStyle(entry.moment.ink)
+                            .lineLimit(1).minimumScaleFactor(0.85)
+                            .layoutPriority(1)
                         Text(time(up.date))
                             .font(.system(size: 19, weight: .semibold, design: .rounded))
                             .foregroundStyle(entry.moment.tint)
+                            .lineLimit(1).minimumScaleFactor(0.8)
+                            .layoutPriority(1)
                         Text(up.date, style: .timer)
                             .font(.system(size: 12, weight: .medium, design: .rounded))
                             .foregroundStyle(entry.moment.inkSoft)
                             .monospacedDigit()
+                            .lineLimit(1)
                     }
                     Spacer()
                     Text(entry.place)

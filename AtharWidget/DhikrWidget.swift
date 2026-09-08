@@ -75,10 +75,27 @@ struct DhikrWidgetView: View {
     @Environment(\.widgetFamily) private var family
     let entry: DhikrEntry
 
+    /// صدر الذكر للسطر المفرد: ما قبل أوّل فاصلةٍ عربية، وإلا أوّل ما يسع سطرًا
+    /// بحدّ كلمة. النصّ لا يُعدَّل — يُقتطع أوّله فقط، ولا يُضاف إليه حرف.
+    static func inlineHead(_ text: String) -> String {
+        if let comma = text.firstIndex(of: "،") {
+            let head = String(text[text.startIndex..<comma])
+            if head.count >= 8 { return head }
+        }
+        guard text.count > 34 else { return text }
+        let cut = text.index(text.startIndex, offsetBy: 34)
+        if let space = text[text.startIndex..<cut].lastIndex(of: " ") {
+            return String(text[text.startIndex..<space])
+        }
+        return String(text[text.startIndex..<cut])
+    }
+
     var body: some View {
         switch family {
         case .accessoryInline:
-            Text(entry.dhikr.text)
+            // سطرٌ واحد يفرضه النظام: الذكر كاملًا يُبتر في وسطه بـ«…»، فيُدفع إليه
+            // صدرُه إلى أوّل فاصلة — جملةٌ تامّة تُقرأ خيرٌ من نصف جملة مقطوعة.
+            Text(DhikrWidgetView.inlineHead(entry.dhikr.text))
 
         case .accessoryCircular:
             ZStack {

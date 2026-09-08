@@ -36,11 +36,27 @@ struct DhikrComplicationView: View {
     let entry: DhikrComplicationEntry
     @Environment(\.widgetFamily) private var family
 
+    /// صدر الذكر للسطر المفرد — يُقتطع أوّله ولا يُزاد عليه حرف.
+    static func inlineHead(_ text: String) -> String {
+        if let comma = text.firstIndex(of: "،") {
+            let head = String(text[text.startIndex..<comma])
+            if head.count >= 6 { return head }
+        }
+        guard text.count > 22 else { return text }
+        let cut = text.index(text.startIndex, offsetBy: 22)
+        if let space = text[text.startIndex..<cut].lastIndex(of: " ") {
+            return String(text[text.startIndex..<space])
+        }
+        return String(text[text.startIndex..<cut])
+    }
+
     var body: some View {
         switch family {
         case .accessoryInline:
-            // السطر المفرد يفرضه النظام بخطّه ومقاسه — لا يقبل نسخًا ولا تنسيقًا.
-            Text(entry.text)
+            // السطر المفرد يفرضه النظام بخطّه ومقاسه — لا يقبل نسخًا ولا تنسيقًا،
+            // ولا يسع إلا خُمس الذكر، فكان يُبتر في وسط الدعاء. فيُدفع إليه صدرُه
+            // إلى أوّل فاصلة: جملةٌ تامّة أولى من نصفٍ مقطوع بـ«…».
+            Text(Self.inlineHead(entry.text))
         default: // rectangular
             VStack(alignment: .leading, spacing: 1) {
                 Text(entry.text)

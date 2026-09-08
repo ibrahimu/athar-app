@@ -72,8 +72,10 @@ struct PrayerComplicationView: View {
                 .gaugeStyle(.accessoryCircular)
             }
         case .accessoryCorner:
+            // أضيق فتحات الواجهة: بلا حدّ سطرٍ كانت الساعة تنكسر «12:» فوق «34».
             Text(clock(entry.time))
                 .font(.system(size: 14, weight: .bold, design: .rounded))
+                .lineLimit(1).minimumScaleFactor(0.6)
                 .widgetLabel {
                     Text("\(entry.prayer.title)")
                 }

@@ -208,9 +208,12 @@ struct CardSurface: View {
                 LinearGradient(colors: [.white.opacity(scheme == .dark ? 0.06 : 0.5), .clear],
                                startPoint: .top, endPoint: .bottom)
                     .frame(height: 6)
-                    .mask(shape)
                     .allowsHitTesting(false)
             }
+            // القصّ بشكل البطاقة لا بمستطيلها. وكان البريق يُقنَّع بـshape داخل شريطه هو
+            // (ارتفاعه ٦ نقاط) فينحسر انحناؤه إلى ٣ نقاط — نصف الارتفاع — فيطلع طرفاه
+            // خطّين مستقيمين فوق ركني البطاقة الدائريين، فتبدو للناظر هالةً مربّعة.
+            .clipShape(shape)
             .atharElevation(elevation)
     }
 }

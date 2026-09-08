@@ -130,16 +130,19 @@ struct DhikrSessionView: View {
             }
             .frame(height: 6)
 
-            // العدّ «١ من ٢٥» في الجهة البادئة والنسبة في النهاية — كترتيب شريط الحفظ،
-            // فلا يتبادل الشريطان المتطابقان مواضع أرقامهما بين الشاشتين.
+            // الرقمان يقيسان شيئين لا شيئًا واحدًا: الأيسرُ موضعُك من الأذكار، والأيمنُ
+            // ما قلتَه من مجموع التكرار — وذكرٌ يُقال مئةً ليس كذكرٍ يُقال مرّة. فكانا
+            // بلا اسمٍ يُقرآن جملةً واحدة متناقضة («٨ من ٢٥» و«٣٪»)، فسُمّي كلٌّ بما يقيس.
             HStack {
-                Text("\((index + 1).counterText) من \(category.items.count.counterText)")
+                Text(loc("الذكر %1$@ من %2$@", (index + 1).counterText, category.items.count.counterText))
                     .font(Theme.display(12, weight: .medium))
                     .foregroundStyle(Theme.inkFaint)
-                Spacer()
-                Text("\(Int(overallProgress * 100).counterText)٪")
+                    .lineLimit(1).minimumScaleFactor(0.8)
+                Spacer(minLength: 8)
+                Text(loc("%1$@٪ من التكرار", Int(overallProgress * 100).counterText))
                     .font(Theme.display(12, weight: .medium))
                     .foregroundStyle(Theme.inkFaint)
+                    .lineLimit(1).minimumScaleFactor(0.8)
             }
         }
         .padding(.horizontal, Theme.gutter)

@@ -49,17 +49,23 @@ struct HadithWidgetView: View {
                         Text("حديث اليوم").font(.system(size: 12, weight: .semibold))
                     }
                     .foregroundStyle(soft)
+                    // المربّع الصغير لا يسع خمسة أسطر: ارتفاعه المتاح ١٢٦ نقطة (و١٠٩ على
+                    // الشاشات الصغيرة)، ويأخذ منها العنوانُ والفسحاتُ والعزوُ نحو ٤٤. فحدُّ
+                    // الأسطر يوافق ما يسعه فعلًا، والخطُّ والتباعد يضيقان له، والعزو يُطوى
+                    // عنه — فسطرٌ من الحديث خيرٌ من سطرٍ يقول من رواه.
                     Text(entry.hadith?.text ?? "")
-                        .font(.custom("NotoNaskhArabic-Regular", size: family == .systemSmall ? 13 : 15))
+                        .font(.custom("NotoNaskhArabic-Regular", size: family == .systemSmall ? 12 : 15))
                         .foregroundStyle(ink)
-                        .lineSpacing(3)
-                        .lineLimit(family == .systemSmall ? 5 : (family == .systemMedium ? 5 : 12))
+                        .lineSpacing(family == .systemSmall ? 1 : 3)
+                        .lineLimit(family == .systemSmall ? 4 : (family == .systemMedium ? 5 : 12))
                         .minimumScaleFactor(0.85)
                     Spacer(minLength: 0)
-                    Text(entry.hadith?.citation ?? "")
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundStyle(soft)
-                        .lineLimit(1)
+                    if family != .systemSmall {
+                        Text(entry.hadith?.citation ?? "")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundStyle(soft)
+                            .lineLimit(1)
+                    }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
@@ -130,19 +136,24 @@ struct NameWidgetView: View {
             default:
                 VStack(alignment: .leading, spacing: 4) {
                     Text("اسم اليوم").font(.system(size: 12, weight: .semibold)).foregroundStyle(soft)
+                    // اسمٌ من أسماء الله لا يُقطع في وسطه: أطولها يتجاوز عرض المربّع الصغير
+                    // بمعامل ٠٫٦، فيُبدأ به أصغر ويُطلق له التصغير حتى يسعه كاملًا.
                     Text(entry.name?.name ?? "")
-                        .font(.custom("NotoNaskhArabic-Bold", size: family == .systemSmall ? 30 : 34))
+                        .font(.custom("NotoNaskhArabic-Bold", size: family == .systemSmall ? 26 : 30))
                         .foregroundStyle(ink)
-                        .minimumScaleFactor(0.6).lineLimit(1)
+                        .minimumScaleFactor(family == .systemSmall ? 0.45 : 0.6).lineLimit(1)
                     if family != .systemSmall {
+                        // المستطيل المتوسّط لا يبقى فيه بعد الاسم إلا سطران — وثلاثةٌ تُطلب
+                        // فيُبتر أوّلها. فالحدّ يوافق المساحة، والتباعد يُرفع ليتّسع.
                         Text(entry.name?.meaning ?? "")
                             .font(.custom("NotoNaskhArabic-Regular", size: 14))
                             .foregroundStyle(ink.opacity(0.9))
-                            .lineLimit(family == .systemMedium ? 3 : 9)
-                            .lineSpacing(2)
+                            .lineLimit(family == .systemMedium ? 2 : 9)
+                            .lineSpacing(family == .systemMedium ? 0 : 2)
                     }
                     Spacer(minLength: 0)
-                    if let n = entry.name {
+                    // سطر المصدر يُطوى عن المتوسّط: مكانُه سطرٌ من الشرح نفسه أولى به.
+                    if let n = entry.name, family != .systemMedium {
                         Text(n.source == "السعدي" ? "من كلام الشيخ السعدي" : "شرح موجز")
                             .font(.system(size: 10, weight: .medium)).foregroundStyle(soft)
                     }
@@ -245,7 +256,11 @@ struct SunnahWidgetView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(spacing: 5) {
                         Image(systemName: "rays").font(.system(size: 11, weight: .semibold))
-                        Text("رواتب الصلاة القادمة").font(.system(size: 12, weight: .semibold))
+                        // العنوان الكامل أعرض من المربّع الصغير فينكسر سطرين ويدفع الحبّات
+                        // خارج الودجة — فله في الصغير اسمٌ أقصر، ولا ينكسر في الحالين.
+                        Text(family == .systemSmall ? "الرواتب القادمة" : "رواتب الصلاة القادمة")
+                            .font(.system(size: 12, weight: .semibold))
+                            .lineLimit(1).minimumScaleFactor(0.85)
                     }
                     .foregroundStyle(soft)
                     Text(entry.prayer.title).font(.system(size: 22, weight: .bold, design: .rounded)).foregroundStyle(ink)
