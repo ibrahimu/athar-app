@@ -42,6 +42,9 @@ struct SettingsView: View {
         }
         .navigationTitle(loc("settings"))
         .navigationBarTitleDisplayMode(.inline)
+        // ما دامت معروضةً يُؤجَّل تبديل الخط: تطبيقُه يعيد بناء التبويب فيطويها.
+        .onAppear { store.inSettings = true }
+        .onDisappear { store.inSettings = false }
     }
 
     /// طبقات ضوئية ناعمة فوق الخلفية: توهّج لوني علوي، بركة ذهبية سفلية،

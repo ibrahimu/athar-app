@@ -34,6 +34,8 @@ enum Reminders {
     static let lastRefreshKey = "athar.notifications.lastRefresh"
     /// كم طلبًا ردّه النظام في آخر جدولة — صفرٌ في العادة، وما فوقه يُعرض كما هو.
     static let failuresKey = "athar.notifications.failures"
+    /// كم تنبيهًا سقط من الخطّة لضيق سقف النظام — يُقرأ في «جاهزية التنبيهات».
+    static let droppedKey = "athar.notifications.dropped"
 
     // البادئات ليست خاصّة: مندوب الإشعارات يوجّه النقرة بها نفسها، فلا تُبنى في مكانين.
     static let morningId = "athar.reminder.morning"
@@ -509,6 +511,10 @@ enum Reminders {
         // والبقية بالأقرب موعدًا: ما يصل اليوم أولى بالمقعد ممّا يصل بعد أسبوع.
         let others = chronological.filter { !taken.contains($0.identifier) }.prefix(room - prayers.count)
         var result = Array(prayers) + Array(others)
+        // ما ضاق عنه السقف كان يُرمى صامتًا، فيظنّ صاحبُه أنّ تذكيراته كلّها قائمة —
+        // والأبعدُ موعدًا أوّلُ من يسقط دائمًا (الأيام البيض، ثم الجمعة والصيام).
+        // فيُعدّ ويُكتب ليُقرأ في «جاهزية التنبيهات».
+        store.defaults.set(max(0, chronological.count - result.count), forKey: droppedKey)
         // تذكير واضح قبل نهاية التغطية: التجديد الخلفي يسدّ الثغرة غالبًا، لكن النظام
         // لا يعد به — فيبقى النداء اليدويّ آخر ضمانة قبل أن ينقطع الأذان.
         if let last = prayers.last.flatMap(fireDate) {

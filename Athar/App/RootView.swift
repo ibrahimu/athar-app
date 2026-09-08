@@ -13,6 +13,10 @@ struct RootView: View {
     /// فالأوراق المتساوية قيمةً لا تُعاد بغير تبديل الهوية. يلحق بـ store.uiFont فورًا ما دام
     /// المستخدم خارج «الإعدادات»، ويُؤجَّل حتى مغادرتها إن بدّله منها — إعادة البناء تطوي
     /// مكدّسها فكانت تُخرجه من شاشة «المظهر» مع كل بلاطة.
+    ///
+    /// والتأجيل بحال الشاشة لا باسم التبويب: «الإعدادات» ليست تبويبًا في الشريط، بل تُدفَع
+    /// في مكدّس «اليوم» من ترسه — فكان الحارسُ القديم (selection != .settings) يمرّ دائمًا،
+    /// وتُطوى الشاشة مع كل رقاقة خطّ، فلا يُجرَّب خطٌّ إلا بإعادة فتح الإعدادات.
     @State private var fontKey: AppFont = AppFont.current
 
     @ViewBuilder
@@ -34,7 +38,10 @@ struct RootView: View {
             }
         }
         .onChange(of: store.uiFont) { _, font in
-            if selection != .settings { fontKey = font }
+            if !store.inSettings { fontKey = font }
+        }
+        .onChange(of: store.inSettings) { _, inside in
+            if !inside, fontKey != store.uiFont { fontKey = store.uiFont }
         }
         .onChange(of: selection) { _, _ in
             if fontKey != store.uiFont { fontKey = store.uiFont }

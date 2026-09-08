@@ -223,6 +223,18 @@ struct NotificationHealthView: View {
                     }
                     .accessibilityElement(children: .combine)
                 }
+
+                // ما ضاق عنه سقف النظام كان يُرمى صامتًا، والأبعدُ موعدًا أوّلُ من يسقط
+                // (الأيام البيض، ثم الجمعة والصيام) — فيبقى صاحبه ينتظر تذكيرًا لن يأتي.
+                if dropped > 0 {
+                    SettingsDivider()
+                    SettingsRow(icon: "tray.full.fill", tint: Theme.gold,
+                                title: loc("لم يتّسع لها السقف"),
+                                subtitle: loc("سقف النظام ٦٤ تنبيهًا معلّقًا — والأبعد موعدًا أوّل من يسقط. أوقف ما لا تحتاجه ليتّسع لغيره")) {
+                        badge(dropped.counterText, Theme.gold)
+                    }
+                    .accessibilityElement(children: .combine)
+                }
             }
             footnote(loc("التنبيهات تُجدَّد كلّما فُتح أثر. سنذكّرك قبل نهاية التغطية بساعات، لكن استمرارها يحتاج فتح التطبيق."))
         }
@@ -250,6 +262,10 @@ struct NotificationHealthView: View {
 
     private var failures: Int {
         store.defaults.integer(forKey: Reminders.failuresKey)
+    }
+
+    private var dropped: Int {
+        store.defaults.integer(forKey: Reminders.droppedKey)
     }
 
     // MARK: التجربة

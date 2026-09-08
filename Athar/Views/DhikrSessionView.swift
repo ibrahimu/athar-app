@@ -12,6 +12,8 @@ struct DhikrSessionView: View {
     @ObservedObject private var recorded = DhikrAudio.shared
     /// ما بقي من تكرار التلاوة القرآنية — العدّ يقع عند تمام المقطع لا عند كل آية.
     @State private var recitingLeft = 0
+    /// تعذّرت التلاوة (المقطع يُجلب من الشبكة ولا يُنزَّل) — تُقال ولا تُبتلع.
+    @State private var recitationFailed = false
     @State private var remaining: [String: Int] = [:]
     @State private var showCompletion = false
     /// الذكر المفتوح في مصمّم بطاقة الصورة، وبطاقة المحفظة المعروضة — كلاهما يُبنى
@@ -68,6 +70,12 @@ struct DhikrSessionView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar(.hidden, for: .tabBar)
         .onDisappear { stopSound() }
+        // تلاوة الآيات تُجلب من الشبكة ولا تُنزَّل، فالفشل واردٌ ويُقال بدل أن يُبتلع.
+        .alert(loc("تعذّر تشغيل التلاوة"), isPresented: $recitationFailed) {
+            Button(loc("حسنًا"), role: .cancel) {}
+        } message: {
+            Text(loc("تلاوة الآيات تحتاج اتصالًا بالإنترنت. وعدّ الذكر باقٍ لك بالضغط."))
+        }
         .toolbar {
             // قراءة الذكر بصوت الجهاز وعدّه تلقائيًّا — لمن يداه مشغولتان.
             // لا يُعرض إلا حيث خلفه صوتُ إنسان: تسجيلٌ أو تلاوة. وما لا صوت له فلا زرّ
@@ -344,7 +352,13 @@ struct DhikrSessionView: View {
         ayahAudio.repeatCount = 1
         ayahAudio.stopAt = range.last
         ayahAudio.play(from: range.first, onAdvance: nil) {
-            // تمّ المقطع: يُعدّ مرّة، فإن بقي من عدده شيء أُعيد.
+            // يُنادى عند تمام المقطع وعند تعذّره جميعًا. فإن تعذّر لم يُعدّ شيء،
+            // ولم تبقَ الجلسة معلّقة على آيةٍ لا تُقرأ بلا خبر.
+            if ayahAudio.failed {
+                recitingLeft = 0
+                recitationFailed = true
+                return
+            }
             step()
             recitingLeft = max(0, recitingLeft - 1)
             if recitingLeft > 0 { reciteOnce(range) }

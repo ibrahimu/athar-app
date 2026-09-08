@@ -36,6 +36,10 @@ final class AyahAudio: NSObject, ObservableObject {
     @Published private(set) var current: AyahRef?
     @Published private(set) var isPlaying = false
     @Published private(set) var isLoading = false
+    /// تعذّر التشغيل — المقطع يُجلب من الشبكة ولا يُنزَّل، فأوّل ما يقع فيه المستخدم
+    /// في الطائرة. كان الفشل يُبتلع صامتًا: يسكت الصوت، ويبقى الشريط يقول اسم القارئ،
+    /// ويقلب ▶ نفسَه إلى ⏸ على مشغّلٍ ميّت. فصار يُنشَر ليُقال.
+    @Published private(set) var failed = false
     /// عدد تكرار كل آية (١ = بلا تكرار). للحفظ ٣ أو ٥ أو ١٠.
     @Published var repeatCount: Int = 1 { didSet { UserDefaults.standard.set(repeatCount, forKey: "athar.ayahAudio.repeat") } }
     @Published var reciterId: String = AyahReciters.all[0].id { didSet { UserDefaults.standard.set(reciterId, forKey: "athar.ayahAudio.reciter") } }
@@ -43,6 +47,7 @@ final class AyahAudio: NSObject, ObservableObject {
     @Published var stopAt: AyahRef?
 
     private var player: AVPlayer?
+    private var failObserver: NSObjectProtocol?
     private var endObserver: NSObjectProtocol?
     private var statusObserver: NSKeyValueObservation?
     private var playedTimes = 0
@@ -169,6 +174,7 @@ final class AyahAudio: NSObject, ObservableObject {
         tearDown()
         current = ref
         isLoading = true
+        failed = false
         let item = AVPlayerItem(url: url)
         let p = AVPlayer(playerItem: item)
         p.automaticallyWaitsToMinimizeStalling = true
@@ -176,12 +182,17 @@ final class AyahAudio: NSObject, ObservableObject {
         statusObserver = item.observe(\.status, options: [.new]) { [weak self] item, _ in
             Task { @MainActor in
                 guard let self else { return }
-                if item.status == .readyToPlay { self.isLoading = false }
-                if item.status == .failed { self.isLoading = false; self.isPlaying = false }
+                if item.status == .readyToPlay { self.isLoading = false; self.failed = false }
+                if item.status == .failed { self.isLoading = false; self.isPlaying = false; self.fail() }
             }
         }
         endObserver = NotificationCenter.default.addObserver(forName: .AVPlayerItemDidPlayToEndTime, object: item, queue: .main) { [weak self] _ in
             Task { @MainActor in self?.finishedOne() }
+        }
+        // انقطاع الشبكة أثناء التشغيل يصل من هذا الطريق لا من status — وهو ما ترصده
+        // تلاوة السورة والإذاعة، ولم يكن يرصده هذا وحده.
+        failObserver = NotificationCenter.default.addObserver(forName: .AVPlayerItemFailedToPlayToEndTime, object: item, queue: .main) { [weak self] _ in
+            Task { @MainActor in self?.fail() }
         }
         p.play()
         isPlaying = true
@@ -208,8 +219,22 @@ final class AyahAudio: NSObject, ObservableObject {
 
     func toggle() {
         guard let p = player else { return }
-        if isPlaying { p.pause(); isPlaying = false } else { p.play(); isPlaying = true }
+        // على مشغّلٍ فاشل لا يُرفع علم التشغيل: الرمز لا يقول ما ليس بواقع.
+        if isPlaying { p.pause(); isPlaying = false }
+        else if !failed { p.play(); isPlaying = true }
         updateNowPlayingRate()
+    }
+
+    /// يُعلن الفشل ويطوي ما بُني عليه: التلاوة لن تتمّ، فمن ينتظر تمامها (جلسةُ
+    /// الأذكار) يُنادى لينتهي بدل أن يبقى معلّقًا على آيةٍ لا تُقرأ.
+    private func fail() {
+        guard !failed else { return }
+        failed = true
+        isLoading = false
+        isPlaying = false
+        let done = onFinish
+        onFinish = nil
+        done?()
     }
 
     func next() {
@@ -238,6 +263,7 @@ final class AyahAudio: NSObject, ObservableObject {
 
     private func tearDown() {
         if let o = endObserver { NotificationCenter.default.removeObserver(o); endObserver = nil }
+        if let o = failObserver { NotificationCenter.default.removeObserver(o); failObserver = nil }
         statusObserver = nil
         player?.pause()
         player = nil

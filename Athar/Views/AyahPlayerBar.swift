@@ -15,8 +15,13 @@ struct AyahPlayerBar: View {
         HStack(spacing: 10) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(title).font(Theme.display(13, weight: .semibold)).foregroundStyle(palette.ink).lineLimit(1)
-                Text(audio.isLoading ? loc("جارٍ التحميل…") : audio.reciter.name)
-                    .font(Theme.display(11)).foregroundStyle(palette.ink.opacity(0.6)).lineLimit(1)
+                // العلّة تُقال حيث يقع أثرُها: كان الشريط يعود إلى اسم القارئ بعد الفشل
+                // كأن شيئًا لم يكن، والمشغّل المصغّر بجواره يقول «تعذّر التشغيل».
+                Text(audio.failed ? loc("تعذّر التشغيل — تحقّق من الاتصال")
+                     : (audio.isLoading ? loc("جارٍ التحميل…") : audio.reciter.name))
+                    .font(Theme.display(11))
+                    .foregroundStyle(audio.failed ? Theme.danger : palette.ink.opacity(0.6))
+                    .lineLimit(1)
             }
             Spacer(minLength: 4)
 

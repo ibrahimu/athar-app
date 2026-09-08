@@ -22,6 +22,10 @@ struct GroupKhatmahView: View {
                         Text(loc("مغادرة الختمة وحذف مشاركتي")).font(Theme.display(14, weight: .semibold)).frame(maxWidth: .infinity).softButton(Theme.danger)
                     }
                     .pressable().disabled(service.busy)
+                } else if service.joinedCode != nil {
+                    // عضوٌ برمزٍ محفوظ ولم تُجلَب ختمتُه بعد: يُعرض رمزُه ويُعاد الطلب،
+                    // ولا يُعرض عليه إنشاءٌ ولا انضمام فينشئ ثانيةً أو ينضمّ مرّتين.
+                    pendingCard
                 } else {
                     intro
                     createCard
@@ -49,12 +53,47 @@ struct GroupKhatmahView: View {
         } message: { Text("يُحذف اسمك وتقدمك من هذه الختمة. لا تتأثر ختمتك الشخصية أو صفحاتك المحفوظة على الجهاز.") }
     }
 
+    /// انتظارُ الجلب أو تعذّرُه — لعضوٍ يحمل رمزًا.
+    private var pendingCard: some View {
+        AtharCard(padding: 16, tint: tint) {
+            VStack(spacing: 12) {
+                IconChip(icon: service.fetchFailed ? "exclamationmark.arrow.triangle.2.circlepath" : "person.3.fill",
+                         tint: tint, size: .lg)
+                Text(service.fetchFailed ? loc("تعذّر جلب ختمتك الجماعية") : loc("جارٍ جلب ختمتك الجماعية…"))
+                    .font(Theme.display(15, weight: .semibold)).foregroundStyle(Theme.ink)
+                    .multilineTextAlignment(.center)
+                if let code = service.joinedCode {
+                    Text(loc("رمزك: %1$@", code))
+                        .font(Theme.display(13, weight: .semibold)).foregroundStyle(tint)
+                }
+                Button { Task { await service.refresh() } } label: {
+                    Text(loc("أعد المحاولة")).font(Theme.display(14, weight: .semibold))
+                        .frame(maxWidth: .infinity).softButton(tint)
+                }
+                .pressable().disabled(service.busy)
+                Button { confirmLeave = true } label: {
+                    Text(loc("مغادرة الختمة وحذف مشاركتي")).font(Theme.display(13))
+                        .foregroundStyle(Theme.inkFaint)
+                }
+                .buttonStyle(.plain)
+            }
+            .frame(maxWidth: .infinity)
+        }
+    }
+
     private var intro: some View {
         AtharCard(padding: 16, tint: tint) {
             HStack(spacing: 12) {
                 IconChip(icon: "person.3.fill", tint: tint, size: .lg)
-                Text(loc("أهل بيت أو أصدقاء يتقاسمون ختمة: كلٌّ يقرأ في مصحفه ويرى تقدّم الباقين."))
-                    .font(Theme.display(14)).foregroundStyle(Theme.ink).fixedSize(horizontal: false, vertical: true)
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(loc("أهل بيت أو أصدقاء يتقاسمون ختمة: كلٌّ يقرأ في مصحفه ويرى تقدّم الباقين."))
+                        .font(Theme.display(14)).foregroundStyle(Theme.ink).fixedSize(horizontal: false, vertical: true)
+                    // الصفحات تُحتسب من الختمة الشخصية، فمن لا ختمة له لا يتقدّم عدّاده
+                    // ولا يدري لماذا — فيُقال له، ويُفتح له بابها.
+                    Text(loc("صفحاتك تُحتسب من ختمتك الشخصية."))
+                        .font(Theme.display(12)).foregroundStyle(Theme.inkSoft)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
         }
     }

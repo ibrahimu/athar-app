@@ -107,14 +107,29 @@ struct TasmiView: View {
                 .gradientButton(engine.listening ? LinearGradient(colors: [Theme.danger, Theme.danger.opacity(0.8)], startPoint: .top, endPoint: .bottom) : Theme.goldGradient, glow: engine.listening ? Theme.danger : Theme.gold)
             }
             .pressable()
-            .disabled(!engine.available)
+            // التوفّر على الجهاز شيء والإذن شيء: كان الزرّ يعمل بلا إذنٍ فيفشل صامتًا.
+            .disabled(!engine.available || !engine.authorized)
             if engine.listening {
                 HStack(spacing: 6) {
                     Circle().fill(Theme.danger).frame(width: 8, height: 8)
                     Text(loc("يستمع… اقرأ الآية بصوت واضح")).font(Theme.display(12)).foregroundStyle(Theme.inkSoft)
                 }
             }
-            if let e = engine.error { Text(e).font(Theme.display(12)).foregroundStyle(Theme.danger).multilineTextAlignment(.center) }
+            if let e = engine.error {
+                VStack(spacing: 8) {
+                    Text(e).font(Theme.display(12)).foregroundStyle(Theme.danger).multilineTextAlignment(.center)
+                    // الإذن يُعالَج من إعدادات الجهاز، فيُفتح بابُه هنا لا يُترك للبحث.
+                    if !engine.authorized {
+                        Button(loc("فتح الإعدادات")) {
+                            if let url = URL(string: UIApplication.openSettingsURLString) {
+                                UIApplication.shared.open(url)
+                            }
+                        }
+                        .font(Theme.display(13, weight: .semibold))
+                        .foregroundStyle(Theme.accent)
+                    }
+                }
+            }
         }
     }
 

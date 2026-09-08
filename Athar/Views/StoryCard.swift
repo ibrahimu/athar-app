@@ -98,9 +98,16 @@ struct StoryCard: View {
     /// عرض عمود النص وأقصى ارتفاعه بحسب الشكل: الورقة أضيق بحواشيها.
     private var textWidth: CGFloat {
         if design.isPlaque { return plaqueWidth - 2 * Self.plaqueTextInset }
+        if design.layout == .sticker { return StoryCard.size.width - 320 }
         return isPaper ? 744 : 888
     }
-    private var textMaxHeight: CGFloat { design.isPlaque ? 880 : (isPaper ? 960 : 1100) }
+    /// الملصق ارتفاعه على قدر نصّه، لكنّه لا يُترك بلا سقف: بلا قياسٍ كان يكتب بحجمٍ
+    /// ثابت (٥٨) فيفيض المتنُ الطويل خارج الصورة — وحدَه من بين الأشكال لا يُقاس.
+    private var textMaxHeight: CGFloat {
+        if design.isPlaque { return 880 }
+        if design.layout == .sticker { return 1500 }
+        return isPaper ? 960 : 1100
+    }
 
     /// قياس اللفظ كاملًا؛ طول النص وحده لا يكفي لمنع قص الأحاديث الطويلة.
     private var fontSize: CGFloat {
@@ -179,10 +186,10 @@ struct StoryCard: View {
         VStack(spacing: 30) {
             eyebrowLine(stickerInk.opacity(0.9))
             Text(text)
-                .font(phrase.isSacred ? Theme.dhikrFont(fixed: 58) : design.font.font(size: 58, weight: .medium))
+                .font(textFont)
                 .foregroundStyle(stickerInk)
                 .multilineTextAlignment(.center)
-                .lineSpacing(58 * 0.45)
+                .lineSpacing(fontSize * 0.45)
                 .fixedSize(horizontal: false, vertical: true)
             if !attribution.isEmpty {
                 Text(attribution)

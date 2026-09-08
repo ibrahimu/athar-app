@@ -916,6 +916,8 @@ struct SpeedSheet: View {
 // MARK: - اختيار القارئ
 
 struct ReciterPicker: View {
+    /// معرّف القارئ الذي طُلب حذف تنزيلاته — يُستأذن قبل المحو.
+    @State private var confirmDeleteAll: String?
     @EnvironmentObject private var store: AtharStore
     @StateObject private var audio = Recitation.shared
     @Environment(\.dismiss) private var dismiss
@@ -949,6 +951,22 @@ struct ReciterPicker: View {
             .navigationTitle(loc("اختر القارئ"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button(loc("تم")) { dismiss() } } }
+            .confirmationDialog(loc("حذف تنزيلات هذا القارئ؟"),
+                                isPresented: Binding(get: { confirmDeleteAll != nil },
+                                                     set: { if !$0 { confirmDeleteAll = nil } }),
+                                titleVisibility: .visible) {
+                if let id = confirmDeleteAll {
+                    let sum = audio.downloadedSummary(reciter: id)
+                    Button(loc("حذف %1$@ (%2$@)", downloadedSurahsText(sum.count), sum.bytes.fileSizeText),
+                           role: .destructive) {
+                        audio.deleteAll(reciter: id)
+                        confirmDeleteAll = nil
+                    }
+                }
+                Button(loc("cancel"), role: .cancel) { confirmDeleteAll = nil }
+            } message: {
+                Text(loc("تُحذف من جهازك ولا يمكن استرجاعها إلا بتنزيلها من جديد."))
+            }
         }
     }
 
@@ -976,8 +994,10 @@ struct ReciterPicker: View {
                 Spacer()
                 if sum.count > 0 {
                     Menu {
+                        // يُستأذن كما يُستأذن حذف السورة الواحدة في صفحة المشغّل — وهذا
+                        // أعمّ منه: مئةٌ وأربع عشرة سورة تذهب بضغطة، ولا رجعة.
                         Button(loc("حذف تنزيلات هذا القارئ"), systemImage: "trash", role: .destructive) {
-                            audio.deleteAll(reciter: r.id)
+                            confirmDeleteAll = r.id
                         }
                     } label: {
                         Image(systemName: "ellipsis.circle")

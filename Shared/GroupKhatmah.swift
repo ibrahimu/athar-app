@@ -33,6 +33,9 @@ final class GroupKhatmahService: ObservableObject {
     @Published var members: [GroupMember] = []
     @Published var busy = false
     @Published var error: String?
+    /// أنا عضوٌ برمزٍ محفوظ ولم يُجلَب: كانت الواجهة تتفرّع على `group` وحدها،
+    /// فتُعرض هذه الحالةُ بوجه «لست عضوًا» — فينشئ ختمةً ثانية أو ينضمّ من جديد.
+    @Published var fetchFailed = false
 
     private let codeKey = "athar.groupKhatmah.code"
     private let memberKey = "athar.groupKhatmah.member"
@@ -108,7 +111,12 @@ final class GroupKhatmahService: ObservableObject {
         do {
             let record = try await existingOrNewMember(id: CKRecord.ID(recordName: "\(code)-\(memberId)"))
             record["code"] = code; record["name"] = memberName
-            record["pages"] = max(0, min(Quran.pageCount, pages)); record["updated"] = Date()
+            // لا تُنقَص صفحاتُ العضو في السحابة: الرفعُ يتبع الختمةَ الشخصية، وبدءُ
+            // ختمةٍ جديدة أو إنهاؤها يصفّر عدّادها — فكان يمحو تقدّمَه عند كلّ أهله
+            // بلا استئذانٍ ولا رجعة. فالمحفوظ لا يتراجع إلا بمغادرة الختمة.
+            let saved = (record["pages"] as? Int) ?? 0
+            record["pages"] = max(saved, max(0, min(Quran.pageCount, pages)))
+            record["updated"] = Date()
             try await saveMember(record)
             await refresh()
         } catch { self.error = Self.describe(error) }
@@ -129,6 +137,7 @@ final class GroupKhatmahService: ObservableObject {
 
     func refresh() async {
         guard let code = joinedCode else { return }
+        fetchFailed = false
         do {
             if group == nil {
                 let k = try await db.record(for: CKRecord.ID(recordName: "k-" + code))
@@ -147,7 +156,7 @@ final class GroupKhatmahService: ObservableObject {
                 return GroupMember(id: id.recordName, code: code, name: rec["name"] as? String ?? "", pages: rec["pages"] as? Int ?? 0,
                                    updated: rec["updated"] as? Date ?? Date(), mine: id.recordName == "\(code)-\(me)")
             }.sorted { $0.pages > $1.pages }
-        } catch { self.error = Self.describe(error) }
+        } catch { self.error = Self.describe(error); fetchFailed = true }
     }
 
     private static func describe(_ e: Error) -> String {

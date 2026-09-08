@@ -289,6 +289,9 @@ final class Recitation: NSObject, ObservableObject {
 
     func play(surah s: Int) {
         teardown()
+        // صوتٌ واحد في التطبيق: تلاوة الآيات تُسكت السورة عند بدئها، ولم يكن هذا
+        // الطريق يُسكتها فيجتمع الصوتان على القارئ.
+        AyahAudio.shared.stop()
         failed = false
         surah = s
 
@@ -398,6 +401,7 @@ final class Recitation: NSObject, ObservableObject {
     func resume() {
         // بلا مشغّل، أو مشغّل مات بفشل التحميل: أعد التحميل بدل «استئناف» صامت.
         guard player != nil, !failed else { if let s = surah { play(surah: s) }; return }
+        AyahAudio.shared.stop()
         activateSession()
         player?.play()
         player?.rate = rate

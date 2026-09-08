@@ -327,7 +327,9 @@ struct PrayerView: View {
                 }
                 HStack(spacing: 8) {
                     Button {
-                        store.timeZoneChangePending = false
+                        // اللافتة لا تُسقَط قبل أن يُعرف الجواب: كانت تختفي فورًا فيظنّ
+                        // المسافر أنّ موقعه حُدِّث، والإذنُ قد يكون مرفوضًا فلا يُطلب
+                        // ولا يُقال — ويضيع الطريق الوحيد الذي عُرض عليه.
                         location.request()
                         Haptics.tap(enabled: store.hapticsEnabled)
                     } label: {
@@ -335,6 +337,7 @@ struct PrayerView: View {
                             .softButton(Theme.accent(for: "gold"))
                     }
                     .pressable()
+                    .disabled(location.isResolving)
                     Button {
                         store.timeZoneChangePending = false
                     } label: {
@@ -344,8 +347,33 @@ struct PrayerView: View {
                     }
                     .buttonStyle(.plain)
                 }
+
+                // تعذّر تحديد الموقع: يُقال ويُفتح له بابان — إعدادات الجهاز لمن رُفض
+                // إذنُه، ومنتقي المدن لمن لا يريد الإذن أصلًا. وبلا هذا كان الرفض
+                // يُبتلع صامتًا واللافتة تختفي كأن الموقع حُدِّث.
+                if location.failed {
+                    Divider().background(Theme.hairline)
+                    Text(loc("تعذّر تحديد موقعك."))
+                        .font(Theme.display(12)).foregroundStyle(Theme.danger)
+                    HStack(spacing: 8) {
+                        if location.status == .denied || location.status == .restricted {
+                            Button(loc("فتح الإعدادات")) {
+                                if let url = URL(string: UIApplication.openSettingsURLString) {
+                                    UIApplication.shared.open(url)
+                                }
+                            }
+                            .font(Theme.display(13, weight: .semibold))
+                            .foregroundStyle(Theme.accent)
+                        }
+                        Button(loc("اختر مدينتك")) { showCityPicker = true }
+                            .font(Theme.display(13, weight: .semibold))
+                            .foregroundStyle(Theme.accent)
+                    }
+                }
             }
         }
+        // بلغ الموقعُ مبلغَه: اللافتة تنقضي بنجاحها لا بضغطة زرّها.
+        .onChange(of: store.placeName) { _, _ in store.timeZoneChangePending = false }
     }
 
     // MARK: مدينة ثانية

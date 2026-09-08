@@ -31,6 +31,9 @@ final class TasmiEngine: NSObject, ObservableObject {
 
     func start() {
         guard !listening, let recognizer, recognizer.isAvailable else { error = "التعرّف على العربية غير متاح على هذا الجهاز الآن."; return }
+        // بلا إذنٍ لا يُمحى الخطأ: كان مسحُه أوّلَ شيء يبتلع الرسالة الوحيدة التي
+        // تدلّ على العلاج، ثم يفشل التعرّف صامتًا.
+        guard authorized else { return }
         error = nil; transcript = ""
         // الإذاعة أيضًا: فئة التسجيل تُسكت مشغّلها وتترك الواجهة على بثّ «يعمل» بلا صوت.
         Recitation.shared.pause(); AyahAudio.shared.stop(); RadioPlayer.shared.pause()
@@ -63,6 +66,14 @@ final class TasmiEngine: NSObject, ObservableObject {
             Task { @MainActor in
                 guard let self else { return }
                 if let result { self.transcript = result.bestTranscription.formattedString }
+                // الخطأ كان يُفحص للإيقاف ولا يُقال: فيصمت التسميع بلا نتيجةٍ ولا سبب.
+                // والتعرّف خارج الجهاز يحتاج شبكة، فيُفرَّق بين علّتها وعلّة غيرها.
+                if let err, self.transcript.isEmpty {
+                    self.error = self.onDevice
+                        ? "تعذّر التعرّف على الصوت. أعد المحاولة في مكانٍ أهدأ."
+                        : "تعذّر التعرّف — يحتاج اتصالًا بالإنترنت على هذا الجهاز."
+                    _ = err
+                }
                 if err != nil || (result?.isFinal ?? false) { self.stop() }
             }
         }

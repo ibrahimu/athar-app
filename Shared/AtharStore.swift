@@ -18,6 +18,12 @@ enum CountTapArea: String, CaseIterable, Identifiable {
 }
 
 final class AtharStore: ObservableObject {
+
+    /// هل المستخدم داخل شاشة الإعدادات الآن؟ تبديل خطّ الواجهة يعيد بناء التبويب
+    /// كلّه (RootView يبدّل هويّته) فيطوي مكدّسه ويقذف المستخدم إلى جذره — فيُؤجَّل
+    /// التبديل حتى يغادرها. ولا يُحفظ: حالةُ عرضٍ لا تفضيل يُستعاد.
+    @Published var inSettings = false
+
     static let appGroup = "group.com.ibrahim.athar"
     static let shared = AtharStore()
 

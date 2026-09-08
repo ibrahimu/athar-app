@@ -96,16 +96,9 @@ struct PrayerSettingsView: View {
         VStack(spacing: 8) {
             SettingsGroupTitle(text: loc("تنبيهات الصلاة"), tint: Theme.accent(for: "gold"))
             SettingsCard {
-                NavigationLink { PrayerAlertsView() } label: {
-                    SettingsRow(icon: "slider.horizontal.below.rectangle", tint: Theme.accent(for: "dusk"),
-                                title: loc("تخصيص كل صلاة"),
-                                subtitle: store.hasCustomPrayerPrefs ? loc("مخصَّصة — اضغط للمراجعة") : loc("صوت أو صمت أو تنبيه قبلي لكل فريضة")) {
-                        chevron
-                    }
-                }
-                .buttonStyle(.plain)
-
-                SettingsDivider()
+                // «تخصيص كل صلاة» لا يُجدوِل شيئًا والمفتاح العام مطفأ (scheduleAthan
+                // يرتدّ عند أوّله)، فكان يَعِد بما لا يقع. فموضعه حيث موضع أخواته:
+                // تحت المفتاح، لا فوقه.
                 // النشاط الحيّ: عدّ الصلاة القادمة على شاشة القفل والجزيرة في النصف ساعة
                 // الأخيرة قبل الأذان. إيقافه يُنهي ما هو قائم فورًا؛ وتشغيله يطلبه إن كان الأذان قريبًا.
                 SettingsRow(icon: "timer", tint: Theme.accent(for: "sea"),
@@ -148,6 +141,16 @@ struct PrayerSettingsView: View {
                 // صوت الأذان والتنبيه القبلي والإقامة لا معنى لها والتنبيه موقوف،
                 // فتظهر تحت المفتاح حين يُفعَّل — كما كانت في جذر الإعدادات.
                 if store.athanAlerts {
+                    SettingsDivider()
+                    NavigationLink { PrayerAlertsView() } label: {
+                        SettingsRow(icon: "slider.horizontal.below.rectangle", tint: Theme.accent(for: "dusk"),
+                                    title: loc("تخصيص كل صلاة"),
+                                    subtitle: store.hasCustomPrayerPrefs ? loc("مخصَّصة — اضغط للمراجعة") : loc("صوت أو صمت أو تنبيه قبلي لكل فريضة")) {
+                            chevron
+                        }
+                    }
+                    .buttonStyle(.plain)
+
                     SettingsDivider()
                     // شاشة مخصّصة لا SettingsChoiceList: فيها استماع لكل صوت،
                     // والاختيار لا يُغلقها حتى يقارن المستخدم بين الأصوات.
