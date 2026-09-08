@@ -54,6 +54,7 @@ struct MushafView: View {
                             continueCard
                             toolsRow
                             recitationCard
+                            khatmahDuaCard
                             if !store.bookmarks.isEmpty { bookmarksCard }
                             SectionHeader(title: loc("suras"), tint: Theme.accent(for: "gold"))
                                 .padding(.top, 2)
@@ -294,6 +295,34 @@ struct MushafView: View {
             }
             .pressable()
         }
+    }
+
+    // MARK: دعاء الختمة
+
+    /// بابٌ ظاهر لا يُشترط لبلوغه ختمة: كثيرٌ ممّن يختم لا يمرّ بتحدّي الختمة أصلًا،
+    /// ومن أراد الدعاء في غير ختمته وجده. والصفحة نفسها تُفتح من خاتمة الناس في القارئ.
+    private var khatmahDuaCard: some View {
+        NavigationLink { KhatmahDuaView() } label: {
+            AtharCard(padding: 14, elevation: .e1, tint: Theme.gold) {
+                HStack(spacing: 13) {
+                    IconChip(icon: "hands.sparkles.fill", tint: Theme.gold, size: .md)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(loc("دعاء الختمة"))
+                            .font(Theme.display(15, weight: .semibold))
+                            .foregroundStyle(Theme.ink)
+                        Text(loc("مواضع الدعاء في القرآن — تدعو بها إذا ختمت"))
+                            .font(Theme.display(11))
+                            .foregroundStyle(Theme.inkFaint)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    Spacer(minLength: 4)
+                    Image(systemName: "chevron.forward")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(Theme.inkFaint)
+                }
+            }
+        }
+        .pressable()
     }
 
     // MARK: الحفظ والختمة والورد

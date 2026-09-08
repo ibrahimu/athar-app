@@ -538,9 +538,25 @@ struct SurahReaderView: View {
                 }
                 .pressable()
             } else {
-                Text(loc("صدق الله العظيم"))
-                    .font(Theme.dhikrFont(size: 17))
-                    .foregroundStyle(palette.secondary)
+                // خاتمة الناس: لا سورةَ بعدها، فموضعُ «السورة التالية» يصير باب
+                // دعاء الختمة — حيث يجده الخاتم في المصحف المطبوع تمامًا.
+                NavigationLink { KhatmahDuaView() } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "hands.sparkles.fill").font(.system(size: 13, weight: .semibold))
+                        Text(loc("دعاء الختمة"))
+                            .font(Theme.display(15, weight: .semibold))
+                        Image(systemName: "chevron.forward").font(.system(size: 12, weight: .semibold))
+                    }
+                    .foregroundStyle(palette.accent)
+                    .padding(.horizontal, Theme.Space.xl).padding(.vertical, 12)
+                    .background(
+                        Capsule().fill(
+                            LinearGradient(colors: [palette.accent.opacity(0.16), palette.accent.opacity(0.07)],
+                                           startPoint: .top, endPoint: .bottom))
+                    )
+                    .overlay(Capsule().strokeBorder(palette.accent.opacity(0.18), lineWidth: 0.5))
+                }
+                .pressable()
             }
         }
     }

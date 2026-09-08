@@ -635,6 +635,15 @@ struct KhatmahView: View {
                 .foregroundStyle(Theme.inkSoft)
                 .multilineTextAlignment(.center)
 
+            // الدعاء قبل «ختمة جديدة»: من ختم يدعو أوّلًا ثم يستأنف.
+            NavigationLink { KhatmahDuaView() } label: {
+                Label(loc("دعاء الختمة"), systemImage: "hands.sparkles.fill")
+                    .font(Theme.display(15, weight: .semibold))
+                    .softButton(Theme.gold)
+            }
+            .pressable()
+            .padding(.top, 2)
+
             Button {
                 store.startKhatmah(days: store.khatmahTotalDays, mode: store.khatmahMode)
                 store.clearKhatmahTarget()
