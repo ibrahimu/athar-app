@@ -23,6 +23,11 @@ enum ArabicSearch {
         // بين الكلمتين — «قل هو الله أحد ۝١ الله الصمد» يصير «…احد1الله…» — فلا يجد
         // من كتب الآيتين متتابعتين كما يقرأهما على الشاشة.
         var inAyahNumber = false
+        // هل آخرُ ما أُلحق ياءٌ مولَّدةٌ من ألفٍ مقصورة؟ — «out.last == \"ي\"» لا تكفي:
+        // الياءُ الحقيقية والمقصورةُ والهمزةُ على نبرة تصير كلُّها «ي» في المخرَج،
+        // فكانت قاعدةُ وسط الكلمة تأكل ياءً منطوقة: «ٱلْقِيَٰمَةِ» تصير «القامه»،
+        // و«ٱلشَّيَٰطِينَ» «الشاطين»، و«ءَايَٰتِ» «اات» — في ثمانمئةٍ وثلاثين موضعًا.
+        var lastWasMaqsura = false
         var i = 0
         while i < scalars.count {
             let u = scalars[i]
@@ -55,12 +60,13 @@ enum ArabicSearch {
             //   وكان الوجهان واحدًا فتُؤكل الواو الأصلية، فلا يجد من كتب «السماوات»
             //   شيئًا — وهي في ثلاثٍ وثمانين ومئة آية.
             case 0x0670:
+                defer { lastWasMaqsura = false }
                 let next = nextLetter(scalars, after: i)
                 let midWord = next.map { Character(Unicode.Scalar($0) ?? " ").isLetter } ?? false
                 switch out.last {
-                case "ي":
-                    // «عَلَىٰ» في آخر الكلمة ألفٌ مقصورة، إملاؤها «على».
-                    // و«ٱلتَّوْرَىٰةَ» في وسطها ألفٌ تامّة، إملاؤها «التوراة».
+                case "ي" where lastWasMaqsura:
+                    // الألف المقصورة وحدها: «عَلَىٰ» في آخر الكلمة إملاؤها «على»،
+                    // و«ٱلتَّوْرَىٰةَ» في وسطها ألفٌ تامّة إملاؤها «التوراة».
                     if midWord { out.removeLast(); out.append("ا") }
                 case "و":
                     // الواو كرسيُّ رسمٍ إن تلتها تاءٌ مربوطة («ٱلصَّلَوٰةَ» ← «الصلاة»)،
@@ -71,16 +77,17 @@ enum ArabicSearch {
                 }
             // صور الألف والهمزة تُردّ إلى ألف: «إسراء» و«اسراء» سواء.
             case 0x0622, 0x0623, 0x0625, 0x0671:
-                out.append("ا")
-            case 0x0629: out.append("ه")   // التاء المربوطة هاءً: «رحمة» و«رحمه»
-            case 0x0649: out.append("ي")   // الألف المقصورة ياءً: «ذكرى» و«ذكري»
-            case 0x0624: out.append("و")
-            case 0x0626: out.append("ي")
+                out.append("ا"); lastWasMaqsura = false
+            case 0x0629: out.append("ه"); lastWasMaqsura = false   // «رحمة» و«رحمه»
+            case 0x0649: out.append("ي"); lastWasMaqsura = true     // «ذكرى» و«ذكري»
+            case 0x0624: out.append("و"); lastWasMaqsura = false
+            case 0x0626: out.append("ي"); lastWasMaqsura = false    // همزةٌ على نبرة، لا مقصورة
             case 0x0621: continue          // همزةٌ مفردة تُسقط
             // الأرقام الهندية والفارسية تُردّ إلى الغربية: من كتب «٥٥» بلوحته العربية.
-            case 0x0660...0x0669: out.append(Unicode.Scalar(u.value - 0x0660 + 48)!)
-            case 0x06F0...0x06F9: out.append(Unicode.Scalar(u.value - 0x06F0 + 48)!)
+            case 0x0660...0x0669: out.append(Unicode.Scalar(u.value - 0x0660 + 48)!); lastWasMaqsura = false
+            case 0x06F0...0x06F9: out.append(Unicode.Scalar(u.value - 0x06F0 + 48)!); lastWasMaqsura = false
             default:
+                lastWasMaqsura = false
                 let c = Character(u)
                 if c.isLetter {
                     // اللاتيني يُخفض ليجد «Al-Fatihah» من كتب «fatiha».
@@ -136,8 +143,9 @@ enum ArabicSearch {
         let n = key(needle)
         guard !n.isEmpty else { return true }
         if key(text).contains(n) { return true }
+        // حرفان كما في بحث المصحف والحديث: حرفٌ واحد بعد طيّ المكرّر يُطابق كلَّ شيء.
         let l = loose(needle)
-        return !l.isEmpty && loose(text).contains(l)
+        return l.count >= 2 && loose(text).contains(l)
     }
 
     /// هل يقع الاستعلام في اسم سورة؟ — يُسقط «سورة» المتصدّرة، فمن كتب «سورة الكهف»

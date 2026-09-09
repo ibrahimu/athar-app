@@ -76,8 +76,10 @@ extension LocationProvider: CLLocationManagerDelegate {
     nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let location = locations.last else { return }
         Task { @MainActor in
+            // اسمُ المدينة نداءٌ شبكيّ: إن خاب فلا يُكتب اسمٌ احتياطي فوق اسمٍ صحيح
+            // محفوظ — التطبيق يعمل بلا إنترنت، والإحداثيّ وحده يكفي للمواقيت.
             let name = await Self.placeName(for: location)
-            store.setDeviceLocation(location.coordinate, name: name)
+            store.setDeviceLocation(location.coordinate, name: name ?? store.placeName)
             isResolving = false
         }
     }

@@ -88,12 +88,13 @@ struct KhatmahPositionIntent: AppIntent {
 /// أقسام التطبيق التي يمكن فتحها بالصوت — القيم الخام تطابق `AppTab` ليكون التحويل مباشرًا.
 enum SectionChoice: String, AppEnum {
     case mushaf, adhkar, prayer, live, radio, tasbih, hajj, qibla, hifz, recitation,
-         khatmah, wird, hadith, phrases, names, ahkam, prayerLog, calendar, zakat, wallet, sunan
+         khatmah, wird, hadith, phrases, names, ahkam, prayerLog, calendar, zakat, wallet, sunan, friday
 
     static var typeDisplayRepresentation: TypeDisplayRepresentation { "القسم" }
 
     static var caseDisplayRepresentations: [SectionChoice: DisplayRepresentation] {
         [
+            .friday:     "يوم الجمعة",
             .mushaf:     "المصحف",
             .adhkar:     "الأذكار",
             .prayer:     "الصلاة",

@@ -23,7 +23,7 @@ struct WhatsNewView: View {
         .init(id: "athan", icon: "bell.and.waves.left.and.right.fill", accent: "gold", title: "الأذان لا يفوتك",
               detail: "يصلك الأذان في وقته ولو كان جهازك في وضع تركيز — وتُطفئ ذلك متى شئت. وفيه «صلّيتها في وقتها» و«ذكّرني بعد ١٠ دقائق»، ومواعيده مثبّتة على منطقة مكانك لا جهازك.", tab: .prayer),
         .init(id: "friday", icon: "sun.max.fill", accent: "gold", title: "يوم الجمعة في مكان واحد",
-              detail: "سبع سنن تُعلّمها كلٌّ بدليلها، وسورة الكهف صفحةً أو آيةً آية، وعدّاد الصلاة على النبي ﷺ، وبطاقات جمعة تُشارك.", tab: .home),
+              detail: "سبع سنن تُعلّمها كلٌّ بدليلها، وسورة الكهف صفحةً أو آيةً آية، وعدّاد الصلاة على النبي ﷺ، وبطاقات جمعة تُشارك.", tab: .friday),
         .init(id: "khatmah-dua", icon: "hands.sparkles.fill", accent: "gold", title: "دعاء الختمة",
               detail: "مواضع الدعاء في القرآن نفسه تُقرأ إذا ختمت — من خاتمة الناس، ومن بطاقة تمام الختمة، ومن باب المصحف.", tab: .mushaf),
         .init(id: "jump", icon: "arrow.uturn.forward.circle.fill", accent: "sea", title: "الانتقال إلى صفحة أو جزء",

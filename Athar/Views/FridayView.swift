@@ -3,6 +3,8 @@ import SwiftUI
 /// شاشة الجمعة: سننها تُعلَّم واحدةً واحدة بدليلها، والكهف ببابين، وعدٌّ للصلاة على
 /// النبي ﷺ، ثم الصدقة في آخرها — يومٌ واحد في الأسبوع تجتمع أعماله في صفحة.
 struct FridayView: View {
+    /// معروضةً تبويبًا في الشريط السفلي — فلا يُخفى الشريط.
+    var isRootTab = false
     @EnvironmentObject private var store: AtharStore
 
     /// لتسمية اليوم في الرأس وحدها. أما القراءة والكتابة في المخزن فبوقتها هي،
@@ -44,7 +46,10 @@ struct FridayView: View {
         }
         .navigationTitle(loc("الجمعة"))
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar(.hidden, for: .tabBar)
+        // تبويبًا جذريًّا يبقى الشريط: كانت تُخفيه إخفاءً مطلقًا، فمن جعلها تبويبًا
+        // في الشريط اختفى عنه الشريطُ كلُّه وهي جذرُ مكدّسها فلا زرّ رجوع — فيُحبَس
+        // فيها حتى يُنهي التطبيق. وسائرُ الشاشات الجذرية تشترطه كذلك.
+        .toolbar(isRootTab ? .visible : .hidden, for: .tabBar)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {

@@ -59,6 +59,24 @@ final class ArabicSearchTests: XCTestCase {
         XCTAssertFalse(Quran.search("اموالهم", limit: 3).isEmpty)
     }
 
+    /// والياء الحقيقية لا تُؤكل: «ٱلْقِيَٰمَةِ» إملاؤها «القيامة» لا «القامة».
+    /// والقاعدة تخصّ الألف المقصورة وحدها — وكانت تُطلق على كلّ ياء، في ثمانمئةٍ
+    /// وثلاثين موضعًا من المصحف.
+    func testRealYehSurvivesTheDaggerAlif() {
+        XCTAssertEqual(ArabicSearch.key("ٱلْقِيَٰمَةِ"), ArabicSearch.key("القيامة"))
+        XCTAssertEqual(ArabicSearch.key("ٱلشَّيَٰطِينَ"), ArabicSearch.key("الشياطين"))
+        XCTAssertEqual(ArabicSearch.key("ءَايَٰتِ"), ArabicSearch.key("ايات"))
+        // ولا تنكسر المقصورة بذلك:
+        XCTAssertEqual(ArabicSearch.key("عَلَىٰ"), ArabicSearch.key("على"))
+        XCTAssertEqual(ArabicSearch.key("ٱلتَّوْرَىٰةَ"), ArabicSearch.key("التوراة"))
+    }
+
+    func testQuranFindsYehWords() {
+        XCTAssertFalse(Quran.search("يوم القيامة", limit: 3).isEmpty)
+        XCTAssertFalse(Quran.search("الشياطين", limit: 3).isEmpty)
+        XCTAssertFalse(Quran.search("ديارهم", limit: 3).isEmpty)
+    }
+
     /// «الرحمن» تُكتب بلا ألف وهي في المصحف بألفٍ خنجرية — يجدها التساهل.
     func testLooseFindsRahman() {
         XCTAssertFalse(Quran.search("الرحمن", limit: 3).isEmpty)

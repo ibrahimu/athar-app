@@ -172,7 +172,7 @@ struct RootView: View {
         case .zakat:    NavigationStack { ZakatView(isRootTab: true) }
         case .wallet:   NavigationStack { WalletCardsView(isRootTab: true) }
         case .sunan:    NavigationStack { SunanView(isRootTab: true) }
-        case .friday:   NavigationStack { FridayView() }
+        case .friday:   NavigationStack { FridayView(isRootTab: true) }
         case .settings: SettingsView()
         }
     }

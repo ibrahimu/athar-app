@@ -135,8 +135,9 @@ final class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
         if identifier.hasPrefix(Reminders.khatmahPrefix) { return .khatmah }
         if identifier.hasPrefix(Reminders.hadithPrefix) { return .hadith }
         if identifier.hasPrefix(Reminders.istighfarPrefix) { return .tasbih }
-        if identifier.hasPrefix(Reminders.jumuahId)
-            || identifier.hasPrefix(Reminders.fastingPrefix)
+        // الجمعة صارت قسمًا قائمًا بذاته، فتنبيهُها يفتحه لا «السنن الرواتب».
+        if identifier.hasPrefix(Reminders.jumuahId) { return .friday }
+        if identifier.hasPrefix(Reminders.fastingPrefix)
             || identifier.hasPrefix(Reminders.whitePrefix) { return .sunan }
         return nil
     }
