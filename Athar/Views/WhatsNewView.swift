@@ -21,7 +21,7 @@ struct WhatsNewView: View {
 
     private let items: [Item] = [
         .init(id: "athan", icon: "bell.and.waves.left.and.right.fill", accent: "gold", title: "الأذان لا يفوتك",
-              detail: "تنبيهات حسّاسة للوقت تخترق أوضاع التركيز، وفيها «صلّيتها في وقتها» و«ذكّرني بعد ١٠ دقائق» — ومواعيدها مثبّتة على منطقة مكانك لا جهازك.", tab: .prayer),
+              detail: "يصلك الأذان في وقته ولو كان جهازك في وضع تركيز — وتُطفئ ذلك متى شئت. وفيه «صلّيتها في وقتها» و«ذكّرني بعد ١٠ دقائق»، ومواعيده مثبّتة على منطقة مكانك لا جهازك.", tab: .prayer),
         .init(id: "friday", icon: "sun.max.fill", accent: "gold", title: "يوم الجمعة في مكان واحد",
               detail: "سبع سنن تُعلّمها كلٌّ بدليلها، وسورة الكهف صفحةً أو آيةً آية، وعدّاد الصلاة على النبي ﷺ، وبطاقات جمعة تُشارك.", tab: .home),
         .init(id: "khatmah-dua", icon: "hands.sparkles.fill", accent: "gold", title: "دعاء الختمة",
@@ -44,6 +44,8 @@ struct WhatsNewView: View {
               detail: "تختار يوم الختم فيوزّع الورد ويذكّرك به، وتضبط التاريخ الهجري ليوافق تقويم بلدك.", tab: .khatmah),
         .init(id: "siri-watch", icon: "applewatch", accent: "green", title: "سيري والساعة",
               detail: "«سجّل صلاة الظهر» و«أين ختمتي» بلا فتح التطبيق، وعدّ المسبحة بالتاج الرقمي.", tab: nil),
+        .init(id: "carplay", icon: "car.fill", accent: "sea", title: "CarPlay — القرآن في الطريق",
+              detail: "ما كنت تسمعه، والإذاعة بضغطة، وسورٌ للطريق، وما نزّلته يعمل بلا شبكة. بلا بحثٍ ولا تصفّح.", tab: .recitation),
         .init(id: "fixes", icon: "checkmark.seal.fill", accent: "sea", title: "وإصلاحات كثيرة",
               detail: "المصحف يفتح على الصفحة التي يقولها، والإعدادات لا تُطوى مع تبديل الخط، والتلاوة تقول تعذّرها بدل أن تصمت، ونصوص الودجات لا تنكسر.", tab: nil),
     ]

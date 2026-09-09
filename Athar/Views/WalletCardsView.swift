@@ -144,9 +144,9 @@ struct WalletCardsView: View {
     }
 
     private var filteredGroups: [WalletCardLibrary.Group] {
-        let key = ArabicMatch.normalize(query.trimmingCharacters(in: .whitespacesAndNewlines))
+        let key = ArabicSearch.key(query)
         return WalletCardLibrary.groups.compactMap { group in
-            let cards = group.cards.filter { key.isEmpty || ArabicMatch.normalize($0.title + " " + $0.category + " " + $0.source).contains(key) }
+            let cards = group.cards.filter { key.isEmpty || ArabicSearch.key($0.title + " " + $0.category + " " + $0.source).contains(key) }
             return cards.isEmpty ? nil : .init(title: group.title, cards: cards)
         }
     }

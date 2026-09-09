@@ -1,6 +1,7 @@
 import Foundation
 import CoreLocation
 import UserNotifications
+import WidgetKit
 
 /// التذكير كله محليّ: لا خادم ولا رمز ولا شيء يغادر الجهاز — أوقاتُ صاحبه تبقى عنده.
 @MainActor
@@ -152,11 +153,13 @@ enum Reminders {
                 case .silent: content.sound = nil
                 }
                 // حسّاس للوقت: يخترق «عدم الإزعاج» وأوضاع التركيز. تنبيهات الوقت وحدها
-                // تستحقّ هذا الاختراق — الأذان والإقامة والاستعداد يفوت وقتها فلا تُغني
-                // بعده. أما الأذكار والحديث والاستغفار والورد والختمة فتبقى على المستوى
-                // العادي: نداءٌ لا يفوت، ومن جعله يخترق تركيز صاحبه أفسد عليه المعنى
-                // وعرّض الاستحقاق نفسه للسحب.
-                content.interruptionLevel = .timeSensitive
+                // الأذان والإقامة والاستعداد وحدها تُرفع إلى «الحسّاس للوقت»: وقتُها يفوت
+                // فلا تُغني بعده. أمّا الأذكار والحديث والاستغفار والورد والختمة فتبقى على
+                // المستوى العادي: نداءٌ لا يفوت، ورفعُه يُفسد المعنى ويعرّض الاستحقاق للسحب.
+                //
+                // ويبقى القرارُ لصاحبه: من أطفأ «يصلك في وضع التركيز» نزلت إلى المستوى
+                // العادي فاحترمت صمتَه — من وضع «عدم الإزعاج» فله فيه غرض.
+                content.interruptionLevel = store.athanBreaksFocus ? .timeSensitive : .active
                 content.relevanceScore = 1.0
                 // بطاقة الأذان تحمل زرّيها، ومعها الصلاة ولحظتها: «صلّيتها في وقتها»
                 // يسجّل في سجل الصلاة، والمعرّف وحده يحمل إزاحة يوم نسبية لا تاريخًا.
@@ -182,7 +185,7 @@ enum Reminders {
                         iq.subtitle = loc("%1$@ · %2$@", store.placeName, clockText(iqDate, store: store))
                         iq.body = loc("قد قامت الصلاة — دع ما بيدك وقم إليها.")
                         iq.sound = .default
-                        iq.interruptionLevel = .timeSensitive
+                        iq.interruptionLevel = store.athanBreaksFocus ? .timeSensitive : .active
                         collect(UNNotificationRequest(
                             identifier: "\(athanPrefix)iq.\(dayOffset).\(entry.prayer.rawValue)",
                             content: iq,
@@ -202,7 +205,7 @@ enum Reminders {
                 pre.subtitle = loc("%1$@ · %2$@", store.placeName, clockText(entry.date, store: store))
                 pre.body = loc("توضّأ على مهلٍ واستعدّ — «الصلاة على وقتها» أحبّ الأعمال إلى الله.")
                 pre.sound = .default
-                pre.interruptionLevel = .timeSensitive
+                pre.interruptionLevel = store.athanBreaksFocus ? .timeSensitive : .active
                 let preRequest = UNNotificationRequest(
                     identifier: "\(athanPrefix)pre.\(dayOffset).\(entry.prayer.rawValue)",
                     content: pre,
@@ -541,7 +544,8 @@ enum Reminders {
         content.title = loc("تنبيه تجربة")
         content.body = loc("هذه تجربة من أثر — ليست وقت صلاة. وصولها يعني أن التنبيهات تصلك.")
         content.sound = store.athanAlerts ? athanSound(store) : .default
-        content.interruptionLevel = .timeSensitive
+        // التجربة تصل كما يصل الأذان نفسه، فيرى صاحبها ما سيراه فعلًا لا نموذجًا منه.
+        content.interruptionLevel = store.athanBreaksFocus ? .timeSensitive : .active
         let request = UNNotificationRequest(
             identifier: testId,
             content: content,
@@ -610,6 +614,11 @@ enum Reminders {
             try? await Task.sleep(nanoseconds: 400_000_000)
             guard !Task.isCancelled else { return }
             await rescheduleAll(store: store)
+            // والنشاط الحيّ يتبع المكان كما تتبعه التنبيهات: كان العدّاد على شاشة القفل
+            // والجزيرة يبقى على مواقيت المدينة السابقة — الرياض ومالكها في عسير —
+            // حتى يُغلق التطبيق ويُفتح، لأنّ المزامنة لم تكن إلا عند تنشيط المشهد.
+            if store.liveActivityEnabled { LiveActivityManager.sync(store: store) } else { LiveActivityManager.endAll() }
+            WidgetCenter.shared.reloadAllTimelines()
         }
     }
 

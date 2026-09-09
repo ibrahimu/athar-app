@@ -168,6 +168,7 @@ struct SectionDestination: View {
         case .zakat:      ZakatView()
         case .wallet:     WalletCardsView()
         case .sunan:      SunanView()
+        case .friday:     FridayView()
         case .settings:   SettingsView(embedded: true)
             }
         }

@@ -8,14 +8,34 @@ struct AdhkarIndexView: View {
 
     private var filtered: [DhikrCategory] {
         guard !query.trimmingCharacters(in: .whitespaces).isEmpty else { return AdhkarLibrary.categories }
-        let needle = query.normalizedArabic
-        return AdhkarLibrary.categories.compactMap { category in
-            if category.title.normalizedArabic.contains(needle) { return category }
-            // البحث ترشيح للفئات لا بتر لأذكارها: لو دفعنا نسخة تحمل المطابق فقط
-            // لختمت الجلسة الفئة كاملة بمعرّفها بعد تكرارات معدودة.
-            guard category.items.contains(where: { $0.text.normalizedArabic.contains(needle) }) else { return nil }
-            return category
+        let needle = query.searchKey
+        // البحث ترشيح للفئات لا بتر لأذكارها: لو دفعنا نسخة تحمل المطابق فقط
+        // لختمت الجلسة الفئة كاملة بمعرّفها بعد تكرارات معدودة.
+        let byText = AdhkarLibrary.categories.filter { category in
+            category.title.searchKey.contains(needle)
+            || category.subtitle.searchKey.contains(needle)
+            || category.items.contains { ArabicSearch.matches($0.text, query) }
         }
+        guard byText.isEmpty else { return byText }
+        // خابت المتون: يُجرَّب المصدرُ والفضل. وموضوعُ كثيرٍ من الأذكار لا يقع إلا
+        // فيهما — «غُفْرَانَكَ» كلمةٌ واحدة، ومصدرها وحده يقول إنّها عند الخروج من
+        // الخلاء. ولا يُضمّان من أوّل الأمر لأنّ «رواه مسلم» تُطابق الأبواب كلّها.
+        return AdhkarLibrary.categories.filter { category in
+            category.items.contains {
+                ArabicSearch.matches($0.reference, query) || ArabicSearch.matches($0.virtue, query)
+            }
+        }
+    }
+
+    /// الذكر المطابق في كل باب — من بحث عن «الحمد لله» كان يرى قائمة الأبواب كما هي
+    /// بلا خبرٍ عمّا طابق ولا عن موضعه، فيفتح البابَ فيجد أوّله لا ما بحث عنه.
+    private func firstMatch(in category: DhikrCategory) -> Dhikr? {
+        let needle = query.searchKey
+        guard !needle.isEmpty, !category.title.searchKey.contains(needle) else { return nil }
+        return category.items.first { ArabicSearch.matches($0.text, query) }
+            ?? category.items.first {
+                ArabicSearch.matches($0.reference, query) || ArabicSearch.matches($0.virtue, query)
+            }
     }
 
     var body: some View {
@@ -27,11 +47,25 @@ struct AdhkarIndexView: View {
                     // اللون قيمةً — والمفتاح يعيد بناءها، كما في «اليوم» و«الأقسام».
                     LazyVStack(spacing: 12) {
                         ForEach(Array(filtered.enumerated()), id: \.element.id) { i, category in
+                            let match = firstMatch(in: category)
                             NavigationLink {
-                                DhikrSessionView(category: category)
+                                DhikrSessionView(category: category, startAt: match?.id)
                             } label: {
-                                CategoryRow(category: category,
-                                            completed: store.completedToday.contains(category.id))
+                                VStack(alignment: .leading, spacing: 0) {
+                                    CategoryRow(category: category,
+                                                completed: store.completedToday.contains(category.id))
+                                    // سطرٌ من الذكر المطابق: يُرى ما طابق، ويُفتح الباب عليه.
+                                    if let match {
+                                        Text(match.text)
+                                            .font(Theme.dhikrFont(size: 14, scale: store.fontScale))
+                                            .foregroundStyle(Theme.inkSoft)
+                                            .lineLimit(2)
+                                            .multilineTextAlignment(.leading)
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                            .padding(.horizontal, 16)
+                                            .padding(.bottom, 12)
+                                    }
+                                }
                             }
                             .pressable()
                             .appearStagger(i)

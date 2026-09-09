@@ -612,10 +612,11 @@ struct LocationPickerView: View {
     var onPick: ((City) -> Void)? = nil
 
     private var cities: [City] {
-        let needle = query.trimmingCharacters(in: .whitespaces).normalizedArabic
+        // بمفتاح البحث الموحّد: من كتب «الاحساء» أو «الهفوف» أو «احسا» وجدها.
+        let needle = query.searchKey
         guard !needle.isEmpty else { return City.all }
         return City.all.filter {
-            $0.name.normalizedArabic.contains(needle) || $0.country.normalizedArabic.contains(needle)
+            $0.name.searchKey.contains(needle) || $0.country.searchKey.contains(needle)
         }
     }
 

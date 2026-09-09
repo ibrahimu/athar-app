@@ -58,6 +58,7 @@ final class AtharStore: ObservableObject {
         static let calcMethod        = "athar.calcMethod"
         static let asrMethod         = "athar.asrMethod"
         static let athanAlerts       = "athar.athanAlerts"
+        static let athanBreaksFocus = "athar.athanBreaksFocus"
         static let athanSound        = "athar.athanSound"
         static let didOnboard        = "athar.didOnboard"
         static let istighfarAlerts   = "athar.istighfarAlerts"
@@ -262,6 +263,16 @@ final class AtharStore: ObservableObject {
     var athanAlerts: Bool {
         get { defaults.bool(forKey: Key.athanAlerts) }
         set { defaults.set(newValue, forKey: Key.athanAlerts); objectWillChange.send() }
+    }
+
+    /// هل يصل تنبيه الصلاة في «عدم الإزعاج» وأوضاع التركيز؟
+    ///
+    /// مفتوحٌ افتراضًا لأنّ الأذان وقتٌ يفوت. ومن أطفأه احترمَ التطبيقُ صمتَه: من وضع
+    /// «عدم الإزعاج» فله فيه غرض — يسجّل شاشته أو يجلس مع أهله — ولا يُملى عليه ما
+    /// يستحقّ أن يقطعه. المفتاح مفتوحٌ إلا أن يُطفأ صراحةً، فلا يتبدّل حالُ من رضي به.
+    var athanBreaksFocus: Bool {
+        get { (defaults.object(forKey: Key.athanBreaksFocus) as? Bool) ?? true }
+        set { defaults.set(newValue, forKey: Key.athanBreaksFocus); objectWillChange.send() }
     }
 
     /// صوت تنبيه الأذان — نغمة النظام أو أحد الأذانات المضمَّنة.

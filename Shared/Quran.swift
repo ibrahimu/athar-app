@@ -165,18 +165,38 @@ enum Quran {
         return out
     }
 
-    /// بحث في النص بعد تجريد التشكيل، فيجد المستخدم آيته كما يكتبها.
-    static func search(_ query: String, limit: Int = 60) -> [AyahRef] {
-        let needle = query.strippedForSearch
-        guard needle.count >= 2 else { return [] }
-        var hits: [AyahRef] = []
+    /// فهرس البحث: مفتاحُ كل آية يُحسب مرّةً واحدة عند أوّل بحث، لا ستّةَ آلافِ
+    /// مرّةٍ مع كل حرفٍ يُكتب. (يُبنى كسولًا فلا يكلّف من لم يبحث شيئًا.)
+    private static let searchIndex: [(ref: AyahRef, key: String, loose: String)] = {
+        var out: [(AyahRef, String, String)] = []
+        out.reserveCapacity(6236)
         for s in surahs {
             for (i, v) in s.verses.enumerated() {
-                if v.strippedForSearch.contains(needle) {
-                    hits.append(AyahRef(surah: s.id, ayah: i + 1))
-                    if hits.count >= limit { return hits }
-                }
+                let k = ArabicSearch.key(v)
+                out.append((AyahRef(surah: s.id, ayah: i + 1), k,
+                            k.replacingOccurrences(of: "ا", with: "")))
             }
+        }
+        return out
+    }()
+
+    /// بحث في النص بمفتاح البحث الموحّد — بلا تشكيلٍ ولا مسافات، فيجد المستخدم
+    /// آيته كما يكتبها: «الحمدلله» تجد «الْحَمْدُ لِلَّهِ».
+    static func search(_ query: String, limit: Int = 60) -> [AyahRef] {
+        let needle = ArabicSearch.key(query)
+        guard needle.count >= 2 else { return [] }
+        var hits: [AyahRef] = []
+        for entry in searchIndex where entry.key.contains(needle) {
+            hits.append(entry.ref)
+            if hits.count >= limit { return hits }
+        }
+        guard hits.isEmpty else { return hits }
+        // خابت الدقّة: تُعاد بالمتساهل فتستوي الألف حيثما وقعت (انظر ArabicSearch.loose).
+        let loose = ArabicSearch.loose(query)
+        guard loose.count >= 2 else { return [] }
+        for entry in searchIndex where entry.loose.contains(loose) {
+            hits.append(entry.ref)
+            if hits.count >= limit { return hits }
         }
         return hits
     }

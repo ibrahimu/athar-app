@@ -80,9 +80,15 @@ enum HadithLibrary {
 
     /// بحث متسامح: يتجاهل التشكيل وفروق الهمزة والتاء المربوطة.
     static func search(_ query: String, in books: [String]? = nil) -> [Hadith] {
-        let q = query.hadithSearchKey
+        let q = ArabicSearch.key(query)
         guard q.count >= 2 else { return [] }
-        return all.filter { (books == nil || books!.contains($0.bookId)) && $0.text.hadithSearchKey.contains(q) }
+        let pool = all.filter { books == nil || books!.contains($0.bookId) }
+        let exact = pool.filter { ArabicSearch.key($0.text).contains(q) }
+        guard exact.isEmpty else { return exact }
+        // خابت الدقّة: تُعاد بالمتساهل — الشدّة والألف الخنجرية في المتون المشكولة.
+        let loose = ArabicSearch.loose(query)
+        guard loose.count >= 2 else { return [] }
+        return pool.filter { ArabicSearch.loose($0.text).contains(loose) }
     }
 }
 

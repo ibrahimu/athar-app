@@ -130,7 +130,7 @@ struct NotificationHealthView: View {
             SettingsCard {
                 SettingsRow(icon: "clock.badge.exclamationmark.fill", tint: Theme.accent(for: "gold"),
                             title: loc("الحسّاسة للوقت"),
-                            subtitle: loc("تخترق «عدم الإزعاج» وأوضاع التركيز — بها يبلغك الأذان في وقته")) {
+                            subtitle: loc("بها يصلك الأذان في وقته ولو كان جهازك في وضع تركيز")) {
                     settingBadge(health?.timeSensitive)
                 }
                 .accessibilityElement(children: .combine)

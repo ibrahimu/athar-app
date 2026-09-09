@@ -63,8 +63,8 @@ struct RecitationView: View {
             out = out.filter { RecitationLibrary.isDownloaded(reciter: audio.reciterId, surah: $0.id) }
         }
         guard !q.isEmpty else { return out }
-        let n = q.strippedForSearch
-        return out.filter { $0.name.strippedForSearch.contains(n) || String($0.id) == n }
+        let n = q.searchKey
+        return out.filter { $0.name.searchKey.contains(n) || String($0.id) == n }
     }
 
     var body: some View {

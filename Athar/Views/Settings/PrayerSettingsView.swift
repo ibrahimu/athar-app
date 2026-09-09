@@ -142,6 +142,25 @@ struct PrayerSettingsView: View {
                 // فتظهر تحت المفتاح حين يُفعَّل — كما كانت في جذر الإعدادات.
                 if store.athanAlerts {
                     SettingsDivider()
+                    // من وضع «عدم الإزعاج» فله فيه غرض — يسجّل شاشته، أو يجلس مع أهله.
+                    // فلا يُملى عليه ما يستحقّ أن يقطع صمته: الأذان يصله فيه ما لم يمنعه،
+                    // وإن منعه نزل إلى المستوى العادي فينتظره في مركز الإشعارات.
+                    SettingsRow(icon: "moon.zzz.fill", tint: Theme.accent(for: "night"),
+                                title: loc("يصلك في وضع التركيز"),
+                                subtitle: store.athanBreaksFocus
+                                    ? loc("الأذان يصلك ولو كان جهازك على «عدم الإزعاج»")
+                                    : loc("يُحترم صمتك — ينتظرك الأذان في مركز الإشعارات")) {
+                        Toggle("", isOn: Binding(
+                            get: { store.athanBreaksFocus },
+                            set: { on in
+                                store.athanBreaksFocus = on
+                                Task { await Reminders.rescheduleAthan(store: store) }
+                            }))
+                        .labelsHidden()
+                        .accessibilityLabel(loc("يصلك في وضع التركيز"))
+                    }
+
+                    SettingsDivider()
                     NavigationLink { PrayerAlertsView() } label: {
                         SettingsRow(icon: "slider.horizontal.below.rectangle", tint: Theme.accent(for: "dusk"),
                                     title: loc("تخصيص كل صلاة"),

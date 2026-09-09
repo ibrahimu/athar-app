@@ -425,18 +425,7 @@ private struct GlobalSearchResults {
 /// مفتاح المطابقة: تجريدٌ من التشكيل ثم إسقاط ما ليس حرفًا ولا رقمًا غربيًّا —
 /// نصوص الأذكار تتخلّلها أرقام الآيات الهندية وأقواسها وعلامات الترقيم، فلو بقيت
 /// لانقطعت العبارة عند أوّل قوسٍ وفشل بحثُ من كتبها متّصلة.
-private func matchKey(_ s: String) -> String {
-    let cleaned = ArabicMatch.normalize(s)
-        .lowercased()
-        .map { ch -> Character in
-            if ch.isLetter { return ch }
-            if ch.isNumber, ch.isASCII { return ch }
-            return " "
-        }
-    return String(cleaned)
-        .split(whereSeparator: { $0.isWhitespace })
-        .joined(separator: " ")
-}
+private func matchKey(_ s: String) -> String { ArabicSearch.key(s) }
 
 /// المسح كلّه — دالّة حرّة تُنفَّذ في مهمّة منفصلة، ولا تلمس Theme ولا أي شيء من الواجهة.
 /// تُعيد nil متى أُلغيت، فلا تُسلَّم للشاشة حصيلةٌ نصفُها لاستعلام قديم.

@@ -6,7 +6,7 @@ enum AppTab: String, CaseIterable, Identifiable, Codable {
     // «live» و«radio» بعد «prayer» مباشرة، و«phrases» بعد «hadith»: ترتيب الحالات هو ترتيب
     // البلاطات داخل مجموعات شاشة «الأقسام»، لا ترتيب إضافتها للتطبيق.
     case home, mushaf, adhkar, prayer, live, radio, tasbih, hajj, qibla, hifz, recitation,
-         khatmah, wird, hadith, phrases, names, ahkam, prayerLog, calendar, zakat, wallet, sunan, settings
+         khatmah, wird, hadith, phrases, names, ahkam, prayerLog, calendar, zakat, wallet, sunan, friday, settings
 
     var id: String { rawValue }
 
@@ -27,7 +27,7 @@ enum AppTab: String, CaseIterable, Identifiable, Codable {
     var group: Group {
         switch self {
         case .mushaf, .recitation, .khatmah, .wird, .hifz: return .quran
-        case .prayer, .live, .radio, .qibla, .prayerLog, .hajj, .sunan: return .worship
+        case .prayer, .live, .radio, .qibla, .prayerLog, .hajj, .sunan, .friday: return .worship
         case .adhkar, .tasbih, .hadith, .phrases, .names, .ahkam:       return .knowledge
         case .calendar, .zakat, .wallet, .home, .settings:  return .tools
         }
@@ -57,6 +57,7 @@ enum AppTab: String, CaseIterable, Identifiable, Codable {
         case .zakat:      return loc("الزكاة")
         case .wallet:     return loc("بطاقات المحفظة")
         case .sunan:      return loc("السنن الرواتب")
+        case .friday:     return loc("يوم الجمعة")
         case .settings:   return loc("settings")
         }
     }
@@ -85,6 +86,7 @@ enum AppTab: String, CaseIterable, Identifiable, Codable {
         case .zakat:      return "banknote.fill"
         case .wallet:     return "wallet.pass.fill"
         case .sunan:      return "rays"
+        case .friday:     return "sun.max.fill"
         case .settings:   return "gearshape.fill"
         }
     }
@@ -114,6 +116,7 @@ enum AppTab: String, CaseIterable, Identifiable, Codable {
         case .zakat:      return "calm"
         case .wallet:     return "gold"
         case .sunan:      return "dawn"
+        case .friday:     return "gold"
         case .settings:   return "green"
         }
     }
@@ -143,6 +146,7 @@ enum AppTab: String, CaseIterable, Identifiable, Codable {
         case .zakat:      return loc("حاسبة زكاة المال بلا إنترنت")
         case .wallet:     return loc("آية الكرسي وأذكارك في بطاقات للمحفظة")
         case .sunan:      return loc("رواتب الصلاة والوتر والضحى بدليلها")
+        case .friday:     return loc("سننها وسورة الكهف والصلاة على النبي ﷺ وبطاقاتها")
         case .settings:   return loc("تفضيلاتك وتنبيهاتك")
         }
     }

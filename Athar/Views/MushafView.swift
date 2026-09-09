@@ -37,11 +37,11 @@ struct MushafView: View {
         guard !q.isEmpty else { return Quran.surahs }
         // الرقم المجرّد له صفّاه أعلى الشاشة، فلا تُكرَّر سورته في القائمة تحتهما.
         guard bareNumber == nil else { return [] }
-        let n = q.strippedForSearch
+        let n = q.searchKey
         return Quran.surahs.filter {
-            $0.name.strippedForSearch.contains(n)
-            || $0.nameSimple.lowercased().contains(q.lowercased())
-            || String($0.id) == q
+            $0.name.searchKey.contains(n)
+            || $0.nameSimple.searchKey.contains(n)
+            || String($0.id) == n
         }
     }
 
@@ -140,6 +140,9 @@ struct MushafView: View {
             .navigationTitle(loc("mushaf"))
             .navigationBarTitleDisplayMode(.inline)
             .searchable(text: $query, prompt: Text(loc("searchMushaf")))
+            // لوحة المفاتيح تغطّي نصف الشاشة ولا تنزل: من مرّر ليقرأ النتائج بقيت
+            // فوقها. فتنزل بأوّل تمريرة كما في سائر شاشات البحث.
+            .scrollDismissesKeyboard(.immediately)
         }
     }
 

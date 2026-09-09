@@ -108,7 +108,7 @@ final class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
         content.title = loc("تذكير %1$@", prayer.title)
         content.body = loc("مرّت 10 دقائق — قم إليها قبل أن يخرج وقتها.")
         content.sound = .default
-        content.interruptionLevel = .timeSensitive
+        content.interruptionLevel = AtharStore.shared.athanBreaksFocus ? .timeSensitive : .active
         content.categoryIdentifier = athanCategory
         content.userInfo = [prayerKey: prayer.rawValue,
                             dateKey: moment.timeIntervalSinceReferenceDate]

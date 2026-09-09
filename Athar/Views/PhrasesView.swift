@@ -15,9 +15,9 @@ struct PhrasesView: View {
         AppConfig.arabicOnly ? .rightToLeft : store.appLanguage.layoutDirection
     }
     private var phrases: [Phrase] {
-        let key = ArabicMatch.normalize(query.trimmingCharacters(in: .whitespacesAndNewlines))
+        let key = ArabicSearch.key(query)
         return PhraseLibrary.phrases(in: category).filter {
-            key.isEmpty || ArabicMatch.normalize($0.text + " " + $0.attribution + " " + $0.category.title).contains(key)
+            key.isEmpty || ArabicSearch.key($0.text + " " + $0.attribution + " " + $0.category.title).contains(key)
         }
     }
 

@@ -21,6 +21,26 @@ final class LocationProvider: NSObject, ObservableObject {
         manager.desiredAccuracy = kCLLocationAccuracyKilometer
     }
 
+    /// آخر مرّةٍ طُلب فيها موقعٌ تلقائيًّا — لا يُسأل النظام مع كل فتحةٍ للتطبيق.
+    private static var lastAutoRefresh: Date?
+
+    /// تحديثٌ تلقائي لمن اختار «موقع الجهاز»: كان الموقع لا يُطلب إلا بضغطةٍ من صاحبه،
+    /// فمن سافر بقيت مواقيتُه على مدينته الأولى إلى أن ينتبه — والتطبيق يَعِد بأنّه
+    /// يتبع موقعه. ولا يُسأل إلا كل نصف ساعة، وبإذنٍ قائم لا يُطلب من جديد.
+    static func refreshIfNeeded(store: AtharStore) {
+        guard store.usesDeviceLocation else { return }
+        let status = CLLocationManager().authorizationStatus
+        guard status == .authorizedWhenInUse || status == .authorizedAlways else { return }
+        if let last = lastAutoRefresh, Date().timeIntervalSince(last) < 30 * 60 { return }
+        lastAutoRefresh = Date()
+        let provider = LocationProvider(store: store)
+        autoProvider = provider
+        provider.request()
+    }
+
+    /// يُمسك المزوّد حيًّا حتى يصل الجواب — بلا هذا يُحرَّر قبل نداء المندوب.
+    private static var autoProvider: LocationProvider?
+
     func request() {
         failed = false
         switch manager.authorizationStatus {
