@@ -173,8 +173,7 @@ enum Quran {
         for s in surahs {
             for (i, v) in s.verses.enumerated() {
                 let k = ArabicSearch.key(v)
-                out.append((AyahRef(surah: s.id, ayah: i + 1), k,
-                            k.replacingOccurrences(of: "ا", with: "")))
+                out.append((AyahRef(surah: s.id, ayah: i + 1), k, ArabicSearch.loose(v)))
             }
         }
         return out
@@ -190,11 +189,16 @@ enum Quran {
             hits.append(entry.ref)
             if hits.count >= limit { return hits }
         }
-        guard hits.isEmpty else { return hits }
-        // خابت الدقّة: تُعاد بالمتساهل فتستوي الألف حيثما وقعت (انظر ArabicSearch.loose).
+        // ثمّ المتساهل يُضاف بعده لا بدلًا منه: كان لا يُجرَّب إلا إذا خاب الدقيق
+        // خيبةً تامّة، فمصادفةٌ واحدة تعبر حدَّ الكلمة كانت تحجب النتائجَ الحقيقية —
+        // «ذلك» و«هذا» و«أولئك» تُرسم بألفٍ خنجرية، فيصيب الدقيقُ نتفًا ويحجب الصواب.
+        guard hits.count < limit else { return hits }
         let loose = ArabicSearch.loose(query)
-        guard loose.count >= 2 else { return [] }
+        guard loose.count >= 2 else { return hits }
+        var seen = Set(hits)
         for entry in searchIndex where entry.loose.contains(loose) {
+            guard !seen.contains(entry.ref) else { continue }
+            seen.insert(entry.ref)
             hits.append(entry.ref)
             if hits.count >= limit { return hits }
         }

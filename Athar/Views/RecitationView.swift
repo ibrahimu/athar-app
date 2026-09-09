@@ -64,7 +64,7 @@ struct RecitationView: View {
         }
         guard !q.isEmpty else { return out }
         let n = q.searchKey
-        return out.filter { $0.name.searchKey.contains(n) || String($0.id) == n }
+        return out.filter { ArabicSearch.matchesSurahName($0.name, q) || String($0.id) == n }
     }
 
     var body: some View {

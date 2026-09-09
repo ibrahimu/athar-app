@@ -39,7 +39,7 @@ struct MushafView: View {
         guard bareNumber == nil else { return [] }
         let n = q.searchKey
         return Quran.surahs.filter {
-            $0.name.searchKey.contains(n)
+            ArabicSearch.matchesSurahName($0.name, q)
             || $0.nameSimple.searchKey.contains(n)
             || String($0.id) == n
         }

@@ -87,8 +87,13 @@ enum HadithLibrary {
         guard exact.isEmpty else { return exact }
         // خابت الدقّة: تُعاد بالمتساهل — الشدّة والألف الخنجرية في المتون المشكولة.
         let loose = ArabicSearch.loose(query)
-        guard loose.count >= 2 else { return [] }
-        return pool.filter { ArabicSearch.loose($0.text).contains(loose) }
+        if loose.count >= 2 {
+            let soft = pool.filter { ArabicSearch.loose($0.text).contains(loose) }
+            if !soft.isEmpty { return soft }
+        }
+        // ثمّ التخريج: «متفق عليه» و«رواه مسلم» وصفٌ للحديث يبحث به الناس، ولم يكن
+        // يُطابَق البتّة. ولا يُضمّ من أوّل الأمر لئلّا يُغرق الراوي المتونَ.
+        return pool.filter { ArabicSearch.matches($0.citation, query) }
     }
 }
 

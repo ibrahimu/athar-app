@@ -44,6 +44,21 @@ final class ArabicSearchTests: XCTestCase {
         XCTAssertEqual(ArabicSearch.key("ٱلْعَٰلَمِينَ"), ArabicSearch.key("العالمين"))
     }
 
+    /// والواو الأصلية لا تُؤكل: «ٱلسَّمَٰوَٰتِ» إملاؤها «السماوات» لا «السماات»،
+    /// و«ٱلْوَٰلِدَيْنِ» إملاؤها «الوالدين». وهي في مئاتٍ من المواضع.
+    func testRealWawSurvivesTheDaggerAlif() {
+        XCTAssertEqual(ArabicSearch.key("ٱلسَّمَٰوَٰتِ"), ArabicSearch.key("السماوات"))
+        XCTAssertEqual(ArabicSearch.key("وَبِٱلْوَٰلِدَيْنِ"), ArabicSearch.key("وبالوالدين"))
+        XCTAssertEqual(ArabicSearch.key("ٱلْحَيَوٰةِ"), ArabicSearch.key("الحياة"))
+    }
+
+    func testQuranFindsWawWords() {
+        XCTAssertFalse(Quran.search("السماوات", limit: 3).isEmpty)
+        XCTAssertFalse(Quran.search("خلق السماوات والأرض", limit: 3).isEmpty)
+        XCTAssertFalse(Quran.search("وبالوالدين احسانا", limit: 3).isEmpty)
+        XCTAssertFalse(Quran.search("اموالهم", limit: 3).isEmpty)
+    }
+
     /// «الرحمن» تُكتب بلا ألف وهي في المصحف بألفٍ خنجرية — يجدها التساهل.
     func testLooseFindsRahman() {
         XCTAssertFalse(Quran.search("الرحمن", limit: 3).isEmpty)
@@ -98,6 +113,45 @@ final class ArabicSearchTests: XCTestCase {
             }
             XCTAssertTrue(hit, "لا يُوجد شيء بـ«\(typed)»")
         }
+    }
+
+    /// الياء الصغيرة العليا حرفٌ يُنطق: «إِبْرَٰهِـۧمَ» و«ٱلنَّبِيِّـۧنَ».
+    func testSmallHighYehIsALetter() {
+        XCTAssertEqual(ArabicSearch.key("إِبْرَٰهِـۧمَ"), ArabicSearch.key("ابراهيم"))
+        XCTAssertFalse(Quran.search("ابراهيم", limit: 3).isEmpty)
+        XCTAssertFalse(Quran.search("خاتم النبيين", limit: 3).isEmpty)
+    }
+
+    /// المتساهل يُضاف بعد الدقيق لا بدلًا منه: مصادفةٌ واحدة كانت تحجب الصواب.
+    func testDemonstrativesAreFound() {
+        for typed in ["ذلك", "هذا", "اولئك", "الرحمن", "التوراة"] {
+            XCTAssertFalse(Quran.search(typed, limit: 5).isEmpty, "«\(typed)» لا تُوجد")
+        }
+    }
+
+    /// «إِسْرَٰٓءِيلَ»: الهمزةُ على الياء تُردّ ياءً فتلتقي بياءٍ بعدها.
+    func testDoubledLettersCollapseInLoose() {
+        XCTAssertFalse(Quran.search("بني اسرائيل", limit: 3).isEmpty)
+    }
+
+    /// رمز ﷺ حرفٌ في نظر النظام، فكان يقطع الجملة على من كتبها متّصلة.
+    func testProphetSymbolIsDropped() {
+        XCTAssertEqual(ArabicSearch.key("قال رسول الله ﷺ لأصحابه"),
+                       ArabicSearch.key("قال رسول الله لأصحابه"))
+    }
+
+    /// «سورة الكهف» كما تُقرأ في الشاشة.
+    func testSurahNameWithPrefix() {
+        let kahf = Quran.surah(18)!
+        XCTAssertTrue(ArabicSearch.matchesSurahName(kahf.name, "سورة الكهف"))
+        XCTAssertTrue(ArabicSearch.matchesSurahName(kahf.name, "الكهف"))
+        XCTAssertTrue(ArabicSearch.matchesSurahName(Quran.surah(55)!.name, "الرحمان"))
+        XCTAssertFalse(ArabicSearch.matchesSurahName(kahf.name, "البقرة"))
+    }
+
+    /// تخريج الحديث وصفٌ يبحث به الناس.
+    func testHadithFoundByCitation() {
+        XCTAssertFalse(HadithLibrary.search("متفق عليه").isEmpty)
     }
 
     /// أسماء السور كما تُكتب: بلا «سورة»، وبـ«ال» ودونها حيث يصحّ.

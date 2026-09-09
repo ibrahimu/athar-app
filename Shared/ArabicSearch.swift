@@ -16,33 +16,58 @@ import Foundation
 enum ArabicSearch {
 
     static func key(_ s: String) -> String {
+        let scalars = Array(s.unicodeScalars)
         var out = String.UnicodeScalarView()
-        out.reserveCapacity(s.unicodeScalars.count)
+        out.reserveCapacity(scalars.count)
         // نحن داخل رقم آية: «۝٢» رمزٌ ثمّ رقمُه. الرمزُ يُسقط، ولو بقي رقمُه لالتصق
         // بين الكلمتين — «قل هو الله أحد ۝١ الله الصمد» يصير «…احد1الله…» — فلا يجد
         // من كتب الآيتين متتابعتين كما يقرأهما على الشاشة.
         var inAyahNumber = false
-        for u in s.unicodeScalars {
+        var i = 0
+        while i < scalars.count {
+            let u = scalars[i]
+            defer { i += 1 }
             if inAyahNumber {
                 if (0x0660...0x0669).contains(u.value) || (0x06F0...0x06F9).contains(u.value) { continue }
                 inAyahNumber = false
             }
             switch u.value {
-            case 0x06DD: inAyahNumber = true; continue   // ۝ علامة نهاية الآية
+            case 0x06DD: inAyahNumber = true                   // ۝ علامة نهاية الآية
+            // الياء الصغيرة العليا حرفٌ يُنطق لا علامةَ ضبط: «إِبْرَٰهِـۧمَ» إملاؤها
+            // «إبراهيم»، و«ٱلنَّبِيِّـۧنَ» إملاؤها «النبيين». وكانت تُسقط مع علامات
+            // الضبط، فلا يجد من كتب «إبراهيم» ولا «خاتم النبيين».
+            case 0x06E7: out.append("ي")
+            // رمز ﷺ وأخواته من صور العرض: حروفٌ في نظر النظام، فكانت تمرّ في المفتاح
+            // فتقطع الجملة على من كتبها متّصلة.
+            case 0xFDF0...0xFDFF, 0xFE70...0xFEFF: continue
             // تشكيل، وعلامات وقفٍ وضبطٍ للمصحف، وتطويل — تُسقط جميعًا.
             case 0x0610...0x061A, 0x064B...0x065F, 0x06D6...0x06ED,
                  0x0640, 0x08D3...0x08FF:
                 continue
             // الألف الخنجرية: تُقرأ ألفًا، ورسمُها في المصحف على ثلاثة أوجه —
-            //   «ٱلصَّلَوٰةَ» واوٌ تحتها، وإملاؤها «الصلاة»: فتحلّ الألفُ محلّ الواو.
             //   «عَلَىٰ» ألفٌ مقصورة تحتها، وإملاؤها «على»: فتُسقط ويبقى ما قبلها.
             //   «ٱلْعَٰلَمِينَ» حرفٌ صحيح تحتها، وإملاؤها «العالمين»: فتُزاد ألفًا.
-            // وبلا هذا لم يجد من كتب «الصلاة» ولا «على» ولا «العالمين» شيئًا.
+            //   وبعد الواو وجهان لا وجه، والفرقُ بينهما ما يليها:
+            //     «ٱلصَّلَوٰةَ» و«ٱلزَّكَوٰةَ» و«ٱلْحَيَوٰةِ» — تليها تاءٌ مربوطة، والواو
+            //     فيها كرسيُّ رسمٍ لا حرفٌ يُنطق، وإملاؤها «الصلاة»: فتحلّ الألفُ محلّها.
+            //     «ٱلسَّمَٰوَٰتِ» و«ٱلْوَٰلِدَيْنِ» — الواو فيها حرفٌ أصليّ يُنطق،
+            //     وإملاؤها «السماوات» و«الوالدين»: فتبقى وتُزاد الألف بعدها.
+            //   وكان الوجهان واحدًا فتُؤكل الواو الأصلية، فلا يجد من كتب «السماوات»
+            //   شيئًا — وهي في ثلاثٍ وثمانين ومئة آية.
             case 0x0670:
+                let next = nextLetter(scalars, after: i)
+                let midWord = next.map { Character(Unicode.Scalar($0) ?? " ").isLetter } ?? false
                 switch out.last {
-                case "و": out.removeLast(); out.append("ا")
-                case "ي": break
-                default:  out.append("ا")
+                case "ي":
+                    // «عَلَىٰ» في آخر الكلمة ألفٌ مقصورة، إملاؤها «على».
+                    // و«ٱلتَّوْرَىٰةَ» في وسطها ألفٌ تامّة، إملاؤها «التوراة».
+                    if midWord { out.removeLast(); out.append("ا") }
+                case "و":
+                    // الواو كرسيُّ رسمٍ إن تلتها تاءٌ مربوطة («ٱلصَّلَوٰةَ» ← «الصلاة»)،
+                    // وحرفٌ أصليّ فيما سواه («ٱلسَّمَٰوَٰتِ» ← «السماوات»).
+                    if next == 0x0629 { out.removeLast() }
+                    out.append("ا")
+                default: out.append("ا")
                 }
             // صور الألف والهمزة تُردّ إلى ألف: «إسراء» و«اسراء» سواء.
             case 0x0622, 0x0623, 0x0625, 0x0671:
@@ -69,6 +94,21 @@ enum ArabicSearch {
         return String(out)
     }
 
+    /// أوّلُ حرفٍ بعد الموضع، متخطّيًا التشكيلَ وعلاماتِ الضبط — به يُعرف وجهُ الألف
+    /// الخنجرية بعد الواو.
+    private static func nextLetter(_ scalars: [Unicode.Scalar], after i: Int) -> UInt32? {
+        var j = i + 1
+        while j < scalars.count {
+            let v = scalars[j].value
+            let isMark = (0x0610...0x061A).contains(v) || (0x064B...0x065F).contains(v)
+                || (0x06D6...0x06ED).contains(v) || v == 0x0640 || v == 0x0670
+                || (0x08D3...0x08FF).contains(v)
+            if !isMark { return v }
+            j += 1
+        }
+        return nil
+    }
+
     /// مفتاحٌ متساهل: كالمفتاح وقد أُسقطت منه الألفات جميعًا.
     ///
     /// لأنّ ردّ الألف الخنجرية ألفًا يصلح موضعًا ويفسد آخر: «ٱلْعَٰلَمِينَ» تصير
@@ -79,7 +119,16 @@ enum ArabicSearch {
     /// بهذا فتستوي الألفُ حيثما وقعت. والتساهل لا يُلجأ إليه إلا عند خيبة الدقّة،
     /// فلا يُدخل ضجيجَه على بحثٍ صحيح.
     static func loose(_ s: String) -> String {
-        key(s).replacingOccurrences(of: "ا", with: "")
+        var out = String.UnicodeScalarView()
+        var last: Unicode.Scalar?
+        for u in key(s).unicodeScalars {
+            if u == "ا" { continue }
+            // ولا يُكرَّر حرفٌ: الهمزةُ على الياء تُردّ ياءً فتلتقي بياءٍ بعدها —
+            // «اسرائيل» تصير «اسراييل» ولا تقع في «إِسْرَٰٓءِيلَ». والتضعيفُ كذلك.
+            if u == last { continue }
+            out.append(u); last = u
+        }
+        return String(out)
     }
 
     /// هل يقع `needle` في `text`؟ بالدقّة أوّلًا ثم بالتساهل.
@@ -89,6 +138,21 @@ enum ArabicSearch {
         if key(text).contains(n) { return true }
         let l = loose(needle)
         return !l.isEmpty && loose(text).contains(l)
+    }
+
+    /// هل يقع الاستعلام في اسم سورة؟ — يُسقط «سورة» المتصدّرة، فمن كتب «سورة الكهف»
+    /// كما تُقرأ في الشاشة يجدها؛ وكان المفتاح يُلصقها بالاسم فلا يقع في «الكهف».
+    /// ويُجرَّب المتساهل كذلك: «الرحمان» تجد «الرحمن».
+    static func matchesSurahName(_ name: String, _ query: String) -> Bool {
+        var q = key(query)
+        let prefix = key("سورة")
+        if q.hasPrefix(prefix), q.count > prefix.count { q.removeFirst(prefix.count) }
+        guard !q.isEmpty else { return false }
+        if key(name).contains(q) { return true }
+        var l = loose(query)
+        let lp = loose("سورة")
+        if !lp.isEmpty, l.hasPrefix(lp), l.count > lp.count { l.removeFirst(lp.count) }
+        return !l.isEmpty && loose(name).contains(l)
     }
 }
 

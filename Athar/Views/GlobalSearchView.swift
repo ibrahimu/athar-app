@@ -436,7 +436,8 @@ private func searchEverything(_ raw: String, cap: Int) -> GlobalSearchResults? {
 
     // السور: بالاسم العربي، أو باللاتيني كما يُكتب، أو برقمها.
     out.surahs = SearchBucket(Quran.surahs.filter {
-        matchKey($0.name).contains(key) || matchKey($0.nameSimple).contains(key) || String($0.id) == raw
+        // الرقم يُقارَن بالمفتاح لا بالخام: من كتب «٥٥» بلوحته العربية كان لا يجد شيئًا.
+    ArabicSearch.matchesSurahName($0.name, raw) || matchKey($0.nameSimple).contains(key) || String($0.id) == key
     }, cap: cap)
     if Task.isCancelled { return nil }
 

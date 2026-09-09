@@ -23,7 +23,7 @@ struct HifzPicker: View {
         let q = query.trimmingCharacters(in: .whitespaces)
         guard !q.isEmpty else { return Quran.surahs }
         let n = q.searchKey
-        return Quran.surahs.filter { $0.name.searchKey.contains(n) || String($0.id) == n }
+        return Quran.surahs.filter { ArabicSearch.matchesSurahName($0.name, q) || String($0.id) == n }
     }
 
     var body: some View {
