@@ -9,9 +9,14 @@ enum CarPlayMenu {
     /// تُقدَّم لأنّها المقصد الأوّل، فلا تُدفن تحت مئةٍ وأربع عشرة.
     static let favourites = [2, 18, 36, 55, 56, 67]
 
-    /// المصحف مقسّمًا إلى مجموعاتٍ معنونة بمدى أرقامها — عشرون سورة في كل مجموعة:
-    /// قائمةٌ واحدة من مئةٍ وأربع عشرة لا تُقرأ في سيارة، والعنوان يدلّ على الموضع.
-    static func surahGroups(step: Int = 20, total: Int = 114) -> [(header: String, ids: [Int])] {
+    /// سقفُ القائمة الواحدة في CarPlay اثنا عشر عنصرًا لا غير — والنظام يقصّ ما زاد
+    /// صامتًا. فمئةٌ وأربع عشرة سورة لا تُعرض في قائمة، ولا تُنقذها الأقسام (الحدّ
+    /// على العناصر عبرها جميعًا). فتُقسَّم إلى عشر مجموعاتٍ من اثنتي عشرة — والعشرُ
+    /// تسعها قائمةٌ واحدة — وكلُّ مجموعة تُفتح على قائمتها.
+    static let pageSize = 12
+
+    /// المصحف مقسّمًا إلى مجموعاتٍ معنونة بمدى أرقامها.
+    static func surahGroups(step: Int = pageSize, total: Int = 114) -> [(header: String, ids: [Int])] {
         guard step > 0, total > 0 else { return [] }
         var out: [(String, [Int])] = []
         var start = 1
@@ -19,6 +24,21 @@ enum CarPlayMenu {
             let end = min(start + step - 1, total)
             out.append(("\(start.counterText)–\(end.counterText)", Array(start...end)))
             start = end + 1
+        }
+        return out
+    }
+
+    /// يُقسَّم ما طال إلى صفحاتٍ لا تتجاوز السقف: أحد عشر عنصرًا وصفٌّ يفتح ما بعدها.
+    /// فلا يسقط عنصرٌ صامتًا كما كان يسقط تسعون قارئًا وسورة.
+    static func pages<T>(_ items: [T], size: Int = pageSize) -> [[T]] {
+        guard size > 1, !items.isEmpty else { return items.isEmpty ? [] : [items] }
+        if items.count <= size { return [items] }
+        var out: [[T]] = []
+        var rest = items[...]
+        while !rest.isEmpty {
+            if rest.count <= size { out.append(Array(rest)); break }
+            out.append(Array(rest.prefix(size - 1)))     // مقعدٌ يُترك لصفّ «المزيد»
+            rest = rest.dropFirst(size - 1)
         }
         return out
     }

@@ -108,12 +108,12 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
         resume.append(radio)
         sections.append(CPListSection(items: resume, header: "استمع الآن", sectionIndexTitle: nil))
 
-        // سورٌ للطريق.
+        // سورٌ للطريق — وما يسعه السقفُ بعد صفّي المتابعة والإذاعة.
         let picks = CarPlayMenu.favourites.compactMap { Quran.surah($0) }.map { surahItem($0) }
         if !picks.isEmpty {
             sections.append(CPListSection(items: picks, header: "سورٌ للطريق", sectionIndexTitle: nil))
         }
-        return sections
+        return build(sections.map { (header: $0.header ?? "", items: ($0.items as? [CPListItem]) ?? []) })
     }
 
     // MARK: السور
@@ -127,11 +127,27 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
 
     /// مئةٌ وأربع عشرة سورة لا تُعرض دفعةً: النظام يقصّ ما زاد على حدّه صامتًا،
     /// فتُقسَّم إلى أقسامٍ معنونة، ويُقصّ الباقي على حدّه المعلن لا على تخمين.
+    /// سقفُ القائمة اثنا عشر عنصرًا، والنظام يقصّ ما زاد صامتًا — فمئةٌ وأربع عشرة
+    /// سورة لا تُعرض في قائمة. فمستويان: عشرُ مجموعاتٍ تسعها قائمة، وكلٌّ تُفتح على
+    /// اثنتي عشرة سورة. وكانت تُعرض دفعةً فلا يرى السائق إلا أوّل اثنتي عشرة.
     private func surahSections() -> [CPListSection] {
-        let groups = CarPlayMenu.surahGroups().map { g in
-            (header: g.header, items: g.ids.compactMap { Quran.surah($0) }.map { surahItem($0) })
+        let items = CarPlayMenu.surahGroups().map { g -> CPListItem in
+            let names = g.ids.prefix(2).compactMap { Quran.surah($0)?.name }.joined(separator: "، ")
+            let item = CPListItem(text: "السور \(g.header)", detailText: names + "…")
+            item.accessoryType = .disclosureIndicator
+            item.handler = { [weak self] _, done in
+                Task { @MainActor in
+                    guard let self else { done(); return }
+                    let list = CPListTemplate(title: "السور \(g.header)", sections: [
+                        CPListSection(items: g.ids.compactMap { Quran.surah($0) }.map { self.surahItem($0) })
+                    ])
+                    self.interface?.pushTemplate(list, animated: true, completion: nil)
+                    done()
+                }
+            }
+            return item
         }
-        return build(groups)
+        return build([(header: "", items: items)])
     }
 
     /// حدّا القائمة يُقرآن من النظام لا من تخمين، والقصّ يقع عندنا بحسابٍ معلوم
@@ -181,7 +197,7 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
             empty.handler = { _, done in done() }
             return [CPListSection(items: [empty])]
         }
-        return build([(header: Recitation.shared.reciter.name, items: items)])
+        return paged(items, title: Recitation.shared.reciter.name)
     }
 
     // MARK: القرّاء
@@ -212,7 +228,38 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
             }
             return item
         }
-        return build([(header: "", items: items)])
+        return paged(items, title: "القرّاء")
+    }
+
+    /// ما زاد عن سقف القائمة يُدفع إلى صفحةٍ تاليةٍ بصفّ «المزيد» — لا يُقصّ صامتًا.
+    /// (خمسةَ عشرَ قارئًا كانوا يُعرض منهم اثنا عشر، والباقي لا سبيل إليه.)
+    private func paged(_ items: [CPListItem], title: String) -> [CPListSection] {
+        let pages = CarPlayMenu.pages(items, size: CPListTemplate.maximumItemCount)
+        guard let first = pages.first else { return [] }
+        var shown = first
+        if pages.count > 1 {
+            shown.append(moreItem(pages: Array(pages.dropFirst()), index: 0, title: title))
+        }
+        return [CPListSection(items: shown)]
+    }
+
+    private func moreItem(pages: [[CPListItem]], index: Int, title: String) -> CPListItem {
+        let item = CPListItem(text: "المزيد", detailText: nil)
+        item.accessoryType = .disclosureIndicator
+        item.handler = { [weak self] _, done in
+            Task { @MainActor in
+                guard let self, index < pages.count else { done(); return }
+                var items = pages[index]
+                if index + 1 < pages.count {
+                    items.append(self.moreItem(pages: pages, index: index + 1, title: title))
+                }
+                self.interface?.pushTemplate(
+                    CPListTemplate(title: title, sections: [CPListSection(items: items)]),
+                    animated: true, completion: nil)
+                done()
+            }
+        }
+        return item
     }
 
     // MARK: التتبّع
