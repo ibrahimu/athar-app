@@ -8,7 +8,7 @@ struct WhatsNewView: View {
     var onClose: () -> Void = {}
 
     /// يُرفع مع كل إصدار يستحق العرض.
-    static let version = "1.4"
+    static let version = "1.5"
 
     private struct Item: Identifiable {
         let id: String
