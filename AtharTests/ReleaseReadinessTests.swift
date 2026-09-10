@@ -4,6 +4,27 @@ import UserNotifications
 @testable import Athar
 
 final class ReleaseReadinessTests: XCTestCase {
+
+    /// الجزيرة وشاشة القفل ملكُ صاحب الجهاز. النشاط الحيّ لا يُسكته وضعُ التركيز —
+    /// من وضع «عدم الإزعاج» كان يرى «حان الوقت» على الجزيرة رغمًا عنه — فالسكوت
+    /// يكون بألّا يُطلب أصلًا: مطفأ حتى يُشغّله صاحبه، ومن شغّله يبقى على اختياره.
+    @MainActor
+    func testLiveActivityIsSilentUntilItIsAskedFor() {
+        let suite = "athar.tests.liveactivity.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        XCTAssertFalse(AtharStore(defaults: defaults).liveActivityEnabled,
+                       "التطبيق لا يضع شيئًا على القفل أو الجزيرة قبل أن يُؤذن له")
+
+        let on = AtharStore(defaults: defaults)
+        on.liveActivityEnabled = true
+        XCTAssertTrue(AtharStore(defaults: defaults).liveActivityEnabled,
+                      "ومن شغّله صراحةً لا يُطفأ عنه")
+
+        on.liveActivityEnabled = false
+        XCTAssertFalse(AtharStore(defaults: defaults).liveActivityEnabled)
+        defaults.removePersistentDomain(forName: suite)
+    }
+
     func testEveryPhraseResolvesItsSourceAndHasUniqueIdentity() {
         XCTAssertFalse(PhraseLibrary.all.isEmpty)
         XCTAssertEqual(Set(PhraseLibrary.all.map(\.id)).count, PhraseLibrary.all.count)

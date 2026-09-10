@@ -84,9 +84,15 @@ struct NextPrayerActivity: Widget {
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(look.tint)
             } compactTrailing: {
+                // الجزيرة المضغوطة شقٌّ ضيّق حول الكاميرا، فما وُضع فيه يُقاس لا يُخمَّن:
+                // «حان الوقت» يحتاج 57.6 نقطة عند 13pt والإطار 54 — فكان يُضغط ويلتصق
+                // بالحافّتين. و«الآن» تكفي (19.2)، واسم الصلاة تحملُه البطاقة الموسّعة.
+                // والعرض ثابت لأن العدّ يتغيّر كل ثانية، فلو ساير النصَّ لارتجفت الجزيرة —
+                // و40 تسع أطولَ عدٍّ ممكن «29:59» (37.9) ولا تزيد عليه.
+                // بلا محاذاةٍ اتجاهية: التوسيط لا يعرف يمينًا من يسار فلا ينقلب مع اللغة.
                 Group {
                     if look.isStale {
-                        Text(look.dueShort)
+                        Text(look.dueNow)
                             .lineLimit(1)
                     } else {
                         Text(timerInterval: look.range, countsDown: true)
@@ -96,9 +102,7 @@ struct NextPrayerActivity: Widget {
                 }
                 .font(.system(size: 13, weight: .semibold, design: .rounded))
                 .foregroundStyle(look.tint)
-                .multilineTextAlignment(.trailing)
-                .minimumScaleFactor(0.7)
-                .frame(width: 54, alignment: .trailing)
+                .frame(width: 40)
             } minimal: {
                 Image(systemName: look.icon)
                     .font(.system(size: 12, weight: .semibold))
@@ -202,8 +206,12 @@ private struct NextPrayerLook {
     /// «حان وقت العصر» — لشاشة القفل حيث المتّسع.
     var dueTitle: String { loc("حان وقت %1$@", state.prayerTitle) }
 
-    /// «حان الوقت» — للجزيرة حيث اسم الصلاة مجاور والعرض ضيّق.
+    /// «حان الوقت» — للجزيرة الموسّعة: 75.0 نقطة عند 17pt في إطار 82، فتسع.
     var dueShort: String { loc("حان الوقت") }
+
+    /// «الآن» — للجزيرة المضغوطة وحدها: 19.2 نقطة عند 13pt في إطار 40.
+    /// أخصرُ ما يدلّ على دخول الوقت، ومعه أيقونةُ الصلاة في الشقّ المقابل.
+    var dueNow: String { loc("الآن") }
 
     /// لحظة اليوم كما رآها التطبيق وقت طلب النشاط — لوحة الويدجتات نفسها (قبل العشاء غروبٌ
     /// ورديّ كالويدجت، لا ليلٌ أزرق). نشاطٌ قائم من إصدار سابق بلا مفتاح يسقط إلى لحظة

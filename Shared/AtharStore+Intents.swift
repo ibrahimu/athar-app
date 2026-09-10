@@ -24,10 +24,13 @@ extension AtharStore {
 
     // MARK: النشاط الحيّ
 
-    /// عرض الصلاة القادمة في Dynamic Island وشاشة القفل. مفعَّل افتراضيًا —
-    /// نقرأ الكائن لا `bool(forKey:)` لأن الأخير يُعيد false عند غياب المفتاح.
+    /// عرض الصلاة القادمة في Dynamic Island وشاشة القفل. **مطفأ افتراضيًا**:
+    /// الجزيرة وشاشة القفل ملكُ صاحب الجهاز، فلا يضع فيهما التطبيق شيئًا حتى يُؤذن له.
+    /// وكان مفعَّلًا فيظهر «حان الوقت» على الجزيرة ولو كان الجهاز على «عدم الإزعاج» —
+    /// والنشاط الحيّ لا يُسكته وضعُ التركيز، فالسكوتُ يكون بألّا يُطلب أصلًا.
+    /// نقرأ الكائن لا `bool(forKey:)` ليبقى مَن شغّله صراحةً على اختياره.
     var liveActivityEnabled: Bool {
-        get { defaults.object(forKey: IKey.liveActivity) as? Bool ?? true }
+        get { defaults.object(forKey: IKey.liveActivity) as? Bool ?? false }
         set { defaults.set(newValue, forKey: IKey.liveActivity); objectWillChange.send() }
     }
 
