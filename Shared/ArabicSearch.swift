@@ -15,7 +15,19 @@ import Foundation
 /// (انظر `ArabicMatch.normalize`، ولا يُبنى عليه هذا ولا يُبنى عليه).
 enum ArabicSearch {
 
-    static func key(_ s: String) -> String {
+    static func key(_ s: String) -> String { key(s, slim: false) }
+
+    /// المفتاح نفسه إلّا أنّ **الألف الخنجرية تُسقط** ولا تُزاد ألفًا.
+    ///
+    /// الخنجرية تُقرأ ألفًا فيزيدها المفتاح، وهذا صوابٌ فيما يكتبه الناس بألف —
+    /// «ٱلسَّمَٰوَٰتِ» يبحث عنها من يكتب «السماوات». لكنّ الرسم فيه ما لا يُكتب بألفٍ
+    /// أصلًا: «ذَٰلِكَ» يكتبها الناس «ذلك» لا «ذالك»، و«أُو۟لَـٰٓئِكَ» «أولئك» لا
+    /// «أولايك»، و«ٱلرَّحْمَٰنِ» «الرحمن». فمفتاحُها الدقيق يفترق عمّا يُكتب،
+    /// فلا يُوجَد — و«ذلك» وحدها في أربعمئةٍ وثمانٍ وستّين آية.
+    /// فيُحسب مفتاحان: دقيقٌ تُزاد فيه، ونحيلٌ تُسقط منه، ويُبحث بهما معًا.
+    static func slim(_ s: String) -> String { key(s, slim: true) }
+
+    private static func key(_ s: String, slim: Bool) -> String {
         let scalars = Array(s.unicodeScalars)
         var out = String.UnicodeScalarView()
         out.reserveCapacity(scalars.count)
@@ -61,6 +73,8 @@ enum ArabicSearch {
             //   شيئًا — وهي في ثلاثٍ وثمانين ومئة آية.
             case 0x0670:
                 defer { lastWasMaqsura = false }
+                // المفتاح النحيل: تُسقط رأسًا بلا زيادةٍ ولا حذفٍ لما قبلها.
+                guard !slim else { continue }
                 let next = nextLetter(scalars, after: i)
                 let midWord = next.map { Character(Unicode.Scalar($0) ?? " ").isLetter } ?? false
                 switch out.last {
@@ -125,6 +139,22 @@ enum ArabicSearch {
     /// فالبحث مرّتان: بالمفتاح أوّلًا فيصيب ما يصيب بدقّة، فإن لم يجد شيئًا أُعيد
     /// بهذا فتستوي الألفُ حيثما وقعت. والتساهل لا يُلجأ إليه إلا عند خيبة الدقّة،
     /// فلا يُدخل ضجيجَه على بحثٍ صحيح.
+    /// المفتاح مع **طيّ الحرف المكرَّر** وحده، والألفُ باقية.
+    ///
+    /// المصحف يكتب المشدَّد حرفًا واحدًا وعليه شدّة، والناس يكتبونه حرفين:
+    /// «ٱلَّيْلِ» مفتاحُها «اليل» بلامٍ واحدة، ومن يبحث يكتب «الليل» بلامين —
+    /// فلا يجد شيئًا وهي في تسعٍ وستّين آية. وطيُّ التكرار وحده يجمعهما
+    /// بلا أن يُفقد الألفَ فيتّسع الضجيج كما يتّسع في المتساهل.
+    static func collapsed(_ s: String) -> String {
+        var out = String.UnicodeScalarView()
+        var last: Unicode.Scalar?
+        for u in key(s).unicodeScalars {
+            if u == last { continue }
+            out.append(u); last = u
+        }
+        return String(out)
+    }
+
     static func loose(_ s: String) -> String {
         var out = String.UnicodeScalarView()
         var last: Unicode.Scalar?
@@ -138,11 +168,31 @@ enum ArabicSearch {
         return String(out)
     }
 
-    /// هل يقع `needle` في `text`؟ بالدقّة أوّلًا ثم بالتساهل.
+    /// صيغةُ الاسم المعرَّف بعد لام الجرّ: «الرحمن» ← «للرحمن».
+    ///
+    /// لامُ الجرّ تبتلع ألفَ «ال» في الرسم — «لِلرَّحْمَٰنِ» و«لِلنَّاسِ»
+    /// و«لِلْوَٰلِدَيْنِ» و«لِلصَّلَوٰةِ» — فمن بحث عن الاسم مُعرَّفًا لم يجد مواضعه
+    /// المجرورة باللام، وهي في «الناس» وحدها سبعٌ وثلاثون آية. ولا يُتوسَّع بأكثر
+    /// من هذا: الباءُ والكافُ والفاءُ تُبقي الألف، فلا حاجة لها.
+    /// يعود nil لما لا يبدأ بـ«ال» أو كان أقصرَ من أن يُميَّز.
+    static func lamPrefixed(_ k: String) -> String? {
+        guard k.hasPrefix("ال"), k.count > 3 else { return nil }
+        return "لل" + k.dropFirst(2)
+    }
+
+    /// هل يقع `needle` في `text`؟ على أربع درجاتٍ من الدقّة إلى التساهل، تُجرَّب
+    /// بترتيبها: المفتاح، ثمّ النحيل (الخنجرية)، ثمّ طيّ التكرار (الشدّة)، ثمّ
+    /// المتساهل. والثلاثة الأُوَل دقيقة، والرابعة آخرُ ما يُلجأ إليه.
     static func matches(_ text: String, _ needle: String) -> Bool {
         let n = key(needle)
         guard !n.isEmpty else { return true }
         if key(text).contains(n) { return true }
+        let sl = slim(needle)
+        if sl.count >= 2, slim(text).contains(sl) { return true }
+        let c = collapsed(needle)
+        if c.count >= 2, collapsed(text).contains(c) { return true }
+        if let lam = lamPrefixed(n), key(text).contains(lam) { return true }
+        if let lam = lamPrefixed(sl), slim(text).contains(lam) { return true }
         // حرفان كما في بحث المصحف والحديث: حرفٌ واحد بعد طيّ المكرّر يُطابق كلَّ شيء.
         let l = loose(needle)
         return l.count >= 2 && loose(text).contains(l)

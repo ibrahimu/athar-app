@@ -167,13 +167,15 @@ enum Quran {
 
     /// فهرس البحث: مفتاحُ كل آية يُحسب مرّةً واحدة عند أوّل بحث، لا ستّةَ آلافِ
     /// مرّةٍ مع كل حرفٍ يُكتب. (يُبنى كسولًا فلا يكلّف من لم يبحث شيئًا.)
-    private static let searchIndex: [(ref: AyahRef, key: String, loose: String)] = {
-        var out: [(AyahRef, String, String)] = []
+    private static let searchIndex: [(ref: AyahRef, key: String, slim: String,
+                                      collapsed: String, loose: String)] = {
+        var out: [(AyahRef, String, String, String, String)] = []
         out.reserveCapacity(6236)
         for s in surahs {
             for (i, v) in s.verses.enumerated() {
-                let k = ArabicSearch.key(v)
-                out.append((AyahRef(surah: s.id, ayah: i + 1), k, ArabicSearch.loose(v)))
+                out.append((AyahRef(surah: s.id, ayah: i + 1),
+                            ArabicSearch.key(v), ArabicSearch.slim(v),
+                            ArabicSearch.collapsed(v), ArabicSearch.loose(v)))
             }
         }
         return out
@@ -184,26 +186,41 @@ enum Quran {
     static func search(_ query: String, limit: Int = 60) -> [AyahRef] {
         let needle = ArabicSearch.key(query)
         guard needle.count >= 2 else { return [] }
+
+        // أربع طبقاتٍ من الدقّة إلى التساهل، كلٌّ تُكمّل ما قبلها ولا تحلّ محلّه،
+        // والترتيب محفوظ فالأدقّ في الصدر. وكانت طبقتان تقفزان من المفتاح إلى
+        // المتساهل، فكان أحدُهما يحجب الآخر: مصادفةٌ دقيقةٌ واحدة تعبر حدَّ الكلمة
+        // تُلغي المتساهل كلَّه — «ذلك» تُخرج «وَإِن يَخْذُلْكُمْ» وحدها وتحجب
+        // أربعمئةٍ وثمانيًا وستّين آية، و«أولئك» تُخرج «إِنَّمَا وَلِيُّكُمُ» وتحجب
+        // مئتين واثنتي عشرة. ولو أُطلق المتساهل تذييلًا لأغرق الصوابَ بضجيجه —
+        // «الليل» تصير ستّمئةً وسبع عشرة آية، صوابُها تسعٌ وستّون.
+        // فالحلّ طبقتان بينهما: النحيلة تُسقط الألف الخنجرية، والمطويّة تطوي
+        // الحرف المكرَّر — كلتاهما دقيقة، فتُذيَّل بهما القائمةُ بلا ضجيج.
         var hits: [AyahRef] = []
-        for entry in searchIndex where entry.key.contains(needle) {
-            hits.append(entry.ref)
-            if hits.count >= limit { return hits }
+        var seen = Set<AyahRef>()
+
+        func gather(_ q: String, _ column: KeyPath<(ref: AyahRef, key: String, slim: String,
+                                                    collapsed: String, loose: String), String>) -> Bool {
+            guard q.count >= 2 else { return false }
+            for entry in searchIndex where entry[keyPath: column].contains(q) {
+                guard seen.insert(entry.ref).inserted else { continue }
+                hits.append(entry.ref)
+                if hits.count >= limit { return true }
+            }
+            return false
         }
-        // ثمّ المتساهل يُضاف بعده لا بدلًا منه: كان لا يُجرَّب إلا إذا خاب الدقيق
-        // خيبةً تامّة، فمصادفةٌ واحدة تعبر حدَّ الكلمة كانت تحجب النتائجَ الحقيقية —
-        // «ذلك» و«هذا» و«أولئك» تُرسم بألفٍ خنجرية، فيصيب الدقيقُ نتفًا ويحجب الصواب.
-        // ولا يُكمَّل بها بحثٌ أصاب: كان أيُّ بحثٍ لم يبلغ الحدّ يُذيَّل بنتائجَ
-        // متساهلة، فيرى من وجد ثلاثًا صحيحة عشرين بعدها لا صلة لها.
+
+        let slimNeedle = ArabicSearch.slim(query)
+        if gather(needle, \.key) { return hits }
+        if gather(slimNeedle, \.slim) { return hits }
+        if gather(ArabicSearch.collapsed(query), \.collapsed) { return hits }
+        // ثمّ الاسمُ مجرورًا بلام: «الناس» تجد «لِلنَّاسِ» — سبعًا وثلاثين آية.
+        if let lam = ArabicSearch.lamPrefixed(needle), gather(lam, \.key) { return hits }
+        if let lam = ArabicSearch.lamPrefixed(slimNeedle), gather(lam, \.slim) { return hits }
+        // المتساهل آخرُ ما يُلجأ إليه، ولا يُذيَّل به بحثٌ أصاب: ضجيجُه أوسع من
+        // أن يُخلط بصواب. فإن وجدت الطبقاتُ الثلاث شيئًا فهو الجواب.
         guard hits.isEmpty else { return hits }
-        let loose = ArabicSearch.loose(query)
-        guard loose.count >= 2 else { return hits }
-        var seen = Set(hits)
-        for entry in searchIndex where entry.loose.contains(loose) {
-            guard !seen.contains(entry.ref) else { continue }
-            seen.insert(entry.ref)
-            hits.append(entry.ref)
-            if hits.count >= limit { return hits }
-        }
+        _ = gather(ArabicSearch.loose(query), \.loose)
         return hits
     }
 
