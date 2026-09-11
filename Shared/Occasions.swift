@@ -4,6 +4,20 @@ import Foundation
 //
 // لا يُدرج هنا إلا ما له أصل في الكتاب والسنّة من عبادة مخصوصة أو أيام فاضلة.
 // فلا مولد، ولا نصف شعبان، ولا سابع وعشرين رجب — لأنها بلا دليل صحيح.
+//
+// والمناسبات بيانات لا نصوص: العنوان والوصف من كلامنا، والدليل معرّفٌ يُحلّ متنُه
+// من quran.json وhadith.json عند العرض. وما لم نجد له في بياناتنا مدخلًا بقي لفظُه
+// مكتوبًا كما كان — لا يُصحَّح ولا يُخرَّج من عندنا، ومواضعه الثلاثة مؤشَّرة أدناه.
+
+/// مصدرُ الدليل بمعرّفه. كان متنُه مكتوبًا هنا فاختلف رسمُ الآية عن مصحف التطبيق
+/// العثماني، وأُقصّت المتون بـ«…» — فصار يُحلّ من بياناته ليكون لفظُه لفظَها بحرفه.
+enum OccasionProof: Hashable {
+    case ayah(surah: Int, ayah: Int)
+    case hadith(id: String)
+    /// لفظٌ لا مدخل له في بيانات التطبيق. يبقى كما كُتب: لا يُصحَّح ولا يُخرَّج ولا
+    /// يُحذف من عندنا — وإدخالُ روايةٍ إلى hadith.json قرارُ صاحب التطبيق بمصدرٍ يعتمده.
+    case unsourced(text: String, source: String)
+}
 
 struct HijriOccasion: Identifiable, Hashable {
     let id: String
@@ -16,13 +30,33 @@ struct HijriOccasion: Identifiable, Hashable {
     let days: Int
     /// ما يُشرع فيها — بأسلوب التطبيق.
     let detail: String
-    /// الدليل: نصّ الحديث حين كان لفظه معلومًا، أو إحالته.
-    let evidence: String
-    let evidenceSource: String
+    /// الدليل بمعرّفه لا بمتنه.
+    let proof: OccasionProof
     let icon: String
     let accent: String
 
     var isMonthly: Bool { month == 0 }
+
+    /// متن الدليل كما في مصدره. يُحلّ عند الطلب لا عند بناء `all`: الودجة تبني
+    /// المناسبات لتكتب اسم اليوم القادم وحده، فلا يُفكّ لها المصحف ولا كتب الحديث.
+    var evidence: String {
+        switch proof {
+        case .ayah(let s, let a):     return Quran.text(AyahRef(surah: s, ayah: a)) ?? ""
+        case .hadith(let id):         return HadithLibrary.hadith(id: id)?.text ?? ""
+        case .unsourced(let t, _):    return t
+        }
+    }
+
+    /// سطر العزو: «سورة البقرة: 185» للآية، وتخريج الكتاب نفسِه للحديث.
+    var evidenceSource: String {
+        switch proof {
+        case .ayah(let s, let a):
+            guard let name = Quran.surah(s)?.name else { return "" }
+            return "سورة \(name): \(a.counterText)"
+        case .hadith(let id):         return HadithLibrary.hadith(id: id)?.citation ?? ""
+        case .unsourced(_, let s):    return s
+        }
+    }
 }
 
 enum Occasions {
@@ -31,50 +65,72 @@ enum Occasions {
 
     static func monthName(_ m: Int) -> String { (1...12).contains(m) ? monthNames[m - 1] : "" }
 
+    /// المعرّفات مأخوذة من quran.json وhadith.json؛ وما بقي متنُه مكتوبًا هنا
+    /// (`unsourced`) فليس له في بيانات التطبيق مدخل، وموضعه دون ذلك في التعليق.
     static let all: [HijriOccasion] = [
+        // r1246 لا r1167: المتنان واحد وتخريجهما واحد، ورقم 1246 واقعٌ في باب الصيام
+        // من رياض الصالحين، فيقع القارئ من الكتاب على بابه لا على باب قيام الليل.
         .init(id: "muharram", title: "بداية السنة الهجرية", month: 1, day: 1, days: 1,
               detail: "محرم شهرٌ حرام، وصيامه من أفضل الصيام بعد رمضان. وليس لأول السنة عبادة مخصوصة.",
-              evidence: "أفضل الصيام بعد رمضان شهر الله المحرم.", evidenceSource: "رواه مسلم",
+              proof: .hadith(id: "r1246"),
               icon: "moon.fill", accent: "night"),
+        // لفظ أبي قتادة عند مسلم «يكفر السنة الماضية». وكان المكتوب هنا «أحتسب على الله
+        // أن يكفّر السنة التي قبله» — روايةٌ أخرى للحديث نفسه ليست في بيانات التطبيق.
         .init(id: "ashura", title: "تاسوعاء وعاشوراء", month: 1, day: 9, days: 2,
               detail: "يُستحب صيام العاشر من محرم، ويُصام التاسع معه مخالفةً لليهود.",
-              evidence: "صيام يوم عاشوراء أحتسب على الله أن يكفّر السنة التي قبله.", evidenceSource: "رواه مسلم",
+              proof: .hadith(id: "r1252"),
               icon: "sun.max.fill", accent: "gold"),
+        // الآية تُعرض تامّةً من المصحف: كانت مكتوبةً هنا مقصوصةً بـ«…» وبرسمٍ إملائي
+        // يخالف عثمانيَّ quran.json (ٱلَّذِىٓ وٱلْقُرْءَانُ) — فصارت تُحلّ بمعرّفها.
         .init(id: "ramadan", title: "شهر رمضان", month: 9, day: 1, days: 30,
               detail: "شهر الصيام والقيام والقرآن والصدقة — فُرض صيامه على كل مسلم بالغ قادر.",
-              evidence: "شَهْرُ رَمَضَانَ الَّذِي أُنزِلَ فِيهِ الْقُرْآنُ… فَمَن شَهِدَ مِنكُمُ الشَّهْرَ فَلْيَصُمْهُ", evidenceSource: "البقرة: 185",
+              proof: .ayah(surah: 2, ayah: 185),
               icon: "moon.stars.fill", accent: "green"),
+        // r1192 هو لفظ «في الوتر» بعينه، وهو ما يعد به الوصف؛ وضميرُ «وعنها» في أوّله
+        // لعائشة رضي الله عنها كما في سياق الكتاب — ولم يُبدَّل بغيره كي لا يُبدَّل المتن.
         .init(id: "lastTen", title: "العشر الأواخر من رمضان", month: 9, day: 21, days: 10,
               detail: "أفضل ليالي السنة، وفيها ليلة القدر — تُلتمس في الوتر منها، ويُسنّ الاعتكاف والاجتهاد في القيام.",
-              evidence: "تحرّوا ليلة القدر في الوتر من العشر الأواخر من رمضان.", evidenceSource: "رواه البخاري",
+              proof: .hadith(id: "r1192"),
               icon: "sparkles", accent: "dusk"),
+        // حديث زكاة الفطر ليس في رياض الصالحين ولا في الأربعين، فليس له معرّف يُحال
+        // عليه. يبقى لفظه وعزوه كما كُتبا حتى يُدخل صاحبُ التطبيق روايةً بمصدرٍ يعتمده.
         .init(id: "fitr", title: "عيد الفطر", month: 10, day: 1, days: 1,
               detail: "تُخرج زكاة الفطر قبل صلاة العيد، وتُصلّى صلاة العيد جماعة، ويحرم صيام يوم العيد.",
-              evidence: "فرض رسول الله ﷺ زكاة الفطر… وأمر بها أن تُؤدّى قبل خروج الناس إلى الصلاة.", evidenceSource: "متفق عليه",
+              proof: .unsourced(text: "فرض رسول الله ﷺ زكاة الفطر… وأمر بها أن تُؤدّى قبل خروج الناس إلى الصلاة.",
+                                source: "متفق عليه"),
               icon: "gift.fill", accent: "dawn"),
         .init(id: "shawwal6", title: "ست من شوال", month: 10, day: 2, days: 28,
               detail: "صيام ستة أيام من شوال بعد رمضان — متتابعة أو متفرقة — يعدل صيام السنة كلها.",
-              evidence: "من صام رمضان ثم أتبعه ستًّا من شوال كان كصيام الدهر.", evidenceSource: "رواه مسلم",
+              proof: .hadith(id: "r1254"),
               icon: "6.circle.fill", accent: "sea"),
+        // r1249 لفظ البخاري بتمامه، وفيه سؤالهم عن الجهاد وجوابه ﷺ. وكان العزو المكتوب
+        // هنا يجمع أبا داود والترمذي وابن ماجه — والتخريج الآن من الكتاب نفسه لا منّا.
         .init(id: "dhulhijjah10", title: "عشر ذي الحجة", month: 12, day: 1, days: 9,
               detail: "أفضل أيام الدنيا: يُكثَر فيها من الذكر والتكبير والصيام والصدقة.",
-              evidence: "ما من أيام العمل الصالح فيهن أحبّ إلى الله من هذه الأيام العشر.", evidenceSource: "رواه أبو داود والترمذي وابن ماجه، وأصله في البخاري",
+              proof: .hadith(id: "r1249"),
               icon: "10.circle.fill", accent: "gold"),
+        // وعرفة كعاشوراء: لفظ مسلم «يكفر السنة الماضية والباقية» من رواية أبي قتادة.
         .init(id: "arafah", title: "يوم عرفة", month: 12, day: 9, days: 1,
               detail: "يُستحب صيامه لغير الحاج، ويُكثَر فيه من الدعاء والتهليل.",
-              evidence: "صيام يوم عرفة أحتسب على الله أن يكفّر السنة التي قبله والسنة التي بعده.", evidenceSource: "رواه مسلم",
+              proof: .hadith(id: "r1250"),
               icon: "mountain.2.fill", accent: "maghrib"),
+        // وكذلك النهي عن صوم العيدين: لا مدخل له في بيانات التطبيق — يبقى كما كُتب.
         .init(id: "adha", title: "عيد الأضحى", month: 12, day: 10, days: 1,
               detail: "صلاة العيد ثم الأضحية لمن قدر عليها، ويحرم صيامه.",
-              evidence: "نهى النبي ﷺ عن صوم يومين: يوم الفطر ويوم النحر.", evidenceSource: "متفق عليه",
+              proof: .unsourced(text: "نهى النبي ﷺ عن صوم يومين: يوم الفطر ويوم النحر.",
+                                source: "متفق عليه"),
               icon: "gift.fill", accent: "dawn"),
+        // وحديث أيام التشريق ثالثُها: ليس في الكتابين، فلم يُختلق له معرّف ولا تخريج.
         .init(id: "tashreeq", title: "أيام التشريق", month: 12, day: 11, days: 3,
               detail: "أيام أكل وشرب وذكر لله؛ لا يُصام فيها إلا لمتمتّع أو قارن لم يجد الهدي.",
-              evidence: "أيام التشريق أيام أكل وشرب وذكر لله.", evidenceSource: "رواه مسلم",
+              proof: .unsourced(text: "أيام التشريق أيام أكل وشرب وذكر لله.",
+                                source: "رواه مسلم"),
               icon: "flame.fill", accent: "asr"),
+        // r1258 لا r1139: المتن واحد، ونصّ r1139 يُذيَّل بكلام النووي في وقت الإيتار
+        // وفيه علامة اقتباس زائدة — فيُقرأ على البطاقة كأنّه من الحديث وليس منه.
         .init(id: "whiteDays", title: "الأيام البيض", month: 0, day: 13, days: 3,
               detail: "صيام الثالث عشر والرابع عشر والخامس عشر من كل شهر هجري.",
-              evidence: "أوصاني خليلي ﷺ بثلاث: صيام ثلاثة أيام من كل شهر، وركعتي الضحى، وأن أوتر قبل أن أنام.", evidenceSource: "متفق عليه",
+              proof: .hadith(id: "r1258"),
               icon: "circle.lefthalf.filled", accent: "calm"),
     ]
 

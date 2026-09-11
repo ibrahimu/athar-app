@@ -98,12 +98,16 @@ struct PrayerOffsetsView: View {
         .padding(.horizontal, 16).padding(.vertical, 9)
     }
 
+    /// هدف اللمس ٤٤ نقطة — أدنى ما يطاله الإصبع، وما يلتزمه التطبيق في أزراره.
+    /// وكان ٣٦×٣٢ والزرّان متلاصقان بلا فجوة: فالخطأ في الارتفاع يقع خارج الكبسولة
+    /// فلا يتحرّك شيء، والخطأ في العرض يقع على ضدّه — فيؤخّر من أراد التقديم.
+    /// والرسم على صغره كما هو؛ اتّسع الهدفُ وحده.
     private func step(_ icon: String, enabled: Bool, _ action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: icon)
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(enabled ? Theme.accent : Theme.inkFaint)
-                .frame(width: 36, height: 32)
+                .frame(width: 44, height: 44)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

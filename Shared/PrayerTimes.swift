@@ -62,7 +62,7 @@ enum CalculationMethod: String, CaseIterable, Identifiable {
     /// شرح يظهر تحت الاسم في شاشة الاختيار.
     var detail: String {
         switch self {
-        case .ummAlQura: return "المعتمدة في السعودية · الفجر 18.5° والعشاء بعد المغرب 90 دقيقة"
+        case .ummAlQura: return "المعتمدة في السعودية · الفجر 18.5° والعشاء بعد المغرب 90 دقيقة (120 في رمضان)"
         case .mwl:       return "الفجر 18° والعشاء 17°"
         case .egypt:     return "الفجر 19.5° والعشاء 17.5°"
         case .karachi:   return "الفجر والعشاء 18°"
@@ -95,8 +95,12 @@ enum CalculationMethod: String, CaseIterable, Identifiable {
     }
 
     /// Minutes after Maghrib, used when `ishaAngle` is nil.
-    var ishaInterval: Double {
-        self == .ummAlQura ? 90 : 0
+    /// تقويم أم القرى يجعلها تسعين دقيقة طوال العام ومئةً وعشرين في رمضان وحده،
+    /// فمن أهمل الشهر أذّن عشاءه قبل التقويم بنصف ساعة شهرًا كاملًا — على الطريقة
+    /// المختارة افتراضًا وفي مكة نفسها.
+    func ishaInterval(hijriMonth: Int) -> Double {
+        guard self == .ummAlQura else { return 0 }
+        return hijriMonth == 9 ? 120 : 90
     }
 }
 
@@ -152,9 +156,24 @@ struct PrayerTimes {
               let midnight = calendar.date(from: DateComponents(year: year, month: month, day: day))
         else { return nil }
 
+        // اليومُ يُختار بمنطقة المكان (أعلاه)، ثم تُبنى لحظاتُه على منتصف ليل غرينتش لا
+        // على منتصف ليل المدينة: الحساب كلّه بتوقيت غرينتش، فإضافةُ فرق المنطقة إلى
+        // الساعات ثم البناءُ على منتصف ليلٍ محليٍّ حَمْلٌ للفرق مرّتين — يصحّ ما دام
+        // الفرقان واحدًا، ويخطئ يومَ تبديل التوقيت الصيفيّ ساعةً كاملة. وليس لبيروت
+        // منتصفُ ليلٍ ذلك اليوم أصلًا: ساعتها تقفز من الثانية عشرة إلى الواحدة، فيردّ
+        // التقويم منتصفَ الليل إلى الواحدة ويُبنى عليه جدولُ اليوم كلّه مزاحًا.
+        var utcCalendar = Calendar(identifier: .gregorian)
+        utcCalendar.timeZone = .gmt
+        guard let utcMidnight = utcCalendar.date(from: DateComponents(year: year, month: month, day: day))
+        else { return nil }
+
         let lat = coordinate.latitude
         let lng = coordinate.longitude
-        let tzOffset = Double(timeZone.secondsFromGMT(for: date)) / 3600
+        // فاصلُ العشاء في أم القرى يتبدّل برمضان، فيلزم شهرُ اليوم هجريًّا. ويُقاس
+        // بمنطقة المكان لا بمنطقة الجهاز — الوقت وقتُ المدينة، ومن قاسه بأرضٍ أخرى
+        // سبق رأسُ الشهر عنده يومًا أو تأخّر. والإزاحة إزاحةُ المستخدم نفسها كي لا
+        // يفترق رمضانُ المواقيت عن رمضان التقويم في رأس الشاشة.
+        let ishaInterval = method.ishaInterval(hijriMonth: Self.hijriMonth(of: midnight, in: timeZone))
 
         let jDate = Self.julianDate(year: year, month: month, day: day) - lng / (15 * 24)
 
@@ -211,7 +230,7 @@ struct PrayerTimes {
         let dhuhrT = Self.midDay(jDate + 0.5)
         let ishaT: Double
         if method.ishaAngle == nil {
-            ishaT = maghribT + method.ishaInterval / 60
+            ishaT = maghribT + ishaInterval / 60
         } else if let angle = method.ishaAngle,
                   let t = sunAngleTime(angle, guess: 19, afterNoon: true) {
             ishaT = t
@@ -220,9 +239,10 @@ struct PrayerTimes {
             estimated = true
         }
 
+        // الساعاتُ شمسيّةٌ محليّة، فطرحُ الطول يردّها إلى غرينتش وتصير لحظةً في الكون
+        // لا تعرف ساعةَ بلدٍ ولا صيفَه. وقراءتُها بمنطقة المكان شأنُ العرض وحده.
         func stamp(_ hours: Double) -> Date {
-            let local = hours + tzOffset - lng / 15
-            return midnight.addingTimeInterval(local * 3600)
+            utcMidnight.addingTimeInterval((hours - lng / 15) * 3600)
         }
 
         self.usedHighLatitudeRule = estimated
@@ -232,14 +252,14 @@ struct PrayerTimes {
         // الوقت) والشروق إلى الدقيقة السابقة (احتياطًا لخروج وقت الفجر). كان العرض يقصّ الثواني
         // فيسبق الأذانُ التقويمَ بدقيقة. وفجر أم القرى الرسمي يتأخّر عن حساب 18.5° بنحو نصف دقيقة
         // (قورن بتقويم أم القرى لثلاث عشرة مدينة في 5 سبتمبر 2026: 12 من 13 مطابقة بعد هذا الضبط)،
-        // والعشاء فيه 90 دقيقة بعد المغرب المقرَّب لا الخام.
+        // وعشاؤه يُبنى على المغرب المقرَّب لا الخام.
         let fajrLead: TimeInterval = method == .ummAlQura ? 30 : 0
         let fajr = Self.rounded(stamp(fajrT).addingTimeInterval(fajrLead), up: true)
         let sunrise = Self.rounded(stamp(sunriseT), up: false)
         let dhuhr = Self.rounded(stamp(dhuhrT), up: true)
         let asr = Self.rounded(stamp(asrT), up: true)
         let maghrib = Self.rounded(stamp(maghribT), up: true)
-        let isha = method.ishaAngle == nil ? maghrib.addingTimeInterval(method.ishaInterval * 60)
+        let isha = method.ishaAngle == nil ? maghrib.addingTimeInterval(ishaInterval * 60)
                                            : Self.rounded(stamp(ishaT), up: true)
         self.times = [.fajr: fajr, .sunrise: sunrise, .dhuhr: dhuhr, .asr: asr, .maghrib: maghrib, .isha: isha]
     }
@@ -249,6 +269,20 @@ struct PrayerTimes {
         let t = date.timeIntervalSinceReferenceDate
         let m = up ? ceil(t / 60) : floor(t / 60)
         return Date(timeIntervalSinceReferenceDate: m * 60)
+    }
+
+    /// شهرُ اليوم الذي تقع فيه هذه اللحظة، هجريًّا وبمنطقة مكانه لا بمنطقة الجهاز:
+    /// الميقات يُحسب ليوم المدينة، ومن قاس شهرَه بأرضٍ أخرى سبقه رأسُ رمضان يومًا أو
+    /// تأخّر عنه. وتُردّ اللحظة إلى ظهيرة يومها لا إلى منتصف ليله: على الحدّ تمامًا
+    /// يتنازع اليومان اللحظةَ الواحدة، وإزاحةُ المطالع تُضاف بتقويم الجهاز فتزيد ساعةً
+    /// أو تنقصها عند تبديل التوقيت الصيفيّ — والظهيرةُ لا يزحزحها ذلك عن يومها.
+    static func hijriMonth(of moment: Date, in timeZone: TimeZone) -> Int {
+        var gregorian = Calendar(identifier: .gregorian)
+        gregorian.timeZone = timeZone
+        var hijri = Hijri.calendar
+        hijri.timeZone = timeZone
+        let noon = gregorian.startOfDay(for: moment).addingTimeInterval(12 * 3600)
+        return hijri.component(.month, from: Hijri.shifted(noon))
     }
 
     subscript(prayer: Prayer) -> Date? { times[prayer] }

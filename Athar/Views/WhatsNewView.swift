@@ -10,7 +10,7 @@ struct WhatsNewView: View {
     /// يُرفع مع كل إصدار يستحق العرض.
     static let version = "1.5"
 
-    private struct Item: Identifiable {
+    struct Item: Identifiable {
         let id: String
         let icon: String
         let accent: String
@@ -19,9 +19,14 @@ struct WhatsNewView: View {
         let tab: AppTab?
     }
 
-    private let items: [Item] = [
+    /// نصوصُ البطاقات ساكنةٌ ومكشوفةٌ للاختبار: أرقامُها غربيةٌ كأرقام التطبيق كلّه،
+    /// وهذا شرطٌ يُحرَس لا يُتذكَّر — الرقم الهنديّ هنا يخالف ما يقرؤه المستخدم في
+    /// الإشعار نفسه وفي كل عدّادٍ في التطبيق.
+    static let items: [Item] = [
         .init(id: "athan", icon: "bell.and.waves.left.and.right.fill", accent: "gold", title: "الأذان لا يفوتك",
-              detail: "يصلك الأذان في وقته ولو كان جهازك في وضع تركيز — وتُطفئ ذلك متى شئت. وفيه «صلّيتها في وقتها» و«ذكّرني بعد ١٠ دقائق»، ومواعيده مثبّتة على منطقة مكانك لا جهازك.", tab: .prayer),
+              // «ذكّرني بعد 10 دقائق» تُنقل كما تقرأها في الإشعار نفسه — والإشعار
+              // بالأرقام الغربية كما التطبيق كلّه، فلا يُكتب هنا رقمٌ يخالف ما يراه.
+              detail: "يصلك الأذان في وقته ولو كان جهازك في وضع تركيز — وتُطفئ ذلك متى شئت. وفيه «صلّيتها في وقتها» و«ذكّرني بعد 10 دقائق»، ومواعيده مثبّتة على منطقة مكانك لا جهازك.", tab: .prayer),
         .init(id: "friday", icon: "sun.max.fill", accent: "gold", title: "يوم الجمعة في مكان واحد",
               detail: "سبع سنن تُعلّمها كلٌّ بدليلها، وسورة الكهف صفحةً أو آيةً آية، وعدّاد الصلاة على النبي ﷺ، وبطاقات جمعة تُشارك.", tab: .friday),
         .init(id: "khatmah-dua", icon: "hands.sparkles.fill", accent: "gold", title: "دعاء الختمة",
@@ -70,7 +75,7 @@ struct WhatsNewView: View {
                     .padding(.top, 22)
 
                     SettingsCard {
-                        ForEach(Array(items.enumerated()), id: \.element.id) { i, item in
+                        ForEach(Array(Self.items.enumerated()), id: \.element.id) { i, item in
                             Button {
                                 onClose()
                                 if let tab = item.tab { onOpen?(tab) }
@@ -84,7 +89,7 @@ struct WhatsNewView: View {
                             }
                             .buttonStyle(.plain)
                             .appearStagger(i)
-                            if i < items.count - 1 { SettingsDivider() }
+                            if i < Self.items.count - 1 { SettingsDivider() }
                         }
                     }
 

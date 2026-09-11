@@ -54,6 +54,18 @@ final class LocationProvider: NSObject, ObservableObject {
             failed = true
         }
     }
+
+    /// كتابةُ ما وصل: الإحداثيّ، والاسمُ كما جاء من الجيوكودر — ولو كان خيبة.
+    ///
+    /// اسمُ المدينة نداءٌ شبكيّ يخيب بلا إنترنت، والإحداثيّ وحده يكفي للمواقيت. فإن خاب
+    /// مرّ الغياب إلى المخزن ليكتب اسمه الاحتياطي. أمّا أن نُعيد إليه الاسمَ المحفوظ —
+    /// وهو ما كان — فيعني أن يقرأ المسافرُ «الرياض» فوق مواقيت أبها، وأن يرى فاتحُ
+    /// التطبيق أوّلَ مرّةٍ بلا شبكة «مكة المكرمة» فوق إحداثيّ بيته: اسمٌ كاذب أسوأ من
+    /// لا اسم، والحارسُ الذي في المخزن يبطُل بذلك ولا يُحسّ.
+    func apply(_ coordinate: CLLocationCoordinate2D, name: String?) {
+        store.setDeviceLocation(coordinate, name: name)
+        isResolving = false
+    }
 }
 
 extension LocationProvider: CLLocationManagerDelegate {
@@ -76,11 +88,8 @@ extension LocationProvider: CLLocationManagerDelegate {
     nonisolated func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let location = locations.last else { return }
         Task { @MainActor in
-            // اسمُ المدينة نداءٌ شبكيّ: إن خاب فلا يُكتب اسمٌ احتياطي فوق اسمٍ صحيح
-            // محفوظ — التطبيق يعمل بلا إنترنت، والإحداثيّ وحده يكفي للمواقيت.
             let name = await Self.placeName(for: location)
-            store.setDeviceLocation(location.coordinate, name: name ?? store.placeName)
-            isResolving = false
+            apply(location.coordinate, name: name)
         }
     }
 

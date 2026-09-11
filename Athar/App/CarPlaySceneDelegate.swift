@@ -1,5 +1,52 @@
 import UIKit
 import CarPlay
+import Combine
+
+/// لقطةُ ما نُزّل على القرص: أرقامُ السور المحفوظة لكل قارئ.
+///
+/// كانت كلُّ إعادةِ بناءٍ لقوائم CarPlay تسأل نظامَ الملفّات عن كل سورةٍ لكل قارئ —
+/// ألفان وأربعمئةٍ وسبعةٌ وخمسون نداءً، على الممثّل الرئيس، والسيارةُ أسوأُ موضعٍ
+/// للتلعثم. فتُقرأ اللقطةُ مرّةً بمسحٍ واحدٍ للمجلّدات (ثمانيةَ عشرَ نداءً)، ثمّ
+/// تُبنى القوائمُ من الذاكرة بلا مساسٍ بالقرص.
+struct CarPlayDownloads: Equatable, Sendable {
+    /// معرّفُ القارئ ← أرقامُ سوره المحمَّلة.
+    var sets: [String: Set<Int>] = [:]
+
+    func surahs(_ reciter: String) -> Set<Int> { sets[reciter] ?? [] }
+    func count(_ reciter: String) -> Int { sets[reciter]?.count ?? 0 }
+
+    /// يُبنى من أسماء الملفّات وحدها — فيُختبر بلا قرصٍ ولا سيارة. والاسمُ الذي لا
+    /// يوافق «ثلاثُ خاناتٍ ثمّ mp3.» لسورةٍ من المصحف يُطرح: ملفٌّ غريبٌ لا يُعدّ سورة.
+    static func make(_ listing: [String: [String]]) -> CarPlayDownloads {
+        var sets: [String: Set<Int>] = [:]
+        for (reciter, names) in listing {
+            var ids: Set<Int> = []
+            for name in names where name.hasSuffix(".mp3") {
+                guard let n = Int(name.dropLast(4)), (1...114).contains(n) else { continue }
+                ids.insert(n)
+            }
+            sets[reciter] = ids
+        }
+        return CarPlayDownloads(sets: sets)
+    }
+
+    /// مسحٌ واحدٌ لجذر التلاوات: مجلّدُ كل قارئ يُقرأ مرّةً بدل سؤالٍ عن كل ملف.
+    static func read(root: URL = RecitationLibrary.root) -> CarPlayDownloads {
+        let fm = FileManager.default
+        let dirs = (try? fm.contentsOfDirectory(at: root, includingPropertiesForKeys: nil,
+                                                options: [.skipsHiddenFiles])) ?? []
+        var listing: [String: [String]] = [:]
+        for dir in dirs {
+            listing[dir.lastPathComponent] = (try? fm.contentsOfDirectory(atPath: dir.path)) ?? []
+        }
+        return make(listing)
+    }
+
+    /// ويُقرأ خارج الممثّل الرئيس: انتظارُ القرص وأنت تسوق يُرى تلعثمًا في الشاشة.
+    static func readOffMain() async -> CarPlayDownloads {
+        await Task.detached(priority: .utility) { read() }.value
+    }
+}
 
 /// CarPlay: القرآنُ في الطريق.
 ///
@@ -22,12 +69,24 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
     private var recitersTemplate: CPListTemplate?
     private var observers: [NSObjectProtocol] = []
     private var refreshTask: Task<Void, Never>?
+    /// مهامٌّ مؤقّتة تُمسك بمقبضها لتُلغى عند فصل السيارة — وإلا بقيت تنبض بعد أن
+    /// تُطفأ الشاشة، ولا أحد ينظر.
+    private var nudgeTask: Task<Void, Never>?
+    private var scanTask: Task<Void, Never>?
+    private var downloadWatch: AnyCancellable?
+    /// ما على القرص محفوظًا: تُبنى منه القوائمُ الأربع بلا نداءٍ واحدٍ لنظام الملفّات.
+    private var disk = CarPlayDownloads()
+    /// تبدّل القرصُ أثناء مسحه؟ يُعاد المسحُ جولةً أخرى بدل أن تبقى اللقطة قديمة.
+    private var diskDirty = false
 
     // MARK: الاتصال
 
     func templateApplicationScene(_ scene: CPTemplateApplicationScene,
                                   didConnect interfaceController: CPInterfaceController) {
         interface = interfaceController
+        // أوّلُ مسحٍ يجري هنا مباشرةً: لقطةٌ واحدة تكفي القوائم الأربع، وبناؤها على
+        // لقطةٍ فارغة كان سيُري السائق «لم تنزّل شيئًا بعد» ثمّ يبدّلها بعد لحظة.
+        disk = .read()
         interfaceController.setRootTemplate(rootTemplate(), animated: false, completion: nil)
         watchPlayback()
         // وصلت السيارة والصوتُ يعمل: تُعرض شاشةُ التشغيل مباشرةً بدل قائمةٍ تُتصفَّح.
@@ -38,10 +97,20 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
 
     func templateApplicationScene(_ scene: CPTemplateApplicationScene,
                                   didDisconnectInterfaceController interfaceController: CPInterfaceController) {
+        teardown()
+    }
+
+    /// وتُفصل الشاشةُ من طريقٍ آخر أيضًا، فيُجمع الوقفُ في موضعٍ واحدٍ يُستدعى مرّتين
+    /// بلا ضرر: نبضةٌ تبقى بعد الفصل توقظ التطبيق كلّ ثانيتين ولا شاشةَ تقرؤها.
+    func sceneDidDisconnect(_ scene: UIScene) { teardown() }
+
+    private func teardown() {
         observers.forEach { NotificationCenter.default.removeObserver($0) }
         observers = []
-        refreshTask?.cancel()
-        refreshTask = nil
+        downloadWatch = nil
+        refreshTask?.cancel(); refreshTask = nil
+        nudgeTask?.cancel(); nudgeTask = nil
+        scanTask?.cancel(); scanTask = nil
         interface = nil
         nowTemplate = nil; surahsTemplate = nil; downloadedTemplate = nil; recitersTemplate = nil
     }
@@ -161,7 +230,7 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
     }
 
     private func surahItem(_ su: Surah) -> CPListItem {
-        let has = RecitationLibrary.isDownloaded(reciter: Recitation.shared.reciterId, surah: su.id)
+        let has = disk.surahs(Recitation.shared.reciterId).contains(su.id)
         let item = CPListItem(text: "\(su.id.counterText). سورة \(su.name)",
                               detailText: has ? "محمَّلة — تعمل بلا شبكة" : su.ayahCount.ayahCountText)
         item.isPlaying = Recitation.shared.surah == su.id && Recitation.shared.isPlaying
@@ -188,9 +257,7 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
     /// ما يعمل بلا شبكة — وهو أنفع ما في السيارة: النفق والطريق الخارجي يقطعان البثّ.
     private func downloadedSections() -> [CPListSection] {
         let id = Recitation.shared.reciterId
-        let items = Quran.surahs
-            .filter { RecitationLibrary.isDownloaded(reciter: id, surah: $0.id) }
-            .map { surahItem($0) }
+        let items = disk.surahs(id).sorted().compactMap { Quran.surah($0) }.map { surahItem($0) }
         guard !items.isEmpty else {
             let empty = CPListItem(text: "لم تنزّل شيئًا بعد",
                                    detailText: "نزّل سورًا من التطبيق لتسمعها في الطريق بلا شبكة")
@@ -212,7 +279,7 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
     private func reciterSections() -> [CPListSection] {
         let current = Recitation.shared.reciterId
         let items = RecitationLibrary.reciters.map { r -> CPListItem in
-            let count = Recitation.shared.downloadedSummary(reciter: r.id).count
+            let count = disk.count(r.id)
             let item = CPListItem(text: r.name,
                                   detailText: count > 0 ? "\(count.counterText) محمَّلة" : nil,
                                   image: nil,
@@ -280,14 +347,45 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
             }
             observers.append(o)
         }
+        // ودورةُ التنزيل لا إشعارَ لها يُسمع، وحالةُ التنزيلات أقربُ ما يُنبئ عن تبدّل
+        // القرص: تُكتب عند تمام السورة، وعند حذفها، وعند حذف القارئ كلّه.
+        downloadWatch = Recitation.shared.$downloads
+            .receive(on: DispatchQueue.main)
+            .sink { [weak self] _ in MainActor.assumeIsolated { self?.invalidateDisk() } }
+
+        refreshTask?.cancel()
         refreshTask = Task { @MainActor [weak self] in
             // مراقبةُ حالة التشغيل نفسها: الإشعار يُرسل عند البدء لا عند الوقف والاستئناف.
+            // ولا تمسّ هذه النبضةُ القرص — تقارن نصًّا في الذاكرة — وتموت بإلغاء المهمّة
+            // لا بعد جولةٍ أخرى: النومُ يُترك لخطئه بدل ابتلاعه بـ try?.
             var last = Self.snapshot()
             while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(2))
+                do { try await Task.sleep(for: .seconds(2)) } catch { return }
                 let now = Self.snapshot()
                 if now != last { last = now; self?.refreshAll() }
             }
+        }
+    }
+
+    /// إعادةُ قراءة القرص تُجمَّع ولا تتكرّر: التنزيل يبثّ تقدّمه عشراتِ المرّات في
+    /// الثانية، ومسحٌ لكلّ نبضةٍ عبث. فيُؤخَّر قليلًا حتى يهدأ، ولا يجري إلا مسحٌ واحدٌ
+    /// في وقتٍ واحد، وما وقع أثناءه يُجمَع في جولةٍ تالية.
+    private func invalidateDisk() {
+        guard scanTask == nil else { diskDirty = true; return }
+        diskDirty = false
+        scanTask = Task { @MainActor [weak self] in
+            var again = true
+            while again {
+                do { try await Task.sleep(for: .milliseconds(400)) } catch { break }
+                guard let self, !Task.isCancelled else { break }
+                self.diskDirty = false
+                let fresh = await CarPlayDownloads.readOffMain()
+                guard !Task.isCancelled else { break }
+                // ولا تُعاد صياغةُ القوائم إلا إن تبدّل القرصُ فعلًا.
+                if fresh != self.disk { self.disk = fresh; self.refreshAll() }
+                again = self.diskDirty
+            }
+            self?.scanTask = nil
         }
     }
 
@@ -297,8 +395,10 @@ final class CarPlaySceneDelegate: UIResponder, CPTemplateApplicationSceneDelegat
     }
 
     private func scheduleRefresh() {
-        Task { @MainActor [weak self] in
-            try? await Task.sleep(for: .milliseconds(300))
+        // وتُلغى النبضةُ السابقة: إشعاراتٌ متتابعة كانت تخلّف مهامًّا لا مقبضَ لها ولا وقف.
+        nudgeTask?.cancel()
+        nudgeTask = Task { @MainActor [weak self] in
+            do { try await Task.sleep(for: .milliseconds(300)) } catch { return }
             self?.refreshAll()
         }
     }

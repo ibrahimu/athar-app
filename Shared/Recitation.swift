@@ -200,6 +200,10 @@ final class Recitation: NSObject, ObservableObject {
     private var rateTask: Task<Void, Never>?
     private var failObserver: NSObjectProtocol?
     private var sessionObservers: [NSObjectProtocol] = []
+    /// أكانت السورة تُتلى حين قطعها النظام؟ يُلتقط عند القطع لا عند انتهائه، لأن
+    /// ما بعده لا يدلّ عليه: تلاوةُ الآيات توقفنا مؤقّتًا ثم يأتي إذن الاستئناف
+    /// فنعود فوقها، ومؤقّت النوم يُنهي التلاوة في أثناء المكالمة فنعود بعد نومه.
+    private var wasInterruptedWhilePlaying = false
     #if canImport(UIKit)
     private var bgTask: UIBackgroundTaskIdentifier = .invalid
     #endif
@@ -234,11 +238,18 @@ final class Recitation: NSObject, ObservableObject {
             MainActor.assumeIsolated {
                 switch type {
                 case .began:
+                    self.wasInterruptedWhilePlaying = self.isPlaying
                     self.pause()
                 case .ended:
                     let opts = AVAudioSession.InterruptionOptions(
                         rawValue: n.userInfo?[AVAudioSessionInterruptionOptionKey] as? UInt ?? 0)
-                    if opts.contains(.shouldResume), self.surah != nil { self.resume() }
+                    // لا نعود إلا إن كنّا نحن من قُطع وهو يعمل، ولم تصر تلاوةُ الآيات
+                    // هي الجارية — وهو شرط أزرار شاشة القفل نفسه.
+                    if opts.contains(.shouldResume), self.wasInterruptedWhilePlaying,
+                       self.surah != nil, !AyahAudio.shared.isActive {
+                        self.resume()
+                    }
+                    self.wasInterruptedWhilePlaying = false
                 @unknown default:
                     break
                 }
@@ -417,6 +428,7 @@ final class Recitation: NSObject, ObservableObject {
         sleep = .off; sleepEndsAt = nil
         surah = nil
         isPlaying = false
+        wasInterruptedWhilePlaying = false
         isBuffering = false
         progress = 0; elapsed = 0; duration = 0
         MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
@@ -464,6 +476,8 @@ final class Recitation: NSObject, ObservableObject {
                 await MainActor.run {
                     guard let self else { return }
                     self.pause()
+                    // انطفأ المؤقّت في أثناء مكالمة؟ فلا عودة بعدها: أوقفه النومُ لا هي.
+                    self.wasInterruptedWhilePlaying = false
                     self.sleep = .off
                     self.sleepEndsAt = nil
                 }

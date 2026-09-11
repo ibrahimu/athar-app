@@ -50,6 +50,8 @@ final class AyahAudio: NSObject, ObservableObject {
     private var failObserver: NSObjectProtocol?
     private var endObserver: NSObjectProtocol?
     private var statusObserver: NSKeyValueObservation?
+    /// يعكس حالة المشغّل الحقيقية (توقّف النظام له، أو تعثّر الجلب) على isPlaying.
+    private var rateTask: Task<Void, Never>?
     private var playedTimes = 0
     private var onAdvance: ((AyahRef) -> Void)?
     private var onFinish: (() -> Void)?
@@ -66,6 +68,21 @@ final class AyahAudio: NSObject, ObservableObject {
         NotificationCenter.default.addObserver(forName: AVAudioSession.interruptionNotification, object: nil, queue: .main) { [weak self] n in
             Task { @MainActor in self?.handleInterruption(n) }
         }
+        // نزعُ السمّاعة يوقف المشغّل من دوننا، وكان الشريط يبقى يقول «يُتلى» فلا يعود
+        // إلا بضغطتين — كما ترصده التلاوة والإذاعة، ولم يكن هذا يرصده.
+        NotificationCenter.default.addObserver(forName: AVAudioSession.routeChangeNotification, object: nil, queue: .main) { [weak self] n in
+            guard let raw = n.userInfo?[AVAudioSessionRouteChangeReasonKey] as? UInt,
+                  AVAudioSession.RouteChangeReason(rawValue: raw) == .oldDeviceUnavailable else { return }
+            Task { @MainActor in self?.pauseForRouteChange() }
+        }
+    }
+
+    /// نُزعت السمّاعة: لا نفاجئه بالمكبّر.
+    private func pauseForRouteChange() {
+        guard let p = player, isPlaying else { return }
+        p.pause()
+        isPlaying = false
+        updateNowPlayingRate()
     }
 
     private func handleInterruption(_ n: Notification) {
@@ -179,6 +196,17 @@ final class AyahAudio: NSObject, ObservableObject {
         let p = AVPlayer(playerItem: item)
         p.automaticallyWaitsToMinimizeStalling = true
         player = p
+        // الحقيقة من المشغّل نفسه: لو أوقفه النظام (مكالمة) أو تعثّر جلب المقطع،
+        // تتبعه الواجهة — وإلا قال الشريط «يُتلى» على مشغّلٍ صامت.
+        rateTask = Task { [weak self] in
+            for await st in p.publisher(for: \.timeControlStatus).values {
+                guard let self, self.player === p else { return }
+                if self.failed { continue }   // الفشل قولٌ أخير، لا تنقضه حالةُ مشغّلٍ متوقّف
+                self.isPlaying = st != .paused
+                self.isLoading = st == .waitingToPlayAtSpecifiedRate
+                self.updateNowPlayingRate()
+            }
+        }
         statusObserver = item.observe(\.status, options: [.new]) { [weak self] item, _ in
             Task { @MainActor in
                 guard let self else { return }
@@ -259,6 +287,10 @@ final class AyahAudio: NSObject, ObservableObject {
     }
 
     func stop() {
+        // تستدعيه المحرّكات الأخرى دفاعًا قبل أن تبدأ صوتها، ولو لم نكن نتلو شيئًا.
+        // وبطاقةُ شاشة القفل مشتركة: كنّا نمسحها في الحالين، فتختفي التلاوةُ الموقوفة
+        // من الشاشة ولا يعيدها من أوقفها. فما لم نكن نحن المشغّل فلا نمسّ شيئًا.
+        guard current != nil || player != nil else { return }
         onFinish = nil
         tearDown()
         current = nil
@@ -273,6 +305,7 @@ final class AyahAudio: NSObject, ObservableObject {
     }
 
     private func tearDown() {
+        rateTask?.cancel(); rateTask = nil
         if let o = endObserver { NotificationCenter.default.removeObserver(o); endObserver = nil }
         if let o = failObserver { NotificationCenter.default.removeObserver(o); failObserver = nil }
         statusObserver = nil

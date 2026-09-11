@@ -139,6 +139,19 @@ struct SurahReaderView: View {
     private var sidePanel: Bool { store.mushafSpread == .tafsir }
     private var panelRef: AyahRef { selected ?? currentRef ?? scrollTo ?? AyahRef(surah: surahId, ayah: 1) }
 
+    /// عرض القارئ كما وقع فعلًا — لا صنفُ حجمٍ وحده ولا اتّجاهُ شاشة.
+    ///
+    /// صنف الحجم يقول «عريض» لأعراضٍ متباعدة: الآيباد في نصف الشاشة المنقسمة عريضٌ
+    /// وهو دون سبعمئة نقطة، والهاتف المطويّ عريضٌ في الصنفين معًا حين يُفتح ومضغوطٌ
+    /// حين يُطبق. فالقياس وحده يقول ما يسع، والصنف يقول ما يليق.
+    @State private var readerWidth: CGFloat = 0
+
+    /// عرض اللوحة الآن، أو nil إن لم يتّسع لها المكان.
+    private var tafsirWidth: CGFloat? {
+        guard sizeClass == .regular else { return nil }
+        return TafsirPanel.width(available: readerWidth)
+    }
+
     /// عَرضتان متقابلتان: الشاشة العريضة وحدها تحملهما، والهاتف لا يسع إلا واحدة.
     private var twoPages: Bool { sizeClass == .regular && store.mushafSpread == .two }
 
@@ -191,13 +204,13 @@ struct SurahReaderView: View {
         }
     }
 
-    /// لوحة التفسير الجانبية (iPad).
-    private var tafsirPanel: some View {
+    /// لوحة التفسير الجانبية (الشاشات العريضة) — عرضها محسوبٌ لا مكتوب.
+    private func tafsirPanel(width: CGFloat) -> some View {
         HStack(spacing: 0) {
             Divider()
             TafsirSheet(ref: panelRef, inline: true)
                 .id(panelRef)
-                .frame(width: 400)
+                .frame(width: width)
         }
     }
 
@@ -205,8 +218,16 @@ struct SurahReaderView: View {
         // مقسوم إلى أجزاء صغيرة: تعبير واحد كبير كان يُعجز المُحلِّل عن تحديد نوعه.
         HStack(spacing: 0) {
             readerCore
-            if sizeClass == .regular && sidePanel { tafsirPanel }
+            if sidePanel, let w = tafsirWidth { tafsirPanel(width: w) }
         }
+        // يُقاس العرض المتاح كما يُقاس الشريط السفلي وارتفاعُ الصفحة: القارئ يملأ
+        // ما بقي، فقياسُ الكومة قياسٌ للمتاح، ولا يدور القياس على نفسه.
+        .background(
+            GeometryReader { g in
+                Color.clear.preference(key: ReaderWidthKey.self, value: g.size.width)
+            }
+        )
+        .onPreferenceChange(ReaderWidthKey.self) { w in readerWidth = w }
         .overlay(alignment: .bottom) {
             VStack(spacing: 6) {
                 if ayahAudio.isActive { AyahPlayerBar(audio: ayahAudio, palette: palette) }
@@ -253,7 +274,9 @@ struct SurahReaderView: View {
                 }
                 .accessibilityLabel(loc("ضوابط القراءة"))
             }
-            if sizeClass == .regular {
+            // الزرّ يتبع ما يسعه المكان لا صنف الحجم: على عرضٍ لا يحمل اللوحة كان
+            // يبقى ظاهرًا فيضغطه القارئ ولا يتغيّر شيء.
+            if tafsirWidth != nil {
                 ToolbarItem(placement: .topBarTrailing) {
                     // الزرّ يكتب في المخزن كما تكتب الضوابط: طريقان إلى خيارٍ واحد.
                     Button { withAnimation(Motion.snappy) { store.mushafSpread = sidePanel ? .one : .tafsir } } label: {
@@ -1162,6 +1185,36 @@ private struct PageHeightKey: PreferenceKey {
 private struct BottomBarHeightKey: PreferenceKey {
     static let defaultValue: CGFloat = 0
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
+}
+
+/// عرض القارئ المتاح — تُقاس به لوحة التفسير نسبةً لا مقدارًا ثابتًا.
+private struct ReaderWidthKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
+}
+
+/// حساب لوحة التفسير الجانبية — نسبةً من المتاح، وللمصحف أرضٌ لا ينزل عنها.
+///
+/// كانت أربعمئة نقطةٍ مكتوبة، ولا تصلح مكتوبةً لشيء: على الآيباد في نصف الشاشة
+/// المنقسمة تأكل ثلثي العرض فيبقى للمصحف ما لا يُقرأ، وعلى الشاشة الواسعة تبدو
+/// شريطًا ضامرًا إلى جانب فراغ. والهاتف المطويّ زاد الأمر بيانًا: داخلُه عريضٌ في
+/// صنفَي الحجم معًا، وغلافُه مضغوط — فالمقاس متّصلٌ لا حالتان، وصنفُ الحجم وحده
+/// لا يقول كم يسع. فالنسبة تُقاس، ولا لوحة أصلًا إن لم يبقَ للمصحف عرضُ صفحةِ هاتف.
+///
+/// خارج الشاشة كي يُحسب بأعراض الأجهزة الحقيقية في الاختبار.
+enum TafsirPanel {
+    static let fraction: CGFloat = 0.36
+    static let minWidth: CGFloat = 280
+    static let maxWidth: CGFloat = 460
+    /// أرض المصحف: عرضُ هاتفٍ قياسيّ — دونه تُصغَّر الصفحة حتى لا تُقرأ.
+    static let readerFloor: CGFloat = 380
+
+    /// عرض اللوحة في هذا المتاح، أو nil إن لم يتّسع لها ولأرض المصحف معًا.
+    static func width(available: CGFloat) -> CGFloat? {
+        guard available > 0 else { return nil }
+        let w = min(maxWidth, max(minWidth, available * fraction))
+        return available - w >= readerFloor ? w : nil
+    }
 }
 
 // MARK: - ضوابط القراءة

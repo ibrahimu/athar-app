@@ -169,7 +169,21 @@ struct WatchTasbihPage: View {
     @State private var crownAnchor: Double = 0
     @FocusState private var crownFocused: Bool
 
-    private let phrases = ["سُبْحَانَ اللهِ", "الْحَمْدُ لِلهِ", "اللهُ أَكْبَرُ", "أَسْتَغْفِرُ اللهَ", "لَا إِلَهَ إِلَّا اللهُ", "سُبْحَانَ اللهِ وَبِحَمْدِهِ"]
+    /// عبارات المسبحة نصٌّ شرعيّ: تُستخرج من adhkar.json بمعرّفاتها ولا تُكتب هنا.
+    /// وكانت منسوخةً في السويفت فزاغ تشكيلُ إحداها (t02) عن تشكيله في الملف: كسرةٌ
+    /// زِيدت على اللام. نسختان من لفظٍ واحد تفترقان ولا بدّ، والمعرّف يردّهما إلى
+    /// أصلٍ واحد يُراجَع في موضع واحد.
+    private static let phrases: [Dhikr] = {
+        // ترتيبها ترتيبُ الصفحة قبل هذا التغيير حرفًا بحرف — لا يُقدَّم ولا يُؤخَّر.
+        let ids = ["t01", "t02", "t04", "p01", "t03", "m17"]
+        return ids.compactMap { id in AdhkarLibrary.allItems.first { $0.id == id } }
+    }()
+
+    /// وحين يعزّ الملف لا يُختلق نصّ: العدّاد يبقى عاملًا واسمُ التطبيق مكان العبارة.
+    private var phrase: Dhikr? {
+        Self.phrases.isEmpty ? nil : Self.phrases[phraseIndex % Self.phrases.count]
+    }
+
     private let target = 33
 
     private var moment: AtharStyle.Moment { .resolved(at: Date(), times: store.prayerTimes()) }
@@ -192,7 +206,7 @@ struct WatchTasbihPage: View {
 
     var body: some View {
         VStack(spacing: 12) {
-            Text(phrases[phraseIndex])
+            Text(phrase?.text ?? "أثر")
                 .font(.custom("NotoNaskhArabic-Bold", size: 18))
                 .padding(.top, 6)
                 .foregroundStyle(moment.ink)
@@ -231,20 +245,23 @@ struct WatchTasbihPage: View {
             .accessibilityLabel("عدّ — الحالي \(String(count))")
             .accessibilityHint("انقر أو أدر التاج الرقمي لتعدّ، وضغطة مطوّلة للتصفير")
 
-            Button {
-                phraseIndex = (phraseIndex + 1) % phrases.count
-                count = 0
-                WKInterfaceDevice.current().play(.click)
-            } label: {
-                HStack(spacing: 4) {
-                    Image(systemName: "arrow.triangle.2.circlepath").font(.system(size: 10, weight: .semibold))
-                    Text("ذكر آخر").font(.system(size: 12, weight: .semibold))
+            // ولا يُعرض «ذكر آخر» على قائمةٍ لا ثاني فيها — زرٌّ لا ينقل شيئًا.
+            if Self.phrases.count > 1 {
+                Button {
+                    phraseIndex = (phraseIndex + 1) % Self.phrases.count
+                    count = 0
+                    WKInterfaceDevice.current().play(.click)
+                } label: {
+                    HStack(spacing: 4) {
+                        Image(systemName: "arrow.triangle.2.circlepath").font(.system(size: 10, weight: .semibold))
+                        Text("ذكر آخر").font(.system(size: 12, weight: .semibold))
+                    }
+                    .foregroundStyle(moment.tint)
+                    .padding(.horizontal, 10).padding(.vertical, 5)
+                    .background(Capsule().fill(Color.white.opacity(0.10)))
                 }
-                .foregroundStyle(moment.tint)
-                .padding(.horizontal, 10).padding(.vertical, 5)
-                .background(Capsule().fill(Color.white.opacity(0.10)))
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
         }
         .padding(.horizontal, 4)
         // بلا تركيز لا يصل التاج إلى الصفحة أصلًا؛ ونطلبه أول ظهورها.

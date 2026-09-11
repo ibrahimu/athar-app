@@ -6,36 +6,12 @@ struct AdhkarIndexView: View {
     @EnvironmentObject private var store: AtharStore
     @State private var query = ""
 
-    private var filtered: [DhikrCategory] {
-        guard !query.trimmingCharacters(in: .whitespaces).isEmpty else { return AdhkarLibrary.categories }
-        let needle = query.searchKey
-        // البحث ترشيح للفئات لا بتر لأذكارها: لو دفعنا نسخة تحمل المطابق فقط
-        // لختمت الجلسة الفئة كاملة بمعرّفها بعد تكرارات معدودة.
-        let byText = AdhkarLibrary.categories.filter { category in
-            category.title.searchKey.contains(needle)
-            || category.subtitle.searchKey.contains(needle)
-            || category.items.contains { ArabicSearch.matches($0.text, query) }
-        }
-        guard byText.isEmpty else { return byText }
-        // خابت المتون: يُجرَّب المصدرُ والفضل. وموضوعُ كثيرٍ من الأذكار لا يقع إلا
-        // فيهما — «غُفْرَانَكَ» كلمةٌ واحدة، ومصدرها وحده يقول إنّها عند الخروج من
-        // الخلاء. ولا يُضمّان من أوّل الأمر لأنّ «رواه مسلم» تُطابق الأبواب كلّها.
-        return AdhkarLibrary.categories.filter { category in
-            category.items.contains {
-                ArabicSearch.matches($0.reference, query) || ArabicSearch.matches($0.virtue, query)
-            }
-        }
-    }
+    private var filtered: [DhikrCategory] { AdhkarSearch.categories(matching: query) }
 
     /// الذكر المطابق في كل باب — من بحث عن «الحمد لله» كان يرى قائمة الأبواب كما هي
     /// بلا خبرٍ عمّا طابق ولا عن موضعه، فيفتح البابَ فيجد أوّله لا ما بحث عنه.
     private func firstMatch(in category: DhikrCategory) -> Dhikr? {
-        let needle = query.searchKey
-        guard !needle.isEmpty, !category.title.searchKey.contains(needle) else { return nil }
-        return category.items.first { ArabicSearch.matches($0.text, query) }
-            ?? category.items.first {
-                ArabicSearch.matches($0.reference, query) || ArabicSearch.matches($0.virtue, query)
-            }
+        AdhkarSearch.firstMatch(in: category, query: query)
     }
 
     var body: some View {
@@ -133,6 +109,83 @@ struct CategoryRow: View {
                     .foregroundStyle(Theme.inkFaint)
             }
         }
+    }
+}
+
+// MARK: - ترشيح الأبواب بالبحث
+
+/// بحث الأذكار على ثلاث درجات، تُصعَد واحدةً واحدة ولا تُخلط.
+///
+/// خارج الواجهة كي يُختبر بالبيانات نفسها: علّتُه لم تكن في الرسم بل في الترتيب.
+enum AdhkarSearch {
+
+    /// الدرجات الدقيقة من `ArabicSearch` وحدها: المفتاح، ثمّ النحيل، ثمّ طيّ التكرار،
+    /// ثمّ لام الجرّ — بلا الدرجة المتساهلة التي تُسقط الألفات.
+    ///
+    /// و`matches` تنزل إلى المتساهل من نفسها، فقلّ أن تخيب في متن: «الخلاء» متساهلُها
+    /// «لخل» فتقع في «كَلِمَةِ الْإِخْلَاصِ» و«الْخَلِيفَةُ»، فتمتلئ درجةُ المتون بثلاثة
+    /// أبوابٍ لا صلة لها، ولا يُبلغ المصدرُ والفضلُ بعدها — وهما وحدهما يقولان أين تُقال
+    /// «غُفْرَانَكَ». فالتساهل يُؤخَّر إلى آخر الدرجات، ولا يُخنَق به ما قبله.
+    static func precise(_ text: String, _ query: String) -> Bool {
+        let n = ArabicSearch.key(query)
+        guard !n.isEmpty else { return true }
+        let textKey = ArabicSearch.key(text)
+        if textKey.contains(n) { return true }
+        let slim = ArabicSearch.slim(query)
+        let textSlim = ArabicSearch.slim(text)
+        if slim.count >= 2, textSlim.contains(slim) { return true }
+        let collapsed = ArabicSearch.collapsed(query)
+        if collapsed.count >= 2, ArabicSearch.collapsed(text).contains(collapsed) { return true }
+        if let lam = ArabicSearch.lamPrefixed(n), textKey.contains(lam) { return true }
+        if let lam = ArabicSearch.lamPrefixed(slim), textSlim.contains(lam) { return true }
+        return false
+    }
+
+    /// آخرُ ما يُلجأ إليه: `ArabicSearch.matches` بدرجاتها كلّها، والمتساهلةُ فيها.
+    private static func tolerant(_ text: String, _ query: String) -> Bool {
+        ArabicSearch.matches(text, query)
+    }
+
+    /// الأبواب التي يقع فيها الاستعلام — أو الأبواب كلّها إن كان فارغًا.
+    ///
+    /// البحث ترشيح للأبواب لا بتر لأذكارها: لو دفعنا نسخة تحمل المطابق وحده
+    /// لختمت الجلسة البابَ كاملًا بمعرّفه بعد تكرارات معدودة.
+    static func categories(matching query: String) -> [DhikrCategory] {
+        guard !query.trimmingCharacters(in: .whitespaces).isEmpty,
+              !ArabicSearch.key(query).isEmpty else { return AdhkarLibrary.categories }
+
+        let byText = AdhkarLibrary.categories.filter { category in
+            precise(category.title, query)
+            || precise(category.subtitle, query)
+            || category.items.contains { precise($0.text, query) }
+        }
+        guard byText.isEmpty else { return byText }
+
+        // خابت المتون: يُجرَّب المصدرُ والفضل. وموضوعُ كثيرٍ من الأذكار لا يقع إلا
+        // فيهما — «غُفْرَانَكَ» كلمةٌ واحدة، ومصدرها وحده يقول إنّها عند الخروج من
+        // الخلاء. ولا يُضمّان من أوّل الأمر لأنّ «رواه مسلم» تُطابق الأبواب كلّها.
+        let byMeta = AdhkarLibrary.categories.filter { category in
+            category.items.contains { precise($0.reference, query) || precise($0.virtue, query) }
+        }
+        guard byMeta.isEmpty else { return byMeta }
+
+        // وخابت الدقّةُ كلُّها: هنا وحده يُحتمل ضجيج التساهل، لأنّ البديل لا شيء.
+        return AdhkarLibrary.categories.filter { category in
+            tolerant(category.title, query) || tolerant(category.subtitle, query)
+            || category.items.contains {
+                tolerant($0.text, query) || tolerant($0.reference, query) || tolerant($0.virtue, query)
+            }
+        }
+    }
+
+    /// الذكر الذي طابق في هذا الباب — بترتيب الدرجات نفسه، كي يكون المعروض تحت
+    /// عنوان الباب هو الذي رشّحه، ويُفتح البابُ عليه.
+    static func firstMatch(in category: DhikrCategory, query: String) -> Dhikr? {
+        guard !ArabicSearch.key(query).isEmpty, !precise(category.title, query) else { return nil }
+        return category.items.first { precise($0.text, query) }
+            ?? category.items.first { precise($0.reference, query) || precise($0.virtue, query) }
+            ?? category.items.first { tolerant($0.text, query) }
+            ?? category.items.first { tolerant($0.reference, query) || tolerant($0.virtue, query) }
     }
 }
 

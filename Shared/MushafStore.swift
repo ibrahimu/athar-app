@@ -357,14 +357,16 @@ extension AtharStore {
     /// فتحُ سورةٍ بعيدة قراءةً لكل ما قبلها.
     func noteReaderPage(_ page: Int) {
         guard khatmahActive else { return }
-        // آخر صفحةٍ في المصحف لا صفحةَ بعدها تُبلَغ، فكانت لا تُحتسب أبدًا: يقف
-        // العدّاد عند ٦٠٣ والنسبة تُقرَّب إلى ١٠٠٪، ولا تكتمل ختمةُ من ختم قراءةً.
+        // الخطوة المعتادة أوّلًا: بلوغُ صفحةٍ احتسابٌ لما قبلها.
+        if page == khatmahPagesDone + 2 { khatmahPagesDone = page - 1 }
+        // ثم آخر صفحةٍ في المصحف: لا صفحةَ بعدها تُبلَغ فتحتسبها، فكانت لا تُحتسب
+        // في قراءةٍ متّصلة أبدًا — يقف العدّاد عند ٦٠٣ والنسبة تُقرَّب إلى ١٠٠٪،
+        // فيُقال لمن ختم لم تختم. والترتيب هو الحلّ: من بلغ ٦٠٤ احتُسبت له ٦٠٣
+        // بالخطوة ثم ٦٠٤ بهذا الشرط، ومن قفز إليها من أول المصحف لم يُحتسب له
+        // شيء — فالشرط على ما قُرئ لا على الصفحة المفتوحة.
         if page == Quran.pageCount, khatmahPagesDone == Quran.pageCount - 1 {
             khatmahPagesDone = Quran.pageCount
-            return
         }
-        guard page == khatmahPagesDone + 2 else { return }
-        khatmahPagesDone = page - 1
     }
 
     func startKhatmah(days: Int, mode: KhatmahMode) {

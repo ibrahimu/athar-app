@@ -232,7 +232,11 @@ struct NotificationHealthView: View {
                     SettingsDivider()
                     SettingsRow(icon: "tray.full.fill", tint: Theme.gold,
                                 title: loc("لم يتّسع لها السقف"),
-                                subtitle: loc("سقف النظام ٦٤ تنبيهًا معلّقًا — والأبعد موعدًا أوّل من يسقط. أوقف ما لا تحتاجه ليتّسع لغيره")) {
+                                // السقف يُقرأ من `Reminders` لا يُكتب رقمًا: كان مكتوبًا
+                                // بالأرقام الهندية وحدها في الشاشة كلّها، ولو تغيّر السقف
+                                // يومًا لبقي النصّ يقول غيره.
+                                subtitle: loc("سقف النظام %1$@ تنبيهًا معلّقًا — والأبعد موعدًا أوّل من يسقط. أوقف ما لا تحتاجه ليتّسع لغيره",
+                                              Reminders.systemLimit.counterText)) {
                         badge(dropped.counterText, Theme.gold)
                     }
                     .accessibilityElement(children: .combine)

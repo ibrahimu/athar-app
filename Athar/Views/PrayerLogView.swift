@@ -347,12 +347,15 @@ struct PrayerLogView: View {
         .padding(.vertical, 9)
     }
 
+    /// هدف اللمس ٤٤ نقطة كسائر أزرار التطبيق، والرسم على صغره كما هو. وكان ٣٤×٣٢
+    /// والزرّان متلاصقان بلا فجوة، فمن أخطأ العرض زاد فائتةً وهو يريد إنقاصها —
+    /// وعدّ الفوائت أمانةٌ لا يُحتمل فيها خطأ الإصبع.
     private func stepButton(_ icon: String, enabled: Bool, _ action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: icon)
                 .font(.system(size: 12, weight: .bold))
                 .foregroundStyle(enabled ? tint : Theme.inkFaint.opacity(0.5))
-                .frame(width: 34, height: 32)
+                .frame(width: 44, height: 44)
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

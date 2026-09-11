@@ -1,6 +1,28 @@
 import WidgetKit
 import SwiftUI
 
+// MARK: - مواقيت تبدّل اللوحة
+
+/// كانت ودجات اليوم تُصيَّر مدخلين لا غير — الآن ومنتصفَ الليل — واللوحة تُحسب في
+/// المدخل فتلزم ما أدركها عنده: من ركّبها بعد العشاء بقيت زرقاء الليل في ضحاه كلّه،
+/// ومن ركّبها ضحًى بقيت خضراء إلى الليل. ولوحةُ AtharStyle.Moment تنقلب عند مطالع
+/// الصلوات لا عند منتصف الليل، فيُبَثّ مدخلٌ عند كل مَطلع كما يفعل مدخل الذكر.
+private enum PaletteTimeline {
+    /// حدود اللحظات ابتداءً من الآن: ما بقي من حدود اليوم، ثم منتصفُ الليل (وعنده
+    /// يتبدّل الحديث واسم اليوم)، ثم حدود الغد — فلا تبيت الودجة على لونٍ واحد.
+    static func moments(from now: Date) -> [Date] {
+        let midnight = Calendar.current.startOfDay(for: now).addingTimeInterval(86_400)
+        // الشروق حدٌّ كسائرها وإن لم يكن صلاة: عنده ينقلب الفجرُ صباحًا.
+        let edges: [Prayer] = [.fajr, .sunrise, .dhuhr, .asr, .maghrib]
+        var ahead: Set<Date> = [midnight]
+        for day in [now, midnight] {
+            guard let times = AtharStore.shared.prayerTimes(for: day) else { continue }
+            for edge in edges { if let d = times[edge] { ahead.insert(d) } }
+        }
+        return [now] + ahead.filter { $0 > now }.sorted()
+    }
+}
+
 // MARK: - حديث اليوم
 
 struct HadithEntry: TimelineEntry {
@@ -17,10 +39,9 @@ struct HadithProvider: TimelineProvider {
     func placeholder(in context: Context) -> HadithEntry { entry(at: Date()) }
     func getSnapshot(in context: Context, completion: @escaping (HadithEntry) -> Void) { completion(entry(at: Date())) }
     func getTimeline(in context: Context, completion: @escaping (Timeline<HadithEntry>) -> Void) {
-        // الحديث يتبدّل مع اليوم: مدخل الآن ومدخل بعد منتصف الليل.
-        let now = Date()
-        let midnight = Calendar.current.startOfDay(for: now).addingTimeInterval(86_400)
-        completion(Timeline(entries: [entry(at: now), entry(at: midnight)], policy: .atEnd))
+        // الحديث يتبدّل مع اليوم، واللوحة مع مطالع الصلوات — ومدخلٌ عند كل حدٍّ يكفيهما.
+        completion(Timeline(entries: PaletteTimeline.moments(from: Date()).map { entry(at: $0) },
+                            policy: .atEnd))
     }
 }
 
@@ -38,7 +59,9 @@ struct HadithWidgetView: View {
             case .accessoryRectangular:
                 VStack(alignment: .leading, spacing: 2) {
                     Text("حديث اليوم").font(.system(size: 11, weight: .semibold))
-                    Text(entry.hadith?.text ?? "").font(.system(size: 12)).lineLimit(3)
+                    // متنُ الحديث على القفل شرعيٌّ كمتنه على الشاشة: بخطّ النسخ لا
+                    // بخطّ النظام، وإلا خرج تشكيلُه ضعيفًا وفارق جارَه في الحزمة نفسها.
+                    Text(entry.hadith?.text ?? "").font(Theme.dhikrFont(fixed: 12)).lineLimit(3)
                 }
             case .accessoryCircular:
                 ZStack { AccessoryWidgetBackground(); Image(systemName: "quote.opening").font(.system(size: 18, weight: .medium)) }
@@ -54,7 +77,7 @@ struct HadithWidgetView: View {
                     // الأسطر يوافق ما يسعه فعلًا، والخطُّ والتباعد يضيقان له، والعزو يُطوى
                     // عنه — فسطرٌ من الحديث خيرٌ من سطرٍ يقول من رواه.
                     Text(entry.hadith?.text ?? "")
-                        .font(.custom("NotoNaskhArabic-Regular", size: family == .systemSmall ? 12 : 15))
+                        .font(Theme.dhikrFont(fixed: family == .systemSmall ? 12 : 15))
                         .foregroundStyle(ink)
                         .lineSpacing(family == .systemSmall ? 1 : 3)
                         .lineLimit(family == .systemSmall ? 4 : (family == .systemMedium ? 5 : 12))
@@ -104,9 +127,9 @@ struct NameProvider: TimelineProvider {
     func placeholder(in context: Context) -> NameEntry { entry(at: Date()) }
     func getSnapshot(in context: Context, completion: @escaping (NameEntry) -> Void) { completion(entry(at: Date())) }
     func getTimeline(in context: Context, completion: @escaping (Timeline<NameEntry>) -> Void) {
-        let now = Date()
-        let midnight = Calendar.current.startOfDay(for: now).addingTimeInterval(86_400)
-        completion(Timeline(entries: [entry(at: now), entry(at: midnight)], policy: .atEnd))
+        // اسم اليوم يتبدّل مع اليوم، واللوحة مع مطالع الصلوات — كحديث اليوم سواء.
+        completion(Timeline(entries: PaletteTimeline.moments(from: Date()).map { entry(at: $0) },
+                            policy: .atEnd))
     }
 }
 
@@ -125,12 +148,12 @@ struct NameWidgetView: View {
                 ZStack {
                     AccessoryWidgetBackground()
                     Text(entry.name?.name ?? "")
-                        .font(.custom("NotoNaskhArabic-Bold", size: 13))
+                        .font(Theme.naskhFont(fixed: 13, bold: true))
                         .minimumScaleFactor(0.6).lineLimit(1).padding(4)
                 }
             case .accessoryRectangular:
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(entry.name?.name ?? "").font(.custom("NotoNaskhArabic-Bold", size: 16))
+                    Text(entry.name?.name ?? "").font(Theme.naskhFont(fixed: 16, bold: true))
                     Text(entry.name?.meaning ?? "").font(.system(size: 11)).lineLimit(2)
                 }
             default:
@@ -139,14 +162,14 @@ struct NameWidgetView: View {
                     // اسمٌ من أسماء الله لا يُقطع في وسطه: أطولها يتجاوز عرض المربّع الصغير
                     // بمعامل ٠٫٦، فيُبدأ به أصغر ويُطلق له التصغير حتى يسعه كاملًا.
                     Text(entry.name?.name ?? "")
-                        .font(.custom("NotoNaskhArabic-Bold", size: family == .systemSmall ? 26 : 30))
+                        .font(Theme.naskhFont(fixed: family == .systemSmall ? 26 : 30, bold: true))
                         .foregroundStyle(ink)
                         .minimumScaleFactor(family == .systemSmall ? 0.45 : 0.6).lineLimit(1)
                     if family != .systemSmall {
                         // المستطيل المتوسّط لا يبقى فيه بعد الاسم إلا سطران — وثلاثةٌ تُطلب
                         // فيُبتر أوّلها. فالحدّ يوافق المساحة، والتباعد يُرفع ليتّسع.
                         Text(entry.name?.meaning ?? "")
-                            .font(.custom("NotoNaskhArabic-Regular", size: 14))
+                            .font(Theme.dhikrFont(fixed: 14))
                             .foregroundStyle(ink.opacity(0.9))
                             .lineLimit(family == .systemMedium ? 2 : 9)
                             .lineSpacing(family == .systemMedium ? 0 : 2)

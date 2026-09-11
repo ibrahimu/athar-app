@@ -10,16 +10,13 @@ struct TasbihView: View {
     @State private var bloomToken = 0        // يُجدّد الوميض في كل بلوغ
     @State private var confirmReset = false  // تأكيد التصفير قبل محو العدّ
 
-    private let phrases = [
-        loc("سُبْحَانَ اللهِ"),
-        loc("الْحَمْدُ للهِ"),
-        loc("لَا إِلَهَ إِلَّا اللهُ"),
-        loc("اللهُ أَكْبَرُ"),
-        loc("أَسْتَغْفِرُ اللهَ"),
-        loc("لَا حَوْلَ وَلَا قُوَّةَ إِلَّا بِاللهِ"),
-        loc("اللَّهُمَّ صَلِّ وَسَلِّمْ عَلَى نَبِيِّنَا مُحَمَّدٍ"),
-        loc("سُبْحَانَ اللهِ وَبِحَمْدِهِ")
-    ]
+    /// عبارات المسبحة نصٌّ شرعيّ: تُستخرج من adhkar.json بمعرّفاتها ولا تُكتب في
+    /// السويفت ولا تمرّ بـ loc — الذكر لا يُترجم ولا يُنسخ. وقد افترقت نظيرةُ هذه
+    /// القائمة على الساعة عن الملف حين نُسخت هناك، والمعرّف يجمعهما على أصل واحد.
+    static let phraseIds = ["t01", "t02", "t03", "t04", "p01", "t07", "sl02", "m17"]
+    static let phrases: [String] = TasbihView.phraseIds.compactMap { id in
+        AdhkarLibrary.allItems.first { $0.id == id }?.text
+    }
     private let targets = [33, 100, 500, 1000]
 
     private var progress: Double {
@@ -54,7 +51,7 @@ struct TasbihView: View {
     private var phrasePicker: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
-                ForEach(phrases, id: \.self) { phrase in
+                ForEach(Self.phrases, id: \.self) { phrase in
                     let selected = store.tasbihPhrase == phrase
                     Button {
                         store.tasbihPhrase = phrase

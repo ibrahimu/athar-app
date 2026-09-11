@@ -18,7 +18,11 @@ final class AthanPreview: NSObject, ObservableObject, AVAudioPlayerDelegate {
         guard let name = sound.fileName,
               let url = Bundle.main.url(forResource: name + "-full", withExtension: "m4a") else { return }
         Recitation.shared.pause()                     // لا يتداخل صوتان
-        RadioPlayer.shared.pause()                    // ولا الأذان فوق الإذاعة
+        AyahAudio.shared.stop()                       // ولا الأذان فوق تلاوة الآية
+        RadioPlayer.shared.pause()                    // ولا فوق الإذاعة
+        // مشغّل «البث المباشر» لا يعرفه محرّكٌ منّا، وهذا المحرّك لم يكن يُخبره،
+        // فيبقى بثّ الحرمين الشريفين يُسمع تحت الأذان.
+        NotificationCenter.default.post(name: .atharAudioStarted, object: nil)
         let session = AVAudioSession.sharedInstance()
         try? session.setCategory(.playback, mode: .default)
         try? session.setActive(true)

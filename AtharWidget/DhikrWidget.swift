@@ -5,7 +5,10 @@ import SwiftUI
 
 struct DhikrEntry: TimelineEntry {
     let date: Date
-    let dhikr: Dhikr
+    /// قد يخلو المدخل من ذكر حين يعزّ ملف الأذكار — ولا يُكتب هنا بديلٌ عنه: نصٌّ
+    /// شرعيّ يُملى في السويفت أسوأ من بطاقةٍ تحمل اسم التطبيق وحده. وهو صنيع
+    /// مضاعفة الساعة نفسه (DhikrComplication).
+    let dhikr: Dhikr?
     let categoryTitle: String
     /// معرّف الباب حين يختاره صاحب الودجة — به تفتح على بابه لا على رأس الأذكار.
     let categoryId: String?
@@ -30,12 +33,9 @@ struct DhikrProvider: AppIntentTimelineProvider {
         return short.isEmpty ? category.items : short
     }
 
-    private func dhikr(at date: Date, section: DhikrSectionChoice) -> Dhikr {
+    private func dhikr(at date: Date, section: DhikrSectionChoice) -> Dhikr? {
         let items = pool(for: section)
-        guard !items.isEmpty else {
-            return Dhikr(id: "fallback", text: "سُبْحَانَ اللهِ وَبِحَمْدِهِ",
-                         count: 1, reference: "متفق عليه", virtue: "")
-        }
+        guard !items.isEmpty else { return nil }
         // New dhikr every 30 minutes, stable across widget reloads.
         let slot = Int(date.timeIntervalSince1970 / 1800)
         return items[abs(slot) % items.count]
@@ -48,7 +48,7 @@ struct DhikrProvider: AppIntentTimelineProvider {
     private func entry(at date: Date, section: DhikrSectionChoice) -> DhikrEntry {
         let d = dhikr(at: date, section: section)
         return DhikrEntry(date: date, dhikr: d,
-                          categoryTitle: section.category?.title ?? category(for: d),
+                          categoryTitle: section.category?.title ?? d.map { category(for: $0) } ?? "أثر",
                           categoryId: section.category?.id,
                           moment: .resolved(at: date, times: AtharStore.shared.prayerTimes(for: date)))
     }
@@ -90,12 +90,16 @@ struct DhikrWidgetView: View {
         return String(text[text.startIndex..<cut])
     }
 
+    /// ما تكتبه البطاقة: الذكر إن حضر، وإلا اسمُ التطبيق. البطاقةُ تخلو ولا تُملأ
+    /// بذكرٍ يُكتب في السويفت — والاسم أصدق من نصٍّ لا أصل له في adhkar.json.
+    private var text: String { entry.dhikr?.text ?? "أثر" }
+
     var body: some View {
         switch family {
         case .accessoryInline:
             // سطرٌ واحد يفرضه النظام: الذكر كاملًا يُبتر في وسطه بـ«…»، فيُدفع إليه
             // صدرُه إلى أوّل فاصلة — جملةٌ تامّة تُقرأ خيرٌ من نصف جملة مقطوعة.
-            Text(DhikrWidgetView.inlineHead(entry.dhikr.text))
+            Text(DhikrWidgetView.inlineHead(text))
 
         case .accessoryCircular:
             ZStack {
@@ -111,8 +115,10 @@ struct DhikrWidgetView: View {
                 Text(entry.categoryTitle)
                     .font(.system(size: 11, weight: .semibold))
                     .widgetAccentable()
-                Text(entry.dhikr.text)
-                    .font(.system(size: 13))
+                // ونصُّ القفل شرعيٌّ كنصّ الشاشة: بخطّ النسخ لا بخطّ النظام، وإلا
+                // خرج تشكيلُه ضعيفًا واختلف عن الذكر نفسه في بطاقة الشاشة.
+                Text(text)
+                    .font(Theme.dhikrFont(fixed: 13))
                     .lineLimit(3)
                     .minimumScaleFactor(0.75)
             }
@@ -142,10 +148,11 @@ struct DhikrWidgetView: View {
                 Spacer()
             }
 
-            Text(entry.dhikr.text)
+            Text(text)
                 // نصٌّ شرعي بخطّ النسخ كالحديث واسم اليوم في الحزمة نفسها — وكان
                 // بخطّ النظام فيخرج تشكيلُه أضعف ويختلف عن جاره على الشاشة.
-                .font(.custom("NotoNaskhArabic-Regular", size: textSize))
+                // و«الثابت» لأن لوحة الودجة بأبعادٍ مقطوعة لا تتّسع لتضخّم Dynamic Type.
+                .font(Theme.dhikrFont(fixed: textSize))
                 .foregroundStyle(entry.moment.ink)
                 .lineSpacing(7)
                 .lineLimit(lines)
@@ -153,8 +160,8 @@ struct DhikrWidgetView: View {
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
 
-            if showFooter, entry.dhikr.hasReference {
-                Text(entry.dhikr.reference)
+            if showFooter, let d = entry.dhikr, d.hasReference {
+                Text(d.reference)
                     .font(.system(size: 9))
                     .foregroundStyle(entry.moment.inkSoft)
                     .lineLimit(1)

@@ -5,8 +5,11 @@ import ActivityKit
 
 // MARK: - النشاط الحيّ: الصلاة القادمة
 
-/// وجهة النقر: شاشة المواقيت. يوضع على بطاقة شاشة القفل وعلى مناطق الجزيرة الموسّعة،
-/// وتَرِثه الهيئتان المضغوطة والصغرى — فمن نقر العدّ التنازلي وجد ما كان يعدّه.
+/// وجهة النقر: شاشة المواقيت. يوضع على بطاقة شاشة القفل، وعلى الجزيرة نفسها لا على
+/// مناطقها: `DynamicIsland.widgetURL` هو الرابط الأصل لهيئاتها كلّها — الموسّعة
+/// والمضغوطة والصغرى — فمن نقر العدّ التنازلي وجد ما كان يعدّه. وكان موضوعًا في
+/// المناطق الموسّعة وحدها، والمضغوطةُ والصغرى لا تَرِثان منها شيئًا: نقرةٌ لا تفتح شيئًا.
+/// وواحدٌ لا اثنان — «تعدُّد widgetURL في شجرةٍ واحدة سلوكه غير معرَّف» كما تقول WidgetKit.
 private let prayerLink = URL(string: "athar://open/prayer")
 
 /// الصلاة القادمة بعدٍّ تنازلي في Dynamic Island وشاشة القفل.
@@ -36,7 +39,6 @@ struct NextPrayerActivity: Widget {
                             .lineLimit(1)
                     }
                     .padding(.top, 4)
-                    .widgetURL(prayerLink)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
                     Group {
@@ -55,7 +57,6 @@ struct NextPrayerActivity: Widget {
                     .multilineTextAlignment(.trailing)
                     .frame(width: 82, alignment: .trailing)
                     .padding(.top, 4)
-                    .widgetURL(prayerLink)
                 }
                 DynamicIslandExpandedRegion(.bottom) {
                     VStack(spacing: 6) {
@@ -77,7 +78,6 @@ struct NextPrayerActivity: Widget {
                         .environment(\.layoutDirection, .rightToLeft)
                     }
                     .padding(.top, 2)
-                    .widgetURL(prayerLink)
                 }
             } compactLeading: {
                 Image(systemName: look.icon)
@@ -108,6 +108,7 @@ struct NextPrayerActivity: Widget {
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(look.tint)
             }
+            .widgetURL(prayerLink)
             .keylineTint(look.tint)
         }
     }

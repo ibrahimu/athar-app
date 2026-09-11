@@ -96,7 +96,7 @@ enum Reminders {
             let cal = placeCalendar(store)
             for dayOffset in 0..<4 {
                 guard let day = cal.date(byAdding: .day, value: dayOffset, to: planningDate), let t = store.prayerTimes(for: day) else { continue }
-                for (prayer, id, title, body) in [(Prayer.fajr, morningId, loc("أذكار الصباح"), loc("﴿ فَٱذْكُرُونِىٓ أَذْكُرْكُمْ ﴾ — بعد الفجر أطيبُ وقتٍ لها.")),
+                for (prayer, id, title, body) in [(Prayer.fajr, morningId, loc("أذكار الصباح"), loc("﴿ فَٱذْكُرُونِىٓ أَذْكُرْكُمْ ﴾ — %1$@ · بعد الفجر أطيبُ وقتٍ لها.", reference(surah: 2, ayah: 152))),
                                                    (Prayer.asr, eveningId, loc("أذكار المساء"), loc("حصّن يومك قبل أن يغيب — أذكار المساء بانتظارك."))] {
                     guard let base = t[prayer] else { continue }
                     let fire = base.addingTimeInterval(20 * 60)
@@ -111,7 +111,7 @@ enum Reminders {
 
         add(id: morningId,
                   title: loc("أذكار الصباح"),
-                  body: loc("﴿ فَٱذْكُرُونِىٓ أَذْكُرْكُمْ ﴾ — دقيقتان تكفيك اليوم كله."),
+                  body: loc("﴿ فَٱذْكُرُونِىٓ أَذْكُرْكُمْ ﴾ — %1$@ · دقيقتان تكفيك اليوم كله.", reference(surah: 2, ayah: 152)),
                   minutes: store.morningReminderMinutes)
 
         add(id: eveningId,
@@ -203,7 +203,9 @@ enum Reminders {
                 let pre = UNMutableNotificationContent()
                 pre.title = loc("%1$@ %2$@", entry.prayer.title, minutesPhrase(effectivePre))
                 pre.subtitle = loc("%1$@ · %2$@", store.placeName, clockText(entry.date, store: store))
-                pre.body = loc("توضّأ على مهلٍ واستعدّ — «الصلاة على وقتها» أحبّ الأعمال إلى الله.")
+                // «الصلاة على وقتها» متنٌ منقول، فيصل بتخريجه — ويسبقه كلامُنا بفاصلةٍ
+                // لا بشرطة، كي تبقى الشرطة علامةَ العزو وحدها في كل متن.
+                pre.body = loc("توضّأ على مهلٍ واستعدّ · «الصلاة على وقتها» أحبّ الأعمال إلى الله — %1$@", takhrij("r312"))
                 pre.sound = .default
                 pre.interruptionLevel = store.athanBreaksFocus ? .timeSensitive : .active
                 let preRequest = UNNotificationRequest(
@@ -276,6 +278,8 @@ enum Reminders {
         add(id: wirdId,
                   title: loc("وردك من القرآن"),
                   // «10 آيات تكفيك» لا «10 آية»: تمييز العدد في Int.ayahCountText.
+                  // و«أحبُّ الأعمال إلى الله أدومها» لا معرّف له في `hadith.json` بهذا
+                  // اللفظ، فيبقى بلا تخريج حتى يدخل البيانات — لا يُكتب له عزو من هنا.
                   body: loc("%1$@ تكفيك اليوم — «أحبُّ الأعمال إلى الله أدومها».", store.wirdTarget.ayahCountText),
                   minutes: store.wirdReminderMinutes)
     }
@@ -335,11 +339,19 @@ enum Reminders {
     private static func scheduleIstighfar(store: AtharStore) {
         guard store.istighfarAlerts else { return }
 
+        // متونٌ منقولة كلُّها، فلكلٍّ عزوه: فضائل الأذكار تُعزى بمعرّف ذكرها في
+        // `adhkar.json`، والآية بموضعها من المصحف — ولا يُكتب في هذا الملف تخريجٌ
+        // من الذاكرة. (والآية بين ﴿ ﴾ لا بين «» — علامة القرآن غير علامة الحديث.)
+        // الفضائلُ الثلاث تُقرأ بمعرّفها من `adhkar.json` لا تُكتب هنا: كانت
+        // مكتوبةً باليد ثمّ يُلحق بها تخريجُ المخزَّن — فوُجد أحدُها ينقص كلمةَ
+        // «واحدة» عن متنه المخزَّن، أي تخريجٌ لمتنٍ ليس متنَه. والمتنُ والعزوُ
+        // يخرجان من موضعٍ واحد فلا يفترقان.
         let phrases = [
-            (loc("أستغفر الله"), loc("«وَٱسْتَغْفِرُوا۟ رَبَّكُمْ ثُمَّ تُوبُوٓا۟ إِلَيْهِ»")),
-            (loc("سبحان الله وبحمده"), loc("من قالها مئة مرة حُطَّت خطاياه وإن كانت مثل زبد البحر.")),
-            (loc("لا حول ولا قوة إلا بالله"), loc("كنز من كنوز الجنة.")),
-            (loc("اللهم صلِّ على محمد"), loc("من صلى عليَّ صلاة صلى الله عليه بها عشرًا.")),
+            (loc("أستغفر الله"),
+             cited(loc("﴿ وَٱسْتَغْفِرُوا۟ رَبَّكُمْ ثُمَّ تُوبُوٓا۟ إِلَيْهِ ﴾"), reference(surah: 11, ayah: 90))),
+            (loc("سبحان الله وبحمده"), virtueCited(dhikr: "m17")),
+            (loc("لا حول ولا قوة إلا بالله"), virtueCited(dhikr: "i05")),
+            (loc("اللهم صلِّ على محمد"), virtueCited(dhikr: "sl02")),
         ]
         let step = store.istighfarEveryHours
         var hour = 8
@@ -367,6 +379,9 @@ enum Reminders {
 
             let content = UNMutableNotificationContent()
             content.title = loc("ثلث الليل الآخر")
+            // حديث النزول ليس في `hadith.json` (رياض الصالحين والأربعين) بلفظه، فلا
+            // معرّف يُقرأ منه تخريجه — ويبقى بلا عزو حتى يدخل المتنُ البيانات بمعرّفه.
+            // عزوٌ يُكتب هنا من الذاكرة أسوأ من لا عزو، ولو كان في شاشةٍ أخرى مثلُه.
             content.body = loc("«ينزل ربنا إلى السماء الدنيا حين يبقى ثلث الليل الآخر فيقول: من يدعوني فأستجيب له»")
             content.sound = .default
             let r = UNNotificationRequest(identifier: "\(qiyamPrefix)\(day)", content: content,
@@ -405,7 +420,11 @@ enum Reminders {
             for (wd, day) in [(1, loc("الاثنين")), (4, loc("الخميس"))] {
                 let c = UNMutableNotificationContent()
                 c.title = loc("غدًا %1$@", day)
-                c.body = loc("«تُعرض الأعمال يوم الاثنين والخميس، فأحب أن يُعرض عملي وأنا صائم» — انوِ الصيام.")
+                // «انوِ الصيام» تنزل إلى السطر الثاني: تخريج هذا الحديث طويل — فيه أنّ
+                // مسلمًا رواه بغير ذكر الصوم — ولو زاحمه كلامُنا في المتن لكان العزو
+                // أوّل ما يقصّه النظام، فيصل الحديث بلا نسبة وهو عين ما نتوقّاه.
+                c.subtitle = loc("انوِ الصيام")
+                c.body = cited(loc("«تُعرض الأعمال يوم الاثنين والخميس، فأحب أن يُعرض عملي وأنا صائم»"), takhrij("r1256"))
                 c.sound = .default
                 var dc = DateComponents(); dc.weekday = wd; dc.hour = 21
                 collect(UNNotificationRequest(identifier: "\(fastingPrefix)\(wd)",
@@ -427,6 +446,9 @@ enum Reminders {
                 cursor = eve.addingTimeInterval(86400 * 3)
                 let c = UNMutableNotificationContent()
                 c.title = loc("الأيام البيض")
+                // خبر فضلٍ بكلامنا لا لفظُ حديثٍ بعينه، وحديثُ «صوم ثلاثة أيام من كل شهر»
+                // في البيانات ليس فيه تعيين الثالث عشر وأخويه — فلا يُعلَّق تخريجه على
+                // عبارةٍ تزيد عليه. يبقى الأمر لصاحب البيانات: متنٌ بمعرّفه أو لا عزو.
                 c.body = loc("غدًا 13 من الشهر الهجري — صيام 13 و14 و15 كصيام الدهر.")
                 c.sound = .default
                 let dc = Calendar.current.dateComponents([.year, .month, .day, .hour], from: eve)
@@ -652,6 +674,47 @@ enum Reminders {
         f.timeZone = store.placeTimeZone
         f.dateFormat = "h:mm a"
         return f.string(from: date)
+    }
+
+    // MARK: - العزو
+
+    // كل متنٍ منقول يخرج من هذا الملف يخرج بعزوه: التنبيه ورقةٌ تُقرأ في يد صاحبها
+    // كبطاقة الحديث سواء، وحديثٌ بلا نسبة ليس مما نرسله. والعزو لا يُكتب هنا بحال —
+    // يُقرأ بمعرّفه من الملف الذي فيه المتن، فإن صُحّح فيه صُحّح في التنبيه معه.
+    // وما لا معرّف له في البيانات يبقى كما هو: عزوٌ من الذاكرة أسوأ من لا عزو.
+
+    /// تخريج حديثٍ بمعرّفه في `hadith.json`. وحين يخلو عزو المؤلف يُعزى إلى كتابه
+    /// ورقمه — وهو أضعف العزو لا عدمُه.
+    private static func takhrij(_ id: String) -> String {
+        guard let hadith = HadithLibrary.hadith(id: id) else { return "" }
+        return hadith.source.isEmpty ? hadith.citation : hadith.source
+    }
+
+    /// مرجع ذكرٍ بمعرّفه في `adhkar.json` — تخريجه المخزون لا غير.
+    private static func reference(dhikr id: String) -> String {
+        AdhkarLibrary.allItems.first { $0.id == id }?.reference ?? ""
+    }
+
+    /// فضيلةُ الذكر بلفظها المخزَّن وعزوِها معًا. وإن غاب الذكرُ عن الحزمة خرج
+    /// نصٌّ فارغ — فيسقط التنبيهُ إلى عنوانه وحده ولا يُخترع له متن.
+    private static func virtueCited(dhikr id: String) -> String {
+        guard let item = AdhkarLibrary.allItems.first(where: { $0.id == id }),
+              item.hasVirtue else { return "" }
+        return cited(item.virtue, item.reference)
+    }
+
+    /// موضع الآية: «البقرة: 152» — اسم السورة من المصحف المضمَّن، ورقمها بأرقام
+    /// غربية كسائر أرقام الواجهة.
+    private static func reference(surah: Int, ayah: Int) -> String {
+        guard let name = Quran.surah(surah)?.name else { return "" }
+        return "\(name): \(ayah.counterText)"
+    }
+
+    /// متنٌ منقول تتلوه نسبتُه بالشرطة نفسها التي يجري عليها متن الأذان. والنسبة
+    /// تلي المتن مباشرةً لا ذيلَ الجملة: سطر التنبيه يُقصّ من آخره، فلو تأخّرت
+    /// لكانت أوّل ما يسقط. وإن غاب المصدر عن الحزمة خرج المتن وحده — ولا يُخترع له عزو.
+    private static func cited(_ text: String, _ attribution: String) -> String {
+        attribution.isEmpty ? text : "\(text) — \(attribution)"
     }
 
     /// متن تنبيه الأذان: آيات وأحاديث ثابتة بلفظها من المصحف المضمَّن والصحيحين
