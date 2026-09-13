@@ -151,6 +151,61 @@ targets:
         TARGETED_DEVICE_FAMILY: "4"
         SKIP_INSTALL: YES
 
+  # تطبيق Apple TV: «مَجْلِس أثر» — مسرحٌ واحد يُسمِع القرآن وتحته وقتُ الصلاة
+  # القادمة في مدينةٍ تُختار مرّة. لا مصحفَ يُقرأ ولا أذكارَ ولا مسبحة ولا قبلة:
+  # الشاشة المشتركة تُسمَع ولا تُتصفَّح، ولا صاحبَ لعدّادٍ فيها ولا بوصلة.
+  AtharTV:
+    type: application
+    platform: tvOS
+    deploymentTarget: "17.0"
+    sources:
+      - path: AtharTV
+        excludes:
+          - "Resources/Info.plist"
+      # قائمةُ إدراجٍ لا استثناء: ملفات Shared ثلاثةٌ وخمسون والتلفاز يحتاج أربعةَ
+      # عشر. والاستثناءُ الطويل (كما في الساعة) يبتلع صامتًا كلَّ ملفٍ جديد يُضاف
+      # إلى Shared فيُجرّ إلى التلفاز بلا أن يدري أحد.
+      - path: Shared
+        includes:
+          - "Quran.swift"
+          - "ArabicSearch.swift"     # فهرسُ Quran الكسول يلزمه وإن لم يكن في الواجهة بحث
+          - "Theme.swift"
+          - "AppTheme.swift"
+          - "AppFont.swift"
+          - "Motion.swift"
+          - "L10n.swift"             # loc() مصدرُ Prayer.title وCalculationMethod.title
+          - "PrayerTimes.swift"
+          - "HijriOffset.swift"
+          - "LiveStreams.swift"      # البثّ الصوتيّ وحده؛ قناتا اليوتيوب لا تُعرضان بلا WebKit
+          - "AyahAudio.swift"
+          - "RadioPlayer.swift"
+          - "Recitation.swift"       # تبعًا: SleepTimer و.atharAudioStarted وRecitation.shared
+          - "quran.json"
+          - "quran_meta.json"
+      # النسخ للنصّ الشرعي. مجموعة لا مرجعَ مجلّد حتى يعمل الاستثناء:
+      # «ثمانية» المموَّه للتطبيق وحده — التلفاز لا يسجّله ولا يحمله.
+      - path: Athar/Resources/Fonts
+        buildPhase: resources
+        excludes:
+          - "Obf/**"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.ibrahim.athar
+        PRODUCT_NAME: AtharTV
+        # رقمُ التلفاز مستقلٌّ عن رقم الجوال: App Store Connect يفتح لكل منصّةٍ
+        # نسختَها، وسمّى أولى نسخ tvOS «1.0» — فلا يُورَّث 1.5 من المشروع.
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        INFOPLIST_FILE: AtharTV/Resources/Info.plist
+        # أيقونةُ tvOS طبقيّةٌ داخل حزمة Brand Assets لا أيقونةَ iOS المسطّحة،
+        # وبلا هذا السطر يرفض App Store Connect الرفعَ لفقد أيقونة الحزمة —
+        # الدرسُ نفسه الذي وقع مع الساعة.
+        ASSETCATALOG_COMPILER_APPICON_NAME: "App Icon & Top Shelf Image"
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        TARGETED_DEVICE_FAMILY: "3"
+        SUPPORTS_MACCATALYST: NO
+        SWIFT_EMIT_LOC_STRINGS: YES
+
   AtharWidget:
     type: app-extension
     platform: iOS
@@ -186,6 +241,14 @@ targets:
         SKIP_INSTALL: YES
 
 schemes:
+  AtharTV:
+    build:
+      targets:
+        AtharTV: all
+    run:
+      config: Debug
+    archive:
+      config: Release
   AtharWatch:
     build:
       targets:

@@ -27,3 +27,4 @@ export/
 # Local build output
 export/
 store/screenshots/
+.claude/
