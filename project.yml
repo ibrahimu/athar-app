@@ -173,7 +173,11 @@ targets:
           - "AppTheme.swift"
           - "AppFont.swift"
           - "Motion.swift"
-          - "L10n.swift"             # loc() مصدرُ Prayer.title وCalculationMethod.title
+          # لا L10n.swift هنا: جدولُ الترجمة (١٨٠٤ سطرًا في مُعجمٍ واحد) يُطبق مُحسِّنَ
+          # Swift في وضع الإصدار — سبعَ عشرةَ دقيقةً على المعالج كاملًا بلا نهاية —
+          # والتلفازُ عربيٌّ فقط ولا مفتاحَ لاتينيًّا فيه، فـ`loc()` عنده تُعيد
+          # المفتاحَ نفسه (قِيس: ١٠٦ مداخل عربية في الجدول، لا واحدةَ تختلف عن
+          # مفتاحها). البديلُ في TVCompat.swift.
           - "LiveStreams.swift"      # البثّ الصوتيّ وحده؛ قناتا اليوتيوب لا تُعرضان بلا WebKit
           - "AyahAudio.swift"
           - "RadioPlayer.swift"
