@@ -28,7 +28,6 @@ struct TVMajlisView: View {
     @ObservedObject private var audio = TVAudio.shared
     @ObservedObject private var idle = TVIdle.shared
     @FocusState private var focus: Focus?
-    @State private var now = Date()
     @State private var route: Route?
     /// حيث يهبط التركيزُ بعد أن يُغلق غطاء: يُضبط عند الإغلاق ويُصرف بعده.
     @State private var landing: Focus?
@@ -39,7 +38,6 @@ struct TVMajlisView: View {
         var id: Self { self }
     }
 
-    private let tick = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     /// مقاساتُ الصفّ. ارتفاعٌ واحد للثلاثة، والعريضان للشيئين اليوميّين والضيّقُ
     /// للإعدادات — فالوزنُ يُقرأ من العرض قبل أن يُقرأ الاسم. والثلاثةُ تملأ
@@ -59,8 +57,6 @@ struct TVMajlisView: View {
             VStack(alignment: .leading, spacing: 0) {
                 header
                 Spacer(minLength: 0)
-                upcoming
-                    .padding(.bottom, 44)
                 if audio.now != .silent {
                     playing
                         .padding(.bottom, TVMetric.gridGap)
@@ -88,7 +84,6 @@ struct TVMajlisView: View {
             }
         }
         .onAppear { settle(); idle.begin(); rehearse() }
-        .onReceive(tick) { now = $0 }
         .onPlayPauseCommand { audio.toggle(); idle.poke() }
         .onChange(of: audio.now) { old, new in
             // بدأ صوتٌ من هذه الشاشة: الشريطُ ظهر لتوّه، والتركيزُ إليه — فهو
@@ -141,37 +136,6 @@ struct TVMajlisView: View {
                 .font(Theme.naskhFont(fixed: TVType.caption, bold: true))
                 .foregroundStyle(Theme.inkSoft)
             Spacer(minLength: 0)
-        }
-    }
-
-    // MARK: الصلاة القادمة
-
-    @ViewBuilder private var upcoming: some View {
-        if let up = prefs.upcoming(now: now) {
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(alignment: .firstTextBaseline, spacing: 18) {
-                    Image(systemName: up.prayer.icon)
-                        .font(.system(size: TVType.title, weight: .light))
-                        .foregroundStyle(Theme.accent)
-                    Text(up.prayer.title)
-                        .font(Theme.display(TVType.hero, weight: .bold))
-                        .foregroundStyle(Theme.ink)
-                    Text(clock(up.date))
-                        .font(Theme.display(TVType.hero, weight: .bold))
-                        .foregroundStyle(Theme.accent)
-                        .monospacedDigit()
-                }
-                HStack(spacing: 14) {
-                    Text(remaining(until: up.date))
-                        .monospacedDigit()
-                    if let city = prefs.city?.name {
-                        Text("·")
-                        Text(city)
-                    }
-                }
-                .font(Theme.display(TVType.caption, weight: .medium))
-                .foregroundStyle(Theme.inkFaint)
-            }
         }
     }
 
@@ -281,7 +245,7 @@ struct TVMajlisView: View {
     }
 
     /// الإعداداتُ مربّعٌ هادئ: حبرٌ لا لونُ طابع، وأضيقُ من جارَيه، وتحت اسمه
-    /// ما فيه — فمن يفتحه مرّةً في الشهر يعرف قبل أن يفتحه أنّ اللونَ والمكانَ هناك.
+    /// ما فيه — فمن يفتحه مرّةً في الشهر يعرف قبل أن يفتحه أنّ اللونَ والنقشَ هناك.
     private var settings: some View {
         let f = focus == .settings
         return Button { route = .settings } label: {
@@ -294,7 +258,7 @@ struct TVMajlisView: View {
                     .font(Theme.display(TVType.body, weight: .bold))
                     .foregroundStyle(f ? Theme.ink : Theme.inkSoft)
                     .multilineTextAlignment(.leading)
-                Text(loc("اللون والنقش والمكان"))
+                Text(loc("اللون والنقش"))
                     .font(Theme.display(TVType.footnote, weight: .regular))
                     .foregroundStyle(Theme.inkFaint)
                     .multilineTextAlignment(.leading)
@@ -322,47 +286,4 @@ struct TVMajlisView: View {
         return false
     }
 
-    // MARK: الوقت
-
-    /// بمنطقة المدينة المختارة لا بمنطقة الجهاز، وبأرقام غربية.
-    private func clock(_ date: Date) -> String {
-        let f = DateFormatter()
-        f.locale = Locale(identifier: "ar_SA@numbers=latn")
-        f.dateFormat = "h:mm a"
-        f.timeZone = prefs.city?.timeZone ?? .current
-        return f.string(from: date)
-    }
-
-    /// «بعد ساعتين و26 دقيقة». والعربية تُفرد وتُثنّي وتجمع: «ساعة» و«ساعتين»
-    /// و«7 ساعات» و«11 ساعة» — فمن كتب «2 ساعة» كتب لحنًا يقرؤه البيت كلّه على
-    /// شاشةٍ عرضها متر.
-    private func remaining(until date: Date) -> String {
-        let s = max(0, Int(date.timeIntervalSince(now)))
-        let h = s / 3600, m = (s % 3600) / 60
-        switch (h, m) {
-        case (0, 0): return loc("أقلّ من دقيقة")
-        case (0, _): return loc("بعد %1$@", minutes(m))
-        case (_, 0): return loc("بعد %1$@", hours(h))
-        default:     return loc("بعد %1$@ و%2$@", hours(h), minutes(m))
-        }
-    }
-
-    private func hours(_ n: Int) -> String {
-        spell(n, one: "ساعة", two: "ساعتين", few: "ساعات")
-    }
-
-    private func minutes(_ n: Int) -> String {
-        spell(n, one: "دقيقة", two: "دقيقتين", few: "دقائق")
-    }
-
-    /// تمييزُ العدد بعد «بعد»: المفردُ والمثنّى بلا رقم، ومن ثلاثةٍ إلى عشرةٍ
-    /// جمعُ القلّة، وما فوقها مفرد.
-    private func spell(_ n: Int, one: String, two: String, few: String) -> String {
-        switch n {
-        case 1:      return loc(one)
-        case 2:      return loc(two)
-        case 3...10: return "\(n) " + loc(few)
-        default:     return "\(n) " + loc(one)
-        }
-    }
 }

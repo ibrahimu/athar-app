@@ -91,8 +91,10 @@ struct TVRecitersView: View {
             withAnimation(Motion.gentle) { chosen = r }
             focus = .what(audio.resumable == nil ? "baqarah" : "continue")
         } label: {
+            // لا رقمَ للقارئ: لا أحدَ يختار «القارئ السابع». العلامةُ للمختار الآن —
+            // وهذا هو الخبرُ الذي يريده من يقف أمام خمسةَ عشرَ اسمًا.
             TVTile(title: r.name,
-                   number: index + 1,
+                   chosen: audio.reciter.id == r.id,
                    tint: TVTint.graded(index, of: RecitationLibrary.reciters.count),
                    focused: isFocused,
                    playing: sounding,

@@ -15,6 +15,7 @@ import SwiftUI
 struct TVDimmer: ViewModifier {
     @ObservedObject var idle: TVIdle
     @ObservedObject private var prefs = TVPrefs.shared
+    @ObservedObject private var audio = TVAudio.shared
     /// «تقليل الحركة» في إتاحة النظام (`UIAccessibility.isReduceMotionEnabled`
     /// نفسها، لكنها تصل هنا حيّةً تتغيّر مع الإعداد): التلاشي يصير قطعًا.
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -75,9 +76,10 @@ struct TVDimmer: ViewModifier {
 
     // MARK: ما يبقى
 
-    /// الساعةُ أوّلًا لأنّها سؤالُ من استيقظ في الليل، والصلاةُ تحتها. ولونُ
-    /// وقتِ الصلاة لونُ الطابع كما هو في المجلس مضيئًا — خيطٌ واحد يصل الوجهين
-    /// بلا أن يُضاف شيء.
+    /// الساعةُ أوّلًا لأنّها سؤالُ من استيقظ في الليل، وتحتها ما يُسمَع — سورةٌ
+    /// وقارئُها، أو الإذاعة. ولونُ السطر الثاني لونُ الطابع كما هو في المجلس
+    /// مضيئًا — خيطٌ واحد يصل الوجهين بلا أن يُضاف شيء. (كانت الصلاةُ القادمة
+    /// هنا، وذهبت مع المواقيت.)
     private var face: some View {
         VStack(spacing: 20) {
             Text(clock(idle.beat))
@@ -85,25 +87,23 @@ struct TVDimmer: ViewModifier {
                 .foregroundStyle(Theme.ink.opacity(0.24))
                 .monospacedDigit()
 
-            if let up = prefs.upcoming(now: idle.beat) {
+            if audio.now != .silent {
                 // والصغيرُ يحتاج ضوءًا أكثر من الكبير ليُقرأ من المسافة نفسها،
-                // فسطرُ الصلاة أظهرُ من الساعة فوقه لا أخفت — والساعةُ تسبقه
-                // بحجمها لا بضوئها. وبهذا لم يزد ما تُضيئه الشاشةُ جملةً.
+                // فسطرُ السماع أظهرُ من الساعة فوقه لا أخفت — والساعةُ تسبقه
+                // بحجمها لا بضوئها.
                 HStack(spacing: 22) {
-                    Text(up.prayer.title)
+                    Text(audio.title)
                         .foregroundStyle(Theme.ink.opacity(0.30))
-                    Text(clock(up.date))
+                    Text(audio.voice)
                         .foregroundStyle(Theme.accent.opacity(0.42))
-                        .monospacedDigit()
                 }
                 .font(Theme.display(TVType.body, weight: .regular))
+                .lineLimit(1)
             }
         }
     }
 
-    /// بمنطقة المدينة المختارة لا بمنطقة الجهاز، وبأرقامٍ غربية — كما في المجلس.
-    /// والمواقيتُ تُؤخذ من `TVPrefs` كما هي ولا تُحسب هنا من جديد: حسابان
-    /// لوقتٍ واحد بابُ اختلافٍ في الدين لا في الواجهة.
+    /// بمنطقة الجهاز وبأرقامٍ غربية.
     ///
     /// ولا «ص/م» هنا وهي في المجلس: اسمُ الصلاة يُغني عنها — لا فجرَ مساءً ولا
     /// عشاءَ صباحًا — وحرفٌ عربيٌّ واحد بين أرقامٍ لاتينية على مئةٍ وعشرين نقطة
@@ -112,7 +112,6 @@ struct TVDimmer: ViewModifier {
         let f = DateFormatter()
         f.locale = Locale(identifier: "ar_SA@numbers=latn")
         f.dateFormat = "h:mm"
-        f.timeZone = prefs.city?.timeZone ?? .current
         return f.string(from: date)
     }
 }

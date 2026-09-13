@@ -20,18 +20,15 @@ import SwiftUI
 struct TVSettingsView: View {
     @ObservedObject private var prefs = TVPrefs.shared
     @FocusState private var focus: Focus?
-    @State private var page: Page = .main
-    @State private var showCities = false
 
     var onClose: (() -> Void)?
 
     private enum Focus: Hashable {
-        case back, theme(String), pattern(String), city, method, choice(String)
+        case back, theme(String), pattern(String)
     }
 
     /// الشاشةُ الأمّ، أو قائمةُ طرق الحساب مكانَها — كما تُبدَّل «ماذا نسمع؟»
     /// مكانَ شبكة القرّاء: صفحةٌ تحلّ محلّ صفحة، لا غطاءٌ فوق غطاء.
-    private enum Page { case main, method }
 
     /// مقاساتُ الشاشة. لا رقمَ في موضعه — tvOS بلا «حجمٍ ديناميكي».
     private enum Metric {
@@ -58,41 +55,17 @@ struct TVSettingsView: View {
     }
 
     var body: some View {
-        TVScreen(title: title, subtitle: subtitle,
-                 onBack: back, backFocused: focus == .back) {
-            switch page {
-            case .main:   main
-            case .method: methods
-            }
-        }
-        .fullScreenCover(isPresented: $showCities) {
-            CityPickerView { showCities = false }
+        TVScreen(title: loc("الإعدادات"), onBack: back, backFocused: focus == .back) {
+            main
         }
         .onAppear { focus = .theme(prefs.theme.rawValue) }
-        // العودةُ من اختيار المدينة تُعيد التركيز إلى صفّها لا إلى أوّل الشاشة.
-        .onChange(of: showCities) { _, shown in if !shown { focus = .city } }
         .onExitCommand(perform: back)
     }
 
-    private var title: String {
-        page == .main ? loc("الإعدادات") : loc("طريقة الحساب")
-    }
+    /// إلى المجلس. لا صفحةَ فرعيةً بعد حذف طريقة الحساب مع المواقيت.
+    private func back() { onClose?() }
 
-    private var subtitle: String? {
-        page == .main ? nil : loc("بها يُحسب الفجرُ والعشاء، وأمّ القرى هي المعتمدة في السعودية.")
-    }
-
-    /// من طرق الحساب إلى الإعدادات، ومن الإعدادات إلى المجلس.
-    private func back() {
-        if page == .method {
-            withAnimation(Motion.gentle) { page = .main }
-            focus = .method
-        } else {
-            onClose?()
-        }
-    }
-
-    // MARK: الشاشة الأمّ — ثلاثة أشرطة
+    // MARK: الشاشة الأمّ — شريطان
 
     private var main: some View {
         VStack(alignment: .leading, spacing: Metric.bandGap) {
@@ -109,21 +82,6 @@ struct TVSettingsView: View {
                 }
                 .focusSection()
             }
-            HStack(spacing: Metric.gap) {
-                field(loc("المكان"), value: prefs.city?.name ?? loc("اختر مدينتك"),
-                      symbol: "mappin.and.ellipse", key: .city) { showCities = true }
-                // طريقةُ الحساب صفٌّ لا شريط: المدنُ في القائمة تبلغ القاهرة وكراتشي
-                // وأمريكا، وأمُّ القرى فيها تُقدِّم الفجرَ عن حسابِ أهلها بربع ساعة —
-                // ومواقيتُ خاطئة خطأٌ في الدين لا في الواجهة. أمّا مذهبُ العصر فلم
-                // يُدرَج: أهلُ الجمهور هم جمهورُ من يُخاطبهم التطبيق، وصفٌّ رابع
-                // ثمنُه من بساطة الشاشة أكبرُ من نفعه.
-                field(loc("طريقة الحساب"), value: prefs.method.shortTitle,
-                      symbol: "sun.horizon", key: .method) {
-                    withAnimation(Motion.gentle) { page = .method }
-                    focus = .choice(prefs.method.rawValue)
-                }
-            }
-            .focusSection()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -230,77 +188,5 @@ struct TVSettingsView: View {
         .tvButton(on, radius: Metric.tileRadius)
     }
 
-    // MARK: الحقلان — المكان وطريقة الحساب
 
-    /// حقلٌ يُفتح: رمزٌ واسمٌ، وقيمتُه في طرفه الآخر وبجانبها سهمٌ يقول إن وراءه
-    /// شاشة. وله جسمٌ ساكن — تعبئةٌ خفيفة بلون الطابع — بخلاف `TVRow` التي تسكن
-    /// شفّافةً: تلك صفٌّ في قائمة والقائمةُ جسمُها، وهذان حقلان وحيدان في أسفل
-    /// الشاشة، وبلا جسمٍ بدَوا سطرَي نصٍّ متناثرَين لا زرّين. والتعبئةُ والحدُّ على
-    /// شكلٍ واحد كما في كلّ صفوف التطبيق.
-    private func field(_ title: String, value: String, symbol: String, key: Focus,
-                       action: @escaping () -> Void) -> some View {
-        let on = focus == key
-        let shape = RoundedRectangle(cornerRadius: Metric.fieldRadius, style: .continuous)
-        return Button(action: action) {
-            HStack(spacing: 18) {
-                Image(systemName: symbol)
-                    .font(.system(size: TVType.caption, weight: .medium))
-                    .foregroundStyle(on ? Theme.accent : Theme.inkFaint)
-                    .frame(width: 42)
-                Text(title)
-                    .font(Theme.display(TVType.body, weight: on ? .bold : .medium))
-                    .foregroundStyle(on ? Theme.ink : Theme.inkSoft)
-                    .multilineTextAlignment(.leading)
-                    .lineLimit(1)
-                Spacer(minLength: 14)
-                Text(value)
-                    .font(Theme.display(TVType.caption, weight: .regular))
-                    .foregroundStyle(on ? Theme.ink : Theme.inkFaint)
-                    .lineLimit(1)
-                // في العربية يُشار إلى ما وراءَ بسهمٍ إلى اليسار.
-                Image(systemName: "chevron.left")
-                    .font(.system(size: TVType.footnote, weight: .semibold))
-                    .foregroundStyle(Theme.inkFaint)
-            }
-            .padding(.horizontal, 30)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .frame(height: Metric.field)
-            .background(
-                shape.fill(Theme.accent.opacity(on ? 0.16 : 0.06))
-                    .overlay(shape.strokeBorder(Theme.accent.opacity(on ? 0.85 : 0), lineWidth: 3))
-            )
-        }
-        .focused($focus, equals: key)
-        .tvButton(on, radius: Metric.fieldRadius)
-    }
-
-    /// الصفُّ نفسُه الذي في قائمة المدن — لقائمة طرق الحساب.
-    private func row(_ title: String, detail: String?, symbol: String?, key: Focus,
-                     action: @escaping () -> Void) -> some View {
-        let on = focus == key
-        return Button(action: action) {
-            TVRow(title: title, detail: detail, symbol: symbol, focused: on)
-        }
-        .focused($focus, equals: key)
-        .tvButton(on, radius: 22)
-    }
-
-    // MARK: طريقة الحساب
-
-    /// ستُّ طرق، صفٌّ لكلٍّ منها، والمختارةُ عليها علامة. يُختار فيُرجَع من فوره —
-    /// كما تُختار المدينةُ فتُغلق قائمتُها.
-    private var methods: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            ForEach(CalculationMethod.allCases) { m in
-                row(m.title, detail: m.detail,
-                    symbol: prefs.method == m ? "checkmark.circle.fill" : nil,
-                    key: .choice(m.rawValue)) {
-                    prefs.method = m
-                    back()
-                }
-            }
-        }
-        .frame(maxWidth: 1600, alignment: .leading)
-        .focusSection()
-    }
 }

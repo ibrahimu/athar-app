@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// الجذر: المدينةُ أوّلًا ثمّ اللون، وكلاهما مرّةً واحدة، ثمّ المجلس.
+/// الجذر: اللونُ مرّةً واحدة ثمّ المجلس. لا سؤالَ عن مدينة — لا مواقيتَ في التلفاز.
 /// وبعدها لا يُسأل عن شيء: ما يُضبط مرّةً ويُنسى موضعُه «الإعدادات».
 struct TVRootView: View {
     @ObservedObject private var prefs = TVPrefs.shared
@@ -19,20 +19,16 @@ struct TVRootView: View {
                 switch forced {
                 case "settings": TVSettingsView()
                 case "reciters": TVRecitersView()
-                case "city":     CityPickerView()
                 case "theme":    TVThemePicker()
                 case "player":   TVPlayerView()
                 default:         TVMajlisView()
                 }
-            } else if prefs.city == nil {
-                CityPickerView()
             } else if !prefs.pickedTheme {
                 TVThemePicker()
             } else {
                 TVMajlisView()
             }
         }
-        .animation(Motion.gentle, value: prefs.city?.id)
         .animation(Motion.gentle, value: prefs.pickedTheme)
     }
 }

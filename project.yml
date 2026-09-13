@@ -174,8 +174,6 @@ targets:
           - "AppFont.swift"
           - "Motion.swift"
           - "L10n.swift"             # loc() مصدرُ Prayer.title وCalculationMethod.title
-          - "PrayerTimes.swift"
-          - "HijriOffset.swift"
           - "LiveStreams.swift"      # البثّ الصوتيّ وحده؛ قناتا اليوتيوب لا تُعرضان بلا WebKit
           - "AyahAudio.swift"
           - "RadioPlayer.swift"
