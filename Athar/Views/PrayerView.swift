@@ -283,16 +283,35 @@ struct PrayerView: View {
     /// القائمة كلِّها في جسمٍ واحد بعد أن صار للصفّ حالتان.
     private func prayerRow(_ entry: (prayer: Prayer, date: Date), isNext: Bool, tint: Color) -> some View {
         let entered = entry.prayer.isPrayer && entry.date <= now
+        let open = entered && elapsedFor == entry.prayer
         return HStack(spacing: 12) {
             IconChip(icon: entry.prayer.icon, tint: tint, size: .sm)
 
             Text(entry.prayer.title)
                 .font(Theme.display(17, weight: isNext ? .bold : .regular))
                 .foregroundStyle(entry.prayer.isPrayer ? Theme.ink : Theme.inkSoft)
+                .layoutPriority(1)
 
-            Spacer()
+            Spacer(minLength: 8)
 
-            trailing(entry, isNext: isNext, tint: tint, entered: entered)
+            // الوقتُ في موضعه هو الذي يتبدّل — «خلّ الشكل كذا»: لا صفٌّ يُفتح ولا
+            // كبسولةٌ تُضاف، بل الرقمُ نفسُه يصير «مضى 13 دقيقة» ثمّ يعود.
+            if open {
+                TimelineView(.everyMinute) { ctx in
+                    Text(Self.elapsedText(since: entry.date, now: ctx.date))
+                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                        .foregroundStyle(tint)
+                        .monospacedDigit()
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.85)
+                }
+                .transition(.opacity)
+            } else {
+                Text(Self.time(entry.date, in: store.placeTimeZone))
+                    .font(.system(size: 17, weight: isNext ? .bold : .regular, design: .rounded))
+                    .foregroundStyle(isNext ? tint : Theme.inkSoft)
+                    .monospacedDigit()
+            }
         }
         .padding(.vertical, 14)
         .padding(.horizontal, 18)
@@ -312,31 +331,10 @@ struct PrayerView: View {
         .animation(Motion.smooth, value: isNext)
     }
 
-    /// بعد الأذان يصير الصفُّ قابلًا للنقر: نقرةٌ تُبدّل الوقتَ بـ«مضى على الأذان …»،
-    /// ونقرةٌ تُعيده. والعدُّ يتجدّد على رأس كل دقيقةٍ بالضبط (`.everyMinute`) لا
-    /// مع مؤقّت الشاشة الذي قد يتأخّر عنها.
-    @ViewBuilder
-    private func trailing(_ entry: (prayer: Prayer, date: Date), isNext: Bool, tint: Color, entered: Bool) -> some View {
-        if entered, elapsedFor == entry.prayer {
-            TimelineView(.everyMinute) { ctx in
-                Text(Self.elapsedText(since: entry.date, now: ctx.date))
-                    .font(Theme.display(15, weight: .semibold))
-                    .foregroundStyle(tint)
-                    .monospacedDigit()
-                    .multilineTextAlignment(.trailing)
-            }
-            .transition(.opacity)
-        } else {
-            Text(Self.time(entry.date, in: store.placeTimeZone))
-                .font(.system(size: 17, weight: isNext ? .bold : .regular, design: .rounded))
-                .foregroundStyle(isNext ? tint : Theme.inkSoft)
-                .monospacedDigit()
-        }
-    }
-
-    /// «مضى على الأذان 13 دقيقة» / «مضى على الأذان ساعة و5 دقائق». والعربيةُ تُفرد
-    /// وتُثنّي وتجمع: «دقيقة» و«دقيقتان» و«7 دقائق» و«13 دقيقة» — فمن كتب
-    /// «2 دقيقة» كتب لحنًا. والأرقامُ غربية كسائر أرقام الواجهة.
+    /// «مضى 13 دقيقة» / «مضى ساعة و5 دقائق» — في موضع الوقت نفسِه، واسمُ الصلاة
+    /// بجانبه يُغني عن «على الأذان». والعربيةُ تُفرد وتُثنّي وتجمع: «دقيقة»
+    /// و«دقيقتان» و«7 دقائق» و«13 دقيقة» — فمن كتب «2 دقيقة» كتب لحنًا.
+    /// والأرقامُ غربية كسائر أرقام الواجهة.
     static func elapsedText(since start: Date, now: Date) -> String {
         let total = max(0, Int(now.timeIntervalSince(start)) / 60)
         let h = total / 60, m = total % 60
@@ -351,10 +349,10 @@ struct PrayerView: View {
         let hours = count(h, one: loc("ساعة"), two: loc("ساعتان"), few: loc("ساعات"), many: loc("ساعة"))
         let mins = count(m, one: loc("دقيقة"), two: loc("دقيقتان"), few: loc("دقائق"), many: loc("دقيقة"))
         switch (h, m) {
-        case (0, 0): return loc("أُذّن الآن")
-        case (0, _): return loc("مضى على الأذان %1$@", mins)
-        case (_, 0): return loc("مضى على الأذان %1$@", hours)
-        default:     return loc("مضى على الأذان %1$@ و%2$@", hours, mins)
+        case (0, 0): return loc("الآن")
+        case (0, _): return loc("مضى %1$@", mins)
+        case (_, 0): return loc("مضى %1$@", hours)
+        default:     return loc("مضى %1$@ و%2$@", hours, mins)
         }
     }
 
