@@ -8,6 +8,10 @@ struct PrayerView: View {
     @EnvironmentObject private var store: AtharStore
     @StateObject private var location: LocationProvider
     @State private var now = Date()
+    /// الصلاةُ التي نقر عليها صاحبُها بعد أذانها ليرى كم مضى — لا الوقتَ وحده.
+    /// من فتح الشاشة بعد العشاء يريد أن يعرف أهو في أوّل الوقت أم في آخره،
+    /// و«7:57» لا تقول له ذلك، و«مضى على الأذان 13 دقيقة» تقوله.
+    @State private var elapsedFor: Prayer?
     @State private var showCityPicker = false
     @Environment(\.layoutDirection) private var layoutDirection
 
@@ -264,26 +268,7 @@ struct PrayerView: View {
                     let rowTint = entry.prayer.isPrayer
                         ? Theme.accent(for: entry.prayer.accentKey)
                         : Theme.inkFaint
-                    HStack(spacing: 12) {
-                        IconChip(icon: entry.prayer.icon, tint: rowTint, size: .sm)
-
-                        Text(entry.prayer.title)
-                            .font(Theme.display(17, weight: isNext ? .bold : .regular))
-                            .foregroundStyle(entry.prayer.isPrayer ? Theme.ink : Theme.inkSoft)
-
-                        Spacer()
-
-                        Text(Self.time(entry.date, in: store.placeTimeZone))
-                            .font(.system(size: 17, weight: isNext ? .bold : .regular, design: .rounded))
-                            .foregroundStyle(isNext ? rowTint : Theme.inkSoft)
-                            .monospacedDigit()
-                    }
-                    .padding(.vertical, 14)
-                    .padding(.horizontal, 18)
-                    .background {
-                        if isNext { nextHighlight(rowTint) }
-                    }
-                    .animation(Motion.smooth, value: isNext)
+                    prayerRow(entry, isNext: isNext, tint: rowTint)
 
                     // نُخفي الفاصلين الملاصقين لرقاقة الصلاة القادمة لتبدو طليقة.
                     if index < ordered.count - 1, index != nextIdx, index + 1 != nextIdx {
@@ -291,6 +276,85 @@ struct PrayerView: View {
                     }
                 }
             }
+        }
+    }
+
+    /// صفُّ صلاةٍ واحد. مفصولٌ عن القائمة لأنّ المُترجِم يعجز عن تقدير نوع
+    /// القائمة كلِّها في جسمٍ واحد بعد أن صار للصفّ حالتان.
+    private func prayerRow(_ entry: (prayer: Prayer, date: Date), isNext: Bool, tint: Color) -> some View {
+        let entered = entry.prayer.isPrayer && entry.date <= now
+        return HStack(spacing: 12) {
+            IconChip(icon: entry.prayer.icon, tint: tint, size: .sm)
+
+            Text(entry.prayer.title)
+                .font(Theme.display(17, weight: isNext ? .bold : .regular))
+                .foregroundStyle(entry.prayer.isPrayer ? Theme.ink : Theme.inkSoft)
+
+            Spacer()
+
+            trailing(entry, isNext: isNext, tint: tint, entered: entered)
+        }
+        .padding(.vertical, 14)
+        .padding(.horizontal, 18)
+        .background {
+            if isNext { nextHighlight(tint) }
+        }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            guard entered else { return }
+            withAnimation(Motion.snappy) {
+                elapsedFor = elapsedFor == entry.prayer ? nil : entry.prayer
+            }
+            Haptics.tap(enabled: store.hapticsEnabled)
+        }
+        .accessibilityAddTraits(entered ? .isButton : [])
+        .accessibilityHint(entered ? loc("انقر لمعرفة كم مضى على الأذان") : "")
+        .animation(Motion.smooth, value: isNext)
+    }
+
+    /// بعد الأذان يصير الصفُّ قابلًا للنقر: نقرةٌ تُبدّل الوقتَ بـ«مضى على الأذان …»،
+    /// ونقرةٌ تُعيده. والعدُّ يتجدّد على رأس كل دقيقةٍ بالضبط (`.everyMinute`) لا
+    /// مع مؤقّت الشاشة الذي قد يتأخّر عنها.
+    @ViewBuilder
+    private func trailing(_ entry: (prayer: Prayer, date: Date), isNext: Bool, tint: Color, entered: Bool) -> some View {
+        if entered, elapsedFor == entry.prayer {
+            TimelineView(.everyMinute) { ctx in
+                Text(Self.elapsedText(since: entry.date, now: ctx.date))
+                    .font(Theme.display(15, weight: .semibold))
+                    .foregroundStyle(tint)
+                    .monospacedDigit()
+                    .multilineTextAlignment(.trailing)
+            }
+            .transition(.opacity)
+        } else {
+            Text(Self.time(entry.date, in: store.placeTimeZone))
+                .font(.system(size: 17, weight: isNext ? .bold : .regular, design: .rounded))
+                .foregroundStyle(isNext ? tint : Theme.inkSoft)
+                .monospacedDigit()
+        }
+    }
+
+    /// «مضى على الأذان 13 دقيقة» / «مضى على الأذان ساعة و5 دقائق». والعربيةُ تُفرد
+    /// وتُثنّي وتجمع: «دقيقة» و«دقيقتان» و«7 دقائق» و«13 دقيقة» — فمن كتب
+    /// «2 دقيقة» كتب لحنًا. والأرقامُ غربية كسائر أرقام الواجهة.
+    static func elapsedText(since start: Date, now: Date) -> String {
+        let total = max(0, Int(now.timeIntervalSince(start)) / 60)
+        let h = total / 60, m = total % 60
+        func count(_ n: Int, one: String, two: String, few: String, many: String) -> String {
+            switch n {
+            case 1: return one
+            case 2: return two
+            case 3...10: return "\(n) " + few
+            default: return "\(n) " + many
+            }
+        }
+        let hours = count(h, one: loc("ساعة"), two: loc("ساعتان"), few: loc("ساعات"), many: loc("ساعة"))
+        let mins = count(m, one: loc("دقيقة"), two: loc("دقيقتان"), few: loc("دقائق"), many: loc("دقيقة"))
+        switch (h, m) {
+        case (0, 0): return loc("أُذّن الآن")
+        case (0, _): return loc("مضى على الأذان %1$@", mins)
+        case (_, 0): return loc("مضى على الأذان %1$@", hours)
+        default:     return loc("مضى على الأذان %1$@ و%2$@", hours, mins)
         }
     }
 
