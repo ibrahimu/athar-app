@@ -298,13 +298,15 @@ struct PrayerView: View {
             // كبسولةٌ تُضاف، بل الرقمُ نفسُه يصير «مضى 13 دقيقة» ثمّ يعود.
             if open {
                 // في موضع الوقت حبّةٌ بلغة حبّة العدّ التنازلي في البطاقة العليا:
-                // كبسولةٌ بلون الصلاة، رمزُ ساعةٍ تدور بدل الرمل، ونصٌّ يتجدّد على
-                // رأس كل دقيقةٍ بالضبط. الصفُّ نفسُه لا يتحرّك.
+                // كبسولةٌ بلون **الهويّة** (طابعُ التطبيق) لا بلون الصلاة — فتتّحد مع
+                // بقيّة الواجهة ولا تصير كلُّ صلاةٍ حبّةً بلونٍ آخر — ورمزُ ساعةٍ تدور
+                // بدل الرمل، ونصٌّ يتجدّد على رأس كل دقيقةٍ بالضبط. الصفُّ لا يتحرّك.
+                let brand = Theme.accent
                 TimelineView(.everyMinute) { ctx in
                     HStack(spacing: 5) {
                         Image(systemName: "clock.arrow.circlepath")
                             .font(.system(size: 10, weight: .semibold))
-                            .foregroundStyle(tint)
+                            .foregroundStyle(brand)
                         Text(Self.elapsedText(since: entry.date, now: ctx.date))
                             .font(.system(size: 14, weight: .medium, design: .rounded))
                             .foregroundStyle(Theme.ink)
@@ -314,8 +316,8 @@ struct PrayerView: View {
                     }
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
-                    .background(Capsule().fill(tint.opacity(0.12)))
-                    .overlay(Capsule().strokeBorder(tint.opacity(0.20), lineWidth: 0.5))
+                    .background(Capsule().fill(brand.opacity(0.12)))
+                    .overlay(Capsule().strokeBorder(brand.opacity(0.20), lineWidth: 0.5))
                 }
                 .transition(.opacity.combined(with: .scale(scale: 0.92)))
             } else {
