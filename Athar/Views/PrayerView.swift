@@ -297,15 +297,27 @@ struct PrayerView: View {
             // الوقتُ في موضعه هو الذي يتبدّل — «خلّ الشكل كذا»: لا صفٌّ يُفتح ولا
             // كبسولةٌ تُضاف، بل الرقمُ نفسُه يصير «مضى 13 دقيقة» ثمّ يعود.
             if open {
+                // في موضع الوقت حبّةٌ بلغة حبّة العدّ التنازلي في البطاقة العليا:
+                // كبسولةٌ بلون الصلاة، رمزُ ساعةٍ تدور بدل الرمل، ونصٌّ يتجدّد على
+                // رأس كل دقيقةٍ بالضبط. الصفُّ نفسُه لا يتحرّك.
                 TimelineView(.everyMinute) { ctx in
-                    Text(Self.elapsedText(since: entry.date, now: ctx.date))
-                        .font(.system(size: 15, weight: .semibold, design: .rounded))
-                        .foregroundStyle(tint)
-                        .monospacedDigit()
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.85)
+                    HStack(spacing: 5) {
+                        Image(systemName: "clock.arrow.circlepath")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundStyle(tint)
+                        Text(Self.elapsedText(since: entry.date, now: ctx.date))
+                            .font(.system(size: 14, weight: .medium, design: .rounded))
+                            .foregroundStyle(Theme.ink)
+                            .monospacedDigit()
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.85)
+                    }
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(Capsule().fill(tint.opacity(0.12)))
+                    .overlay(Capsule().strokeBorder(tint.opacity(0.20), lineWidth: 0.5))
                 }
-                .transition(.opacity)
+                .transition(.opacity.combined(with: .scale(scale: 0.92)))
             } else {
                 Text(Self.time(entry.date, in: store.placeTimeZone))
                     .font(.system(size: 17, weight: isNext ? .bold : .regular, design: .rounded))
