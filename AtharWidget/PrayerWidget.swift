@@ -204,7 +204,7 @@ struct PrayerWidgetView: View {
                 DayArc(entry: entry).frame(height: 26)
 
                 HStack(spacing: 5) {
-                    ForEach(entry.today.filter(\.prayer.isPrayer), id: \.prayer) { item in
+                    ForEach(entry.today, id: \.prayer) { item in
                         let isNext = entry.upcoming?.prayer == item.prayer
                         VStack(spacing: 3) {
                             Text(item.prayer.title)

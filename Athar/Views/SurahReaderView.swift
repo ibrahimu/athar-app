@@ -69,6 +69,9 @@ private enum ReaderWake {
 struct SurahReaderView: View {
     let surahId: Int
     var scrollTo: AyahRef? = nil
+    var readingPathID: UUID? = nil
+    @State private var savingPath = false
+    @State private var pathTitle = ""
 
     @EnvironmentObject private var store: AtharStore
     @Environment(\.scenePhase) private var scenePhase
@@ -191,6 +194,7 @@ struct SurahReaderView: View {
                     onPageVisible: { page in
                         let ref = Quran.firstAyah(ofPage: page)
                         store.lastRead = ref
+                        if let readingPathID { store.updateReadingPath(readingPathID, at: ref) }
                         countPage(page)
                         currentRef = ref
                     },
@@ -228,6 +232,17 @@ struct SurahReaderView: View {
             }
         )
         .onPreferenceChange(ReaderWidthKey.self) { w in readerWidth = w }
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button { pathTitle = ""; savingPath = true } label: { Image(systemName: "bookmark.badge.plus") }
+                    .accessibilityLabel("احفظ الموضع كقراءة مستقلة")
+            }
+        }
+        .alert("احفظ موضعك", isPresented: $savingPath) {
+            TextField("اسم القراءة", text: $pathTitle)
+            Button("حفظ") { store.addReadingPath(title: pathTitle, at: currentRef ?? scrollTo ?? AyahRef(surah: surahId, ayah: 1)) }
+            Button("إلغاء", role: .cancel) {}
+        } message: { Text("سيبقى الموضع في «قراءاتي» حتى إن بحثت أو قرأت سورة أخرى.") }
         .overlay(alignment: .bottom) {
             VStack(spacing: 6) {
                 if ayahAudio.isActive { AyahPlayerBar(audio: ayahAudio, palette: palette) }
@@ -408,6 +423,7 @@ struct SurahReaderView: View {
                                  onTapAyah: { selected = $0 },
                                  onVisible: {
                                      store.lastRead = $0
+                                     if let readingPathID { store.updateReadingPath(readingPathID, at: $0) }
                                      if $0 == AyahRef(surah: 18, ayah: 110), Calendar.current.component(.weekday, from: Date()) == 6 { store.noteKahfRead() }
                                      // الاحتساب نفسه في الوضعين: كان وضعُ الآيات يقدّم
                                      // الختمة ولا يمسّ دفتر اليوم، فمن قرأ شهرًا فيه

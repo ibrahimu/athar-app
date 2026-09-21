@@ -503,6 +503,7 @@ enum Reminders {
         identifier.hasPrefix("athar.")
             && !identifier.hasPrefix(NotificationDelegate.snoozePrefix)
             && identifier != testId
+            && identifier != UpdateCheck.notificationID
     }
 
     /// خطة واحدة لكل العائلات، مقصوصة على `budget` — وهو عدد ما سيُضاف فعلًا،
@@ -720,7 +721,7 @@ enum Reminders {
     /// متن تنبيه الأذان: آيات وأحاديث ثابتة بلفظها من المصحف المضمَّن والصحيحين
     /// (نُسخت من مصادرها لا من الذاكرة)، تتبدّل مع الأيام كي لا يُملّ التنبيه.
     /// الفجر والعصر لهما نصّاهما الخاصّان.
-    private static func athanBody(for prayer: Prayer, dayOffset: Int) -> String {
+    static func athanBody(for prayer: Prayer, dayOffset: Int) -> String {
         let day = (Calendar.current.ordinality(of: .day, in: .era, for: planningDate) ?? 0) + dayOffset
         switch prayer {
         case .fajr:
@@ -732,11 +733,13 @@ enum Reminders {
                 ? loc("«مَنْ صَلَّى الْبَرْدَيْنِ دَخَلَ الْجَنَّةَ» — رواه البخاري")
                 : loc("﴿حَٰفِظُوا۟ عَلَى ٱلصَّلَوَٰتِ وَٱلصَّلَوٰةِ ٱلْوُسْطَىٰ﴾ — البقرة: 238")
         default:
+            // ﴿وَٱلصَّلَوٰةِ ٱلْوُسْطَىٰ﴾ لا تُدرج هنا: كانت في هذه الدورة فتظهر للمغرب
+            // والعشاء كلَّ رابع يوم — والوسطى هي العصر عند الجمهور وبالنصّ: «شغلونا
+            // عن الصلاة الوسطى صلاةِ العصر» (متفق عليه)، فهي للعصر وحده أعلاه.
             let lines = [
                 loc("﴿وَأَقِمِ ٱلصَّلَوٰةَ لِذِكْرِىٓ﴾ — طه: 14"),
                 loc("﴿إِنَّ ٱلصَّلَوٰةَ تَنْهَىٰ عَنِ ٱلْفَحْشَآءِ وَٱلْمُنكَرِ﴾ — العنكبوت: 45"),
                 loc("«مَثَلُ الصَّلَوَاتِ الْخَمْسِ كَمَثَلِ نَهَرٍ جَارٍ غَمْرٍ عَلَى بَابِ أَحَدِكُمْ يَغْتَسِلُ مِنْهُ كُلَّ يَوْمٍ خَمْسَ مَرَّاتٍ» — رواه مسلم"),
-                loc("﴿حَٰفِظُوا۟ عَلَى ٱلصَّلَوَٰتِ وَٱلصَّلَوٰةِ ٱلْوُسْطَىٰ﴾ — البقرة: 238"),
             ]
             return lines[day % lines.count]
         }

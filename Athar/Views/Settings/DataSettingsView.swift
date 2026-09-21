@@ -176,6 +176,9 @@ struct DataSettingsView: View {
                     statPill("infinity", Theme.accent, store.totalDhikrCount.counterText, loc("statTotal"))
                 }
                 .padding(.vertical, 16)
+                Text("يُحسب اليوم عند استخدام المسبحة أو تسجيل ذكر، وليس بمجرد فتح التطبيق. تزيد السلسلة مرة واحدة في اليوم؛ وإذا مرّ يوم كامل بلا تسجيل تبدأ سلسلة جديدة. مجموع الأذكار لا يُصفّر.")
+                    .font(Theme.display(12)).foregroundStyle(Theme.inkSoft)
+                    .fixedSize(horizontal: false, vertical: true).padding(.horizontal, 16).padding(.bottom, 12)
                 SettingsDivider(inset: 0)
                 NavigationLink { StatsView() } label: {
                     SettingsRow(icon: "chart.bar.xaxis", tint: Theme.accent(for: "dawn"),

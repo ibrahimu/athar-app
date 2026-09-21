@@ -1,4 +1,5 @@
 import Foundation
+import UserNotifications
 
 /// «فيه تحديث»: يسأل متجر التطبيقات عن آخر إصدارٍ منشور ويقارنه بالمُشغَّل الآن.
 ///
@@ -23,6 +24,9 @@ final class UpdateCheck: ObservableObject {
     /// مرّة كل يوم على الأكثر: السؤال رخيص لكنّه شبكة، ولا جديد في المتجر كل ساعة.
     private static let interval: TimeInterval = 24 * 60 * 60
 
+    private var fetching = false
+    nonisolated static let notificationID = "athar.update.available"
+
     private var defaults: UserDefaults { UserDefaults(suiteName: AtharStore.appGroup) ?? .standard }
 
     var current: String {
@@ -43,9 +47,11 @@ final class UpdateCheck: ObservableObject {
 
     /// يُنادى عند تنشيط التطبيق. لا يرمي ولا ينتظر: ما لم يصل جوابٌ صالح لم يتغيّر شيء.
     func refresh(force: Bool = false) {
+        guard !fetching else { return }
         let last = defaults.object(forKey: Key.lastCheck) as? Date
         if !force, let last, Date().timeIntervalSince(last) < Self.interval { return }
-        Task { await fetch() }
+        fetching = true
+        Task { await fetch(); fetching = false }
     }
 
     private func fetch() async {
@@ -64,6 +70,32 @@ final class UpdateCheck: ObservableObject {
 
         defaults.set(Date(), forKey: Key.lastCheck)
         available = Self.isNewer(store, than: current) ? store : nil
+        if let available { await notify(version: available) }
+    }
+
+    private func notify(version: String) async {
+        let key = "athar.update.notified"
+        guard defaults.string(forKey: key) != version, !dismissed else { return }
+        let center = UNUserNotificationCenter.current()
+        let settings = await center.notificationSettings()
+        guard settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional else { return }
+        // Do not displace a prayer reminder when the system queue is full.
+        guard await center.pendingNotificationRequests().count < Reminders.systemLimit else { return }
+        let content = Self.notificationContent(version: version)
+        do {
+            try await center.add(UNNotificationRequest(identifier: Self.notificationID, content: content, trigger: nil))
+            defaults.set(version, forKey: key)
+        } catch { /* Retry on a later successful store check. */ }
+    }
+
+    nonisolated static func notificationContent(version: String) -> UNMutableNotificationContent {
+        let content = UNMutableNotificationContent()
+        content.title = "جديد أثر"
+        content.body = "الإصدار \(version) متاح الآن. حدّث أثر واستكشف الإضافات الجديدة."
+        content.categoryIdentifier = NotificationDelegate.updateCategory
+        content.threadIdentifier = "athar.updates"
+        content.interruptionLevel = .passive
+        return content
     }
 
     /// مقارنة إصدارين عددًا عددًا: «١٫١٠» أحدث من «١٫٩»، والمقارنة النصّية تقول العكس.

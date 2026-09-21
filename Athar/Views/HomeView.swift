@@ -257,15 +257,19 @@ struct HomeView: View {
         let tomorrowFajr = Calendar.current.date(byAdding: .day, value: 1, to: now)
             .flatMap { store.prayerTimes(for: $0)?[.fajr] }
         let target: (label: String, date: Date)? = {
-            if let m = maghrib, m > now { return (loc("الإفطار"), m) }
             if let f = fajr, f > now { return (loc("الإمساك"), f) }
+            if let m = maghrib, m > now { return (loc("الإفطار"), m) }
             if let f = tomorrowFajr { return (loc("الإمساك"), f) }
             return nil
         }()
         // ورقمُ الإمساك المعروض يتبعه: بعد المغرب يُعرض فجرُ الغد لا فجرٌ مضى.
-        let imsak = (fajr.map { $0 > now } ?? false) ? fajr : (tomorrowFajr ?? fajr)
+        let imsak = (maghrib.map { $0 <= now } ?? false) ? (tomorrowFajr ?? fajr) : fajr
         return VStack(alignment: .leading, spacing: 10) {
             SectionHeader(title: loc("رمضان كريم"), tint: color)
+            NavigationLink { RamadanView() } label: {
+                Label("افتح صفحة رمضان وإمساكية الشهر", systemImage: "moon.stars.fill")
+                    .font(Theme.display(14, weight: .semibold))
+            }
             AtharCard(padding: 16, elevation: .e2, tint: color) {
                 VStack(alignment: .leading, spacing: 12) {
                     HStack(spacing: 0) {

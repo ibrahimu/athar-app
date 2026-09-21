@@ -15,6 +15,8 @@ struct AtharApp: App {
         let store = AtharStore.shared
         // الخط المحفوظ قبل أول رسم — المخزن يضبط الطابع والنقش في init ولا يعرف الخط.
         store.applyStoredTheme()
+        // Preserve the pre-update position before any deep link opens another passage.
+        store.prepareReadingPaths()
         _store = StateObject(wrappedValue: store)
     }
 

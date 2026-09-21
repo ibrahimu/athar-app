@@ -5,6 +5,7 @@ import SwiftUI
 struct AtharWidgetBundle: WidgetBundle {
     var body: some Widget {
         PrayerWidget()
+        SunriseWidget()
         DhikrWidget()
         AtharProgressWidget()
         KhatmahWidget()

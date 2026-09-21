@@ -1,4 +1,5 @@
 import Foundation
+import UIKit
 import UserNotifications
 
 /// مندوب الإشعارات: يُظهر التنبيه ولو كان التطبيق مفتوحًا، ويوجّه النقر إلى قسمه،
@@ -10,6 +11,8 @@ final class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
 
     /// فئة بطاقة الأذان ومفاتيح ما تحمله. غير معزولة عن الفاعل الرئيس عمدًا:
     /// `Reminders` يكتبها في المحتوى، والمندوب يقرؤها من خارج الخيط الرئيس.
+    static let updateCategory = "athar.update"
+    static let updateAction = "athar.action.update"
     static let athanCategory = "athar.athan"
     static let prayedAction = "athar.action.prayed"
     static let snoozeAction = "athar.action.snooze"
@@ -32,7 +35,10 @@ final class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
         return [UNNotificationCategory(identifier: athanCategory,
                                        actions: [prayed, snooze],
                                        intentIdentifiers: [],
-                                       options: [])]
+                                       options: []),
+                UNNotificationCategory(identifier: updateCategory,
+                    actions: [UNNotificationAction(identifier: updateAction, title: "تحديث أثر", options: [.foreground])],
+                    intentIdentifiers: [], options: [])]
     }
 
     // MARK: - العرض والتطبيق مفتوح
@@ -57,6 +63,12 @@ final class NotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
         let moment = Self.moment(in: response.notification.request.content.userInfo)
 
         Task { @MainActor in
+            if identifier == UpdateCheck.notificationID,
+               action == UNNotificationDefaultActionIdentifier || action == Self.updateAction {
+                await UIApplication.shared.open(SettingsView.appStoreURL)
+                completionHandler()
+                return
+            }
             switch action {
             case Self.prayedAction:
                 Self.recordOnTime(prayer: prayer, at: moment)

@@ -1,9 +1,28 @@
 import XCTest
+import UserNotifications
 @testable import Athar
 
 /// مقارنة الإصدارين: هي كلّ ما يُبنى عليه إظهار بطاقة «فيه تحديث»، وخطؤها
 /// إمّا أن يُلحّ على من هو على الأحدث، وإمّا أن يسكت عمّن فاته تحديث.
 final class UpdateCheckTests: XCTestCase {
+
+    func testUpdateNotificationUsesAtharIdentityWithoutUrgencyOrSound() {
+        let content = UpdateCheck.notificationContent(version: "1.7")
+        XCTAssertEqual(content.title, "جديد أثر")
+        XCTAssertTrue(content.body.contains("1.7"))
+        XCTAssertEqual(content.categoryIdentifier, NotificationDelegate.updateCategory)
+        XCTAssertEqual(content.interruptionLevel, .passive)
+        XCTAssertNil(content.sound)
+    }
+
+    func testUpdateActionOpensInForegroundAndKeepsPrayerActions() throws {
+        let categories = NotificationDelegate.makeCategories()
+        let update = try XCTUnwrap(categories.first { $0.identifier == NotificationDelegate.updateCategory })
+        let action = try XCTUnwrap(update.actions.first)
+        XCTAssertEqual(action.identifier, NotificationDelegate.updateAction)
+        XCTAssertTrue(action.options.contains(.foreground))
+        XCTAssertTrue(categories.contains { $0.identifier == NotificationDelegate.athanCategory })
+    }
 
     func testNewerByMinor() {
         XCTAssertTrue(UpdateCheck.isNewer("1.4", than: "1.3"))

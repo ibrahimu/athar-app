@@ -23,6 +23,9 @@ struct SettingsView: View {
                 reminders.appearStagger(3)
                 reading.appearStagger(4)
                 data.appearStagger(5)
+                NavigationLink { WatchSetupView() } label: {
+                    SettingsRow(icon: "applewatch", tint: Theme.accent, title: "أثر على الساعة", subtitle: "التثبيت التلقائي وحالة الاقتران") { chevron }
+                }.buttonStyle(.plain)
                 app.appearStagger(6)
                 blessing.appearStagger(7)
             }

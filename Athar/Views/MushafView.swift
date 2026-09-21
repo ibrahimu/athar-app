@@ -54,6 +54,16 @@ struct MushafView: View {
                         if query.isEmpty {
                             stopMarkCard
                             continueCard
+                            NavigationLink { ReadingPathsView() } label: {
+                                Label("قراءاتي · مواضع مستقلة لختماتك ومراجعتك", systemImage: "bookmark.fill")
+                                    .font(Theme.display(15, weight: .semibold)).frame(maxWidth: .infinity, alignment: .leading).padding()
+                                    .background(Theme.surface, in: RoundedRectangle(cornerRadius: 18))
+                            }
+                            NavigationLink { QiyamReaderView() } label: {
+                                Label("مصحف القيام · 200 لوحة قراءة", systemImage: "book.pages.fill")
+                                    .font(Theme.display(15, weight: .semibold)).frame(maxWidth: .infinity, alignment: .leading).padding()
+                                    .background(Theme.surface, in: RoundedRectangle(cornerRadius: 18))
+                            }
                             toolsRow
                             recitationCard
                             khatmahDuaCard
@@ -137,6 +147,7 @@ struct MushafView: View {
                 }
             }
             .overlay(alignment: .bottom) { MiniPlayer() }
+            .onAppear { store.prepareReadingPaths() }
             .navigationTitle(loc("mushaf"))
             .navigationBarTitleDisplayMode(.inline)
             .searchable(text: $query, prompt: Text(loc("searchMushaf")))
