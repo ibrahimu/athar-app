@@ -396,26 +396,51 @@ enum Reminders {
 
     /// تذكيرات السنن الأسبوعية والشهرية.
     private static func scheduleSunan(store: AtharStore) {
-        // الجمعة: قبل الظهر بساعة — الغسل والكهف والصلاة على النبي ﷺ. تُجدول للجُمَع الأربع
-        // القادمة بوقت ظهر كل جمعة (لا ساعة ثابتة)، وتتجدّد مع كل فتح.
+        // الجمعة ثلاثةُ مواقيت لا واحد، فالسننُ موزّعةٌ على اليوم كلِّه: ما يُصنع في
+        // أوّله (الكهف والصلاة على النبي ﷺ) يُذكَّر به بعد الفجر لا قبل الظهر بساعة
+        // وقد ضاق الوقت؛ وما يُصنع قبل الرواح (الغسل والتطيّب والتبكير) موضعُه
+        // قبل الظهر؛ وساعةُ الإجابة آخرَ النهار لا تُدرك إن قيلت ضحًى. ولأنّ
+        // المواقيت الثلاثة تُثقل سقفَ النظام، تُجدول لجمعتين لا لأربع — والخطّة
+        // تتجدّد مع كل فتحٍ ومع تجديد الخلفية، فلا تنقطع.
         if store.jumuahAlert {
-            // موعدها ظهر الجمعة ناقصَ ساعة، ويومُها يوم المكان — فالتقويم تقويمه.
+            // أيامُ المكان ومواقيتُه — فالتقويم تقويمه.
             let cal = placeCalendar(store)
-            var scheduled = 0
-            for offset in 0..<35 {
-                guard scheduled < 4, let day = cal.date(byAdding: .day, value: offset, to: planningDate) else { break }
-                guard cal.component(.weekday, from: day) == 6,
-                      let dhuhr = store.prayerTimes(for: day)?[.dhuhr] else { continue }
-                let fire = dhuhr.addingTimeInterval(-3600)
-                guard fire > planningDate else { continue }
-                let c = UNMutableNotificationContent()
-                c.title = loc("جمعة مباركة")
-                c.subtitle = loc("بعد ساعة تُقام الجمعة")
-                c.body = loc("اغتسل وتطيّب، واقرأ سورة الكهف، وأكثِر من الصلاة على النبي ﷺ.")
-                c.sound = .default
-                collect(UNNotificationRequest(identifier: "\(jumuahId).\(scheduled)", content: c,
-                    trigger: UNCalendarNotificationTrigger(dateMatching: pinned(fire, cal), repeats: false)))
-                scheduled += 1
+            var weeks = 0
+            for offset in 0..<21 {
+                guard weeks < 2, let day = cal.date(byAdding: .day, value: offset, to: planningDate) else { break }
+                guard cal.component(.weekday, from: day) == 6, let times = store.prayerTimes(for: day) else { continue }
+
+                var moments: [(id: String, at: Date, subtitle: String, body: String)] = []
+                if let fajr = times[.fajr] {
+                    // بعد الفجر بنصف ساعة: أوّل النهار، وسورةُ الكهف تحتاج مهلةً.
+                    moments.append((id: "dawn", at: fajr.addingTimeInterval(1800),
+                                    subtitle: loc("أوّل جمعتك"),
+                                    body: loc("اقرأ سورة الكهف، وأكثِر من الصلاة على النبي ﷺ.")))
+                }
+                if let dhuhr = times[.dhuhr] {
+                    moments.append((id: "before", at: dhuhr.addingTimeInterval(-3600),
+                                    subtitle: loc("بعد ساعة تُقام الجمعة"),
+                                    body: loc("اغتسل وتطيّب، وبكّر إلى المسجد.")))
+                }
+                if let maghrib = times[.maghrib] {
+                    // آخرُ ساعةٍ من النهار — وهي أرجى ساعات الجمعة للدعاء.
+                    moments.append((id: "saah", at: maghrib.addingTimeInterval(-3600),
+                                    subtitle: loc("آخر ساعة من النهار"),
+                                    body: loc("تحيَّن ساعة الإجابة، وادعُ بما أهمّك.")))
+                }
+
+                var any = false
+                for moment in moments where moment.at > planningDate {
+                    let c = UNMutableNotificationContent()
+                    c.title = loc("جمعة مباركة")
+                    c.subtitle = moment.subtitle
+                    c.body = moment.body
+                    c.sound = .default
+                    collect(UNNotificationRequest(identifier: "\(jumuahId).\(weeks).\(moment.id)", content: c,
+                        trigger: UNCalendarNotificationTrigger(dateMatching: pinned(moment.at, cal), repeats: false)))
+                    any = true
+                }
+                if any { weeks += 1 }
             }
         }
 

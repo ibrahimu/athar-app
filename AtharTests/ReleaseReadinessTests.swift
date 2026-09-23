@@ -117,9 +117,16 @@ extension ReleaseReadinessTests {
         let friday = try XCTUnwrap(calendar.nextDate(after: Date(), matching: DateComponents(hour: 0, minute: 1, weekday: 6), matchingPolicy: .nextTime))
         let plan = Reminders.makePlan(store: store, now: friday)
         let reminders = plan.filter { $0.identifier.hasPrefix("athar.jumuah.") }
-        XCTAssertEqual(reminders.count, 4)
-        let trigger = try XCTUnwrap(reminders.first?.trigger as? UNCalendarNotificationTrigger)
-        XCTAssertEqual(trigger.dateComponents.day, calendar.component(.day, from: friday))
+        // جمعتان × ثلاثةُ مواقيت (بعد الفجر، قبل الجمعة، آخرُ ساعة من النهار).
+        XCTAssertEqual(reminders.count, 6)
+        // ومواقيتُ الجمعة الحاضرة كلُّها في يومها هي — لا في الجمعة التالية.
+        let today = reminders.filter { $0.identifier.hasPrefix("athar.jumuah.0.") }
+        XCTAssertEqual(Set(today.map { $0.identifier }),
+                       ["athar.jumuah.0.dawn", "athar.jumuah.0.before", "athar.jumuah.0.saah"])
+        for request in today {
+            let trigger = try XCTUnwrap(request.trigger as? UNCalendarNotificationTrigger)
+            XCTAssertEqual(trigger.dateComponents.day, calendar.component(.day, from: friday), request.identifier)
+        }
     }
 }
 
