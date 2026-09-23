@@ -8,7 +8,7 @@ struct WhatsNewView: View {
     var onClose: () -> Void = {}
 
     /// يُرفع مع كل إصدار يستحق العرض.
-    static let version = "1.6"
+    static let version = "1.7"
 
     struct Item: Identifiable {
         let id: String
@@ -23,18 +23,16 @@ struct WhatsNewView: View {
     /// وهذا شرطٌ يُحرَس لا يُتذكَّر — الرقم الهنديّ هنا يخالف ما يقرؤه المستخدم في
     /// الإشعار نفسه وفي كل عدّادٍ في التطبيق.
     static let items: [Item] = [
-        .init(id: "athan", icon: "bell.and.waves.left.and.right.fill", accent: "gold", title: "الأذان لا يفوتك",
-              // «ذكّرني بعد 10 دقائق» تُنقل كما تقرأها في الإشعار نفسه — والإشعار
-              // بالأرقام الغربية كما التطبيق كلّه، فلا يُكتب هنا رقمٌ يخالف ما يراه.
-              detail: "يصلك الأذان في وقته ولو كان جهازك في وضع تركيز — وتُطفئ ذلك متى شئت. وفيه «صلّيتها في وقتها» و«ذكّرني بعد 10 دقائق»، ومواعيده مثبّتة على منطقة مكانك لا جهازك.", tab: .prayer),
-        .init(id: "ramadan", icon: "moon.stars.fill", accent: "green", title: "رمضان مع أثر",
-              detail: "إمساكية الشهر وقضاء الصيام ووردك في صفحة واحدة، بتخصيص يتبع هوية التطبيق.", tab: .ramadan),
-        .init(id: "readings", icon: "bookmark.fill", accent: "green", title: "لكل قراءة موضعها",
-              detail: "احفظ ختماتك ومراجعاتك بأسماء مستقلة، وابحث وتصفّح دون فقدان موضعها.", tab: .mushaf),
-        .init(id: "qiyam", icon: "book.pages.fill", accent: "green", title: "مصحف القيام",
-              detail: "القرآن كاملًا في 200 لوحة قابلة للتمرير، بخط قابل للتكبير وسطور مضبوطة الهوامش.", tab: .mushaf),
-        .init(id: "sunrise", icon: "sunrise.fill", accent: "green", title: "الشروق في الودجات",
-              detail: "موعد الشروق في ودجت الصلاة وودجت مستقل للشاشة الرئيسية وشاشة القفل.", tab: .prayer),
+        .init(id: "travel", icon: "airplane", accent: "sea", title: "وضع السفر",
+              detail: "ركعتان في الرباعية، ويمكنك جمع الظهر مع العصر والمغرب مع العشاء — فيصلك أذان واحد للصلاتين بدل اثنين. تشغّله بيدك، ويعرض عليك حين تتغيّر منطقتك الزمنية.", tab: .prayer),
+        .init(id: "fridayColor", icon: "sparkles", accent: "gold", title: "لون خاص ليوم الجمعة",
+              detail: "اختر لونًا يلبسه أثر يوم الجمعة وحده، ويرجع لونك بعده — ومعه الودجات والساعة.", tab: .settings),
+        .init(id: "fridayWidget", icon: "calendar.badge.clock", accent: "gold", title: "ودجت الجمعة",
+              detail: "سنن الجمعة وحصيلتها وساعة الإجابة، وكم بقي على الجمعة سائر الأسبوع. وتذكيراتها صارت ثلاثة في مواضعها من النهار.", tab: .friday),
+        .init(id: "wide", icon: "rectangle.split.2x1.fill", accent: "green", title: "الشاشات العريضة",
+              detail: "على الآيباد: شاشة اليوم والصلاة وفهرسا السور والأذكار في عمودين بدل عمود واحد يترك نصف الشاشة فارغًا.", tab: .home),
+        .init(id: "updates", icon: "arrow.down.circle.fill", accent: "dusk", title: "لا تبقى على نسخة قديمة",
+              detail: "يسألك أثر عن التحديث في الخلفية أيضًا، فيبلغك أن فيه جديدًا ولو لم تفتحه.", tab: nil),
     ]
 
     var onOpen: ((AppTab) -> Void)? = nil
@@ -49,7 +47,7 @@ struct WhatsNewView: View {
                         Text(loc("جديد أثر %1$@", Self.version))
                             .font(Theme.display(24, weight: .bold))
                             .foregroundStyle(Theme.ink)
-                        Text(loc("رمضان وقراءاتك المستقلة ومصحف القيام، بتصميم منسجم مع أثر."))
+                        Text(loc("وضع السفر، ولون الجمعة، وودجتها — والشاشات العريضة في عمودين."))
                             .font(Theme.display(13))
                             .foregroundStyle(Theme.inkSoft)
                             .multilineTextAlignment(.center)

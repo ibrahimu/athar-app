@@ -167,13 +167,25 @@ final class AdhkarSearchTiersAndPanelTests: XCTestCase {
         }
     }
 
-    /// والبطاقة تَعِد بما يقوله الزرّ حرفًا بحرف: لو تغيّرت دقائق التأجيل يومًا
-    /// لكذّبت البطاقةُ الإشعارَ ولم ينتبه أحد.
-    func testWhatsNewQuotesTheAthanActionVerbatim() throws {
+    /// وبطاقاتُ «ما الجديد» تَعِد بما تقوله الأزرار حرفًا بحرف: لو تغيّرت دقائق
+    /// التأجيل يومًا لكذّبت البطاقةُ الإشعارَ ولم ينتبه أحد. والبطاقاتُ تتبدّل مع
+    /// كل إصدار، فالشرطُ على كل بطاقةٍ تذكر التأجيل — لا على بطاقةٍ بعينها تزول.
+    func testWhatsNewQuotesTheSnoozeActionVerbatimWhereverItMentionsIt() throws {
         let actions = NotificationDelegate.makeCategories().flatMap(\.actions)
         let snooze = try XCTUnwrap(actions.first { $0.identifier == NotificationDelegate.snoozeAction })
-        let card = try XCTUnwrap(WhatsNewView.items.first { $0.id == "athan" })
-        XCTAssertTrue(card.detail.contains(snooze.title), "«\(snooze.title)» ليست كما في البطاقة")
+        for card in WhatsNewView.items where card.detail.contains("ذكّرني") {
+            XCTAssertTrue(card.detail.contains(snooze.title),
+                          "«\(snooze.title)» ليست كما في بطاقة \(card.id)")
+        }
+    }
+
+    /// وعنوانُ «ما الجديد» هو إصدارُ الحزمة نفسُه — وإلّا عُرضت بطاقاتُ إصدارٍ
+    /// على مستعمِلي إصدارٍ آخر، أو لم تُعرض أصلًا لأنّ الرقم لم يُرفع.
+    func testWhatsNewVersionMatchesTheShippedMarketingVersion() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let project = try String(contentsOf: root.appendingPathComponent("project.yml"), encoding: .utf8)
+        XCTAssertTrue(project.contains("MARKETING_VERSION: \"\(WhatsNewView.version)\""),
+                      "إصدار «ما الجديد» \(WhatsNewView.version) لا يطابق project.yml")
     }
 
     /// وسقفُ التنبيهات يُقرأ من `Reminders` ويُكتب غربيًّا: كان الرقم مكتوبًا
