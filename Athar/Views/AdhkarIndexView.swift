@@ -4,7 +4,11 @@ struct AdhkarIndexView: View {
     /// حين تُفتح من شاشة «الأقسام» تكون داخل مكدّس قائم، فلا تصنع مكدّسًا آخر.
     var embedded = false
     @EnvironmentObject private var store: AtharStore
+    @Environment(\.horizontalSizeClass) private var sizeClass
     @State private var query = ""
+
+    /// الشاشةُ العريضة — اللوحُ، والهاتفُ المطويّ حين يُفتح.
+    private var wide: Bool { sizeClass == .regular }
 
     private var filtered: [DhikrCategory] { AdhkarSearch.categories(matching: query) }
 
@@ -22,6 +26,14 @@ struct AdhkarIndexView: View {
                     // الشبكة الكسولة تخبّئ صفوفها فلا تُعاد صبغتها مع الطابع وإن مُرِّر
                     // اللون قيمةً — والمفتاح يعيد بناءها، كما في «اليوم» و«الأقسام».
                     LazyVStack(spacing: 12) {
+                        // أحدَ عشرَ بابًا في عمودٍ واحد على اللوح المفتوح: كلُّ صفٍّ
+                        // عرضُه سبعُمئة نقطة يحمل اسمًا وسطرًا وبقيّتُه بياض. عمودان
+                        // على الشاشة العريضة يُريان الأبوابَ كلَّها بلا تمرير.
+                        LazyVGrid(columns: wide
+                                  ? [GridItem(.flexible(), spacing: 12, alignment: .top),
+                                     GridItem(.flexible(), spacing: 12, alignment: .top)]
+                                  : [GridItem(.flexible(), spacing: 12, alignment: .top)],
+                                  spacing: 12) {
                         ForEach(Array(filtered.enumerated()), id: \.element.id) { i, category in
                             let match = firstMatch(in: category)
                             NavigationLink {
@@ -46,6 +58,7 @@ struct AdhkarIndexView: View {
                             .pressable()
                             .appearStagger(i)
                         }
+                        }
 
                         if filtered.isEmpty {
                             ContentUnavailableView(loc("لا توجد نتائج"), systemImage: "magnifyingglass",
@@ -56,7 +69,7 @@ struct AdhkarIndexView: View {
                     .id("\(store.effectiveTheme.rawValue)-\(store.unifyIcons)")
                     .padding(.horizontal, Theme.gutter)
                     .padding(.bottom, 32)
-                    .readableWidth()
+                    .readableWidth(wide ? 1000 : 680)
                 }
             }
             .navigationTitle(loc("الأذكار"))

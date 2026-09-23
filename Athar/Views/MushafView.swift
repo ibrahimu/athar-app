@@ -4,6 +4,7 @@ struct MushafView: View {
     /// حين تُفتح من شاشة «الأقسام» تكون داخل مكدّس قائم، فلا تصنع مكدّسًا آخر.
     var embedded = false
     @EnvironmentObject private var store: AtharStore
+    @Environment(\.horizontalSizeClass) private var sizeClass
     /// يُرصَد المحرّك هنا لا يُقرأ قراءةً عابرة: بطاقة التلاوة تعرض اسم القارئ
     /// وعدد السور المحمَّلة، ولا شيء في المتجر يُعيد رسم الشاشة عند تغيّرهما.
     @StateObject private var audio = Recitation.shared
@@ -45,6 +46,9 @@ struct MushafView: View {
         }
     }
 
+    /// الشاشةُ العريضة — اللوحُ، والهاتفُ المطويّ حين يُفتح.
+    private var wide: Bool { sizeClass == .regular }
+
     var body: some View {
         MaybeStack(embedded: embedded) {
             ZStack {
@@ -82,12 +86,30 @@ struct MushafView: View {
                             .pressable()
                         }
 
-                        ForEach(Array(filtered.enumerated()), id: \.element.id) { i, surah in
-                            NavigationLink { SurahReaderView(surahId: surah.id) } label: {
-                                SurahRow(surah: surah)
+                        // أربعَ عشرةَ ومئةُ سورةٍ في عمودٍ واحد على اللوح المفتوح:
+                        // صفٌّ عرضُه سبعُمئة نقطة يحمل اسمًا وسطرًا، وبقيّتُه بياض،
+                        // والفهرسُ يطول حتى يُملّ التمرير. عمودان على الشاشة العريضة
+                        // يختصران الطريق إلى النصف ويملآن الصفَّ.
+                        if wide {
+                            LazyVGrid(columns: [GridItem(.flexible(), spacing: 16, alignment: .top),
+                                                GridItem(.flexible(), spacing: 16, alignment: .top)],
+                                      spacing: 16) {
+                                ForEach(Array(filtered.enumerated()), id: \.element.id) { i, surah in
+                                    NavigationLink { SurahReaderView(surahId: surah.id) } label: {
+                                        SurahRow(surah: surah)
+                                    }
+                                    .pressable()
+                                    .appearStagger(i)
+                                }
                             }
-                            .pressable()
-                            .appearStagger(i)
+                        } else {
+                            ForEach(Array(filtered.enumerated()), id: \.element.id) { i, surah in
+                                NavigationLink { SurahReaderView(surahId: surah.id) } label: {
+                                    SurahRow(surah: surah)
+                                }
+                                .pressable()
+                                .appearStagger(i)
+                            }
                         }
 
                         if !hits.isEmpty {
@@ -116,7 +138,7 @@ struct MushafView: View {
                     // المشغّل المصغّر يطفو فوق آخر صف ورابط تنزيل؛ فيُحجز له
                     // أسفل القائمة بالقدر نفسه الذي تحجزه شاشة التلاوة.
                     .padding(.bottom, audio.surah == nil ? 30 : 112)
-                    .readableWidth(620)
+                    .readableWidth(wide ? 1000 : 620)
                 }
                 .scrollIndicators(.hidden)
                 // البحث يمسح ٦٢٣٦ آية ويجرّد تشكيلها — لو جرى في الخيط الرئيسي

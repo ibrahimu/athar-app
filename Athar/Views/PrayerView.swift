@@ -14,6 +14,7 @@ struct PrayerView: View {
     @State private var elapsedFor: Prayer?
     @State private var showCityPicker = false
     @Environment(\.layoutDirection) private var layoutDirection
+    @Environment(\.horizontalSizeClass) private var sizeClass
 
     /// النبضة تُبطل الشاشة كلها — البطل والقوس وقائمة المواقيت ونافذة القيام — فكانت تُعاد
     /// رسمًا ستّين مرة في الدقيقة من أجل سطرٍ واحد. العدّ التنازلي صار نصًّا يسوقه النظام
@@ -37,6 +38,10 @@ struct PrayerView: View {
         return (.fajr, fajr)
     }
 
+    /// الشاشةُ العريضة — اللوحُ، والهاتفُ المطويّ حين يُفتح. صنفُ الحجم لا
+    /// اتجاهُ الشاشة: المطويُّ المفتوح قريبٌ من المربّع فلا «طوليّ» له ولا «عرضيّ».
+    private var wide: Bool { sizeClass == .regular }
+
     var body: some View {
         MaybeStack(embedded: embedded) {
             ZStack {
@@ -47,20 +52,43 @@ struct PrayerView: View {
                 ScrollView {
                     VStack(spacing: 20) {
                         if store.timeZoneChangePending { travelBanner }
+                        // الصدرُ يبقى عريضًا على كل شاشة: العدّادُ والقوسُ هما ما
+                        // يُنظر إليه من بعيد، وقسمتُهما عمودين تصغّرهما بلا فائدة.
                         countdownCard.appearStagger(0)
                         dayArc.appearStagger(1)
-                        timesList.appearStagger(2)
-                        if store.travelMode { travelCard.appearStagger(2) }
-                        qiyamCard.appearStagger(3)
-                        secondCityCard.appearStagger(4)
-                        highLatitudeNote.appearStagger(4)
-                        qiblaLink.appearStagger(5)
-                        afterPrayerLink.appearStagger(6)
+                        if wide {
+                            // اللوحُ المفتوح (والمطويُّ حين يُفتح): جدولُ اليوم في
+                            // عمود، وما يتفرّع عنه في الآخر — فيُرى الجدولُ كاملًا
+                            // بلا تمرير، وتُرى بقيّةُ الشاشة معه في نظرةٍ واحدة.
+                            HStack(alignment: .top, spacing: 18) {
+                                VStack(spacing: 20) {
+                                    timesList.appearStagger(2)
+                                    if store.travelMode { travelCard.appearStagger(2) }
+                                }
+                                .frame(maxWidth: .infinity, alignment: .top)
+                                VStack(spacing: 20) {
+                                    qiyamCard.appearStagger(3)
+                                    secondCityCard.appearStagger(4)
+                                    highLatitudeNote.appearStagger(4)
+                                    qiblaLink.appearStagger(5)
+                                    afterPrayerLink.appearStagger(6)
+                                }
+                                .frame(maxWidth: .infinity, alignment: .top)
+                            }
+                        } else {
+                            timesList.appearStagger(2)
+                            if store.travelMode { travelCard.appearStagger(2) }
+                            qiyamCard.appearStagger(3)
+                            secondCityCard.appearStagger(4)
+                            highLatitudeNote.appearStagger(4)
+                            qiblaLink.appearStagger(5)
+                            afterPrayerLink.appearStagger(6)
+                        }
                         methodNote.appearStagger(7)
                     }
                     .padding(.horizontal, Theme.gutter)
                     .padding(.bottom, 30)
-                    .readableWidth()
+                    .readableWidth(wide ? 1000 : 680)
                 }
             }
             .navigationTitle(loc("الصلاة"))

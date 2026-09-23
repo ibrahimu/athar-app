@@ -86,7 +86,7 @@ struct RootView: View {
             if !tabs.contains(selection) { selection = .home }
         }
         // طلب «سيري» قد يسبق رسم الجذر (إقلاع بارد) أو يأتي والتطبيق حيّ — نستهلكه في الحالين.
-        .onAppear { consumePendingTab(); consumePendingRoute() }   // اختصار الأيقونة عند الإقلاع البارد يسبق الجذر أيضًا
+        .onAppear { openForcedTab(); consumePendingTab(); consumePendingRoute() }   // اختصار الأيقونة عند الإقلاع البارد يسبق الجذر أيضًا
         .onChange(of: store.pendingTab) { _, _ in consumePendingTab() }
         .onChange(of: store.pendingRoute) { _, _ in consumePendingRoute() }
         .fullScreenCover(item: $coveredRoute) { route in
@@ -136,6 +136,16 @@ struct RootView: View {
     /// يستهلك طلب «سيري»/الاختصار مرة واحدة: تبويبٌ في الشريط يُختار، وما سواه يُعرض غطاءً —
     /// ثم يُصفَّر الطلب حتى لا يُعاد فتحه مع كل تغيّر لاحق في المخزن. يُؤجَّل ما دام
     /// الترحيب معروضًا، لأن الجذر لا يستطيع عرض غطاءين معًا.
+
+    /// فتحُ تبويبٍ بعينه من سطر الأوامر — للقطات المتجر والفحص على المحاكي،
+    /// كما يفعل `-whatsnew` هنا و`-screen` في تطبيق التلفاز. لا أثرَ له في
+    /// الاستعمال العادي: لا أحد يُطلق تطبيقَ هاتفٍ بوسائط.
+    private func openForcedTab() {
+        let args = CommandLine.arguments
+        guard let i = args.firstIndex(of: "-tab"), i + 1 < args.count,
+              let tab = AppTab(rawValue: args[i + 1]), store.visibleTabs.contains(tab) else { return }
+        selection = tab
+    }
     private func consumePendingTab() {
         guard let tab = store.pendingTab, store.didOnboard else { return }
         store.pendingTab = nil
