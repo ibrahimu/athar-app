@@ -200,7 +200,7 @@ struct WirdView: View {
     private var note: some View {
         // النص الشرعي بخطّ النسخ ولون الحبر (لا صبغة)، والشرح تحته بخطّ الواجهة الخافت.
         VStack(spacing: 6) {
-            Text("«أحبُّ الأعمال إلى الله أدومها وإن قلّ»")
+            Text("«أحبُّ الأعمال إلى الله أدومها وإن قلّ» — متفق عليه")
                 .font(Theme.naskhFont(size: 14, scale: store.fontScale))
                 .foregroundStyle(Theme.inkSoft)
             Text(loc("القليل الدائم خير من الكثير المنقطع."))
