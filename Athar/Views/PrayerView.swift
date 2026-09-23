@@ -548,7 +548,7 @@ struct PrayerView: View {
                 CategoryRow(category: category, completed: store.completedToday.contains(category.id))
                     // الصفّ يقرأ ألوان الطابع ساكنةً في جسمه ومدخلاته لا تتغيّر، فيتخطّاه
                     // SwiftUI عند تبديل الطابع أو توحيد الأيقونات؛ نعيد بناءه بمفتاح الطابع.
-                    .id("\(store.appTheme)-\(store.unifyIcons)")
+                    .id("\(store.effectiveTheme)-\(store.unifyIcons)")
             }
             .pressable()
         }

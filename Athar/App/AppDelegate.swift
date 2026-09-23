@@ -60,6 +60,10 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
         let guardian = RefreshGuard()
         let work = Task { @MainActor in
             await Reminders.rescheduleAll(store: AtharStore.shared)
+            // ومن هنا يُسأل المتجرُ أيضًا: من لا يفتح «أثر» إلا في رمضان لا يعلم
+            // أنّ نسخته قديمة وقد أُصلحت فيها علّة. السؤال في الخلفية يبلغه وهو
+            // لم يفتحه، والجوابُ تنبيهٌ خافتٌ واحد لا يتكرّر لإصدارٍ قيل مرّة.
+            await UpdateCheck.shared.refreshInBackground()
             guardian.finish(task, success: true)
         }
         task.expirationHandler = {

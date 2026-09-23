@@ -53,7 +53,7 @@ struct AdhkarIndexView: View {
                                 .padding(.top, 60)
                         }
                     }
-                    .id("\(store.appTheme.rawValue)-\(store.unifyIcons)")
+                    .id("\(store.effectiveTheme.rawValue)-\(store.unifyIcons)")
                     .padding(.horizontal, Theme.gutter)
                     .padding(.bottom, 32)
                     .readableWidth()

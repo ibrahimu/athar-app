@@ -57,6 +57,9 @@ struct AtharApp: App {
                 // النافذة قد تُنشأ بعد أول onChange، وقد يعبث النظام بنمطها عند لقطات الخلفية —
                 // فتُعاد كتابته مع كل عودة.
                 WindowStyle.apply(preferredScheme)
+                // لباس الجمعة: دخل عليه الليلُ والتطبيقُ في الخلفية، فيُلبَس عند
+                // العودة لا عند الإقلاع التالي. والودجات تُعاد إن تبدّل وحده.
+                if store.refreshDress() { WidgetCenter.shared.reloadAllTimelines() }
                 SpotlightIndexer.indexIfNeeded()  // مرة لكل إصدار من الفهرس
                 // سؤالُ المتجر عن آخر إصدار — مرّة كل يوم على الأكثر، وفشلُه صامت.
                 UpdateCheck.shared.refresh()

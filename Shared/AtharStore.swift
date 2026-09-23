@@ -78,7 +78,9 @@ final class AtharStore: ObservableObject {
         self.defaults = defaults ?? UserDefaults(suiteName: AtharStore.appGroup) ?? .standard
         registerDefaults()
         // قبل أول رسم: وإلا رُسمت الشاشات بالطابع الافتراضي ولم تُعد.
-        Theme.current = AppTheme(rawValue: self.defaults.string(forKey: "athar.theme") ?? "") ?? .green
+        // عبر `effectiveTheme` لا عن المفتاح مباشرةً: من لبس لباس الجمعة يجده
+        // من أوّل رسمٍ يومَها، لا بعد أن تُرسم الشاشة بطابعه الأصل ثم تُعاد.
+        Theme.current = effectiveTheme
         BackgroundPattern.current = BackgroundPattern(rawValue: self.defaults.string(forKey: "athar.bgPattern") ?? "") ?? .stars
         Theme.unifyIcons = self.defaults.bool(forKey: "athar.unifyIcons")
         // مزامنة iCloud مؤجّلة لإصدار لاحق (تحتاج دمجًا آمنًا واختبارًا على أجهزة) — CloudSync.swift جاهز.

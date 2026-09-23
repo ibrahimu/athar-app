@@ -126,7 +126,7 @@ struct AhkamView: View {
             }
         }
         // الشبكة الكسولة تخبّئ بلاطاتها بألوان الطابع السابق؛ المفتاح يعيد بناءها مع الثيم.
-        .id("\(store.appTheme.rawValue)-\(store.unifyIcons)")
+        .id("\(store.effectiveTheme.rawValue)-\(store.unifyIcons)")
     }
 }
 

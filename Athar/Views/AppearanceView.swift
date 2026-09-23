@@ -27,6 +27,7 @@ struct AppearanceView: View {
                 } else {
                     lightingPicker
                     themes
+                    fridayDress
                     appIconPicker
                     widgetPalettePicker
                     iconStylePicker
@@ -159,6 +160,103 @@ struct AppearanceView: View {
                 .foregroundStyle(on ? accent : Theme.inkSoft)
         }
         .scaleEffect(on ? 1.03 : 1)
+    }
+
+    // MARK: لباس الجمعة
+
+    /// «الجمعة سيّد الأيام» — فله طابعٌ يُلبَس يومَه ثمّ يُخلع من نفسه ليلةَ السبت.
+    /// اختيارٌ لا افتراض: المفتاح مُطفأ حتى يطلبه صاحبه، ومتى أطفأه عاد كلُّ شيء.
+    /// والطابع الأصل محفوظٌ تحت اللباس لا يُمسّ — شبكةُ الطوابع أعلاه تبقى عليه.
+    @ViewBuilder private var fridayDress: some View {
+        let dressed = store.fridayDress && AtharStore.isFriday()
+        VStack(spacing: 8) {
+            SettingsGroupTitle(text: loc("يوم الجمعة"), tint: Theme.accent(for: "gold"))
+            SettingsCard {
+                SettingsRow(icon: "sparkles", tint: Theme.accent(for: "gold"),
+                            title: loc("لون خاص ليوم الجمعة"),
+                            subtitle: loc("كل جمعة يتغيّر لون التطبيق، وبعدها يرجع لونك")) {
+                    Toggle("", isOn: Binding(get: { store.fridayDress },
+                                             set: { on in
+                                                 store.fridayDress = on
+                                                 Haptics.tap(enabled: store.hapticsEnabled)
+                                                 reloadWidgetsIfDressed()
+                                             }))
+                        .labelsHidden()
+                        .accessibilityLabel(loc("لون خاص ليوم الجمعة"))
+                }
+            }
+
+            if store.fridayDress {
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 84), spacing: 12)], spacing: 12) {
+                    ForEach(AppTheme.allCases) { theme in
+                        Button {
+                            withAnimation(Motion.gentle) { store.fridayTheme = theme }
+                            Haptics.tap(enabled: store.hapticsEnabled)
+                            reloadWidgetsIfDressed()
+                        } label: {
+                            dressSwatch(theme)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(theme.title)
+                        .accessibilityAddTraits(store.fridayTheme == theme ? .isSelected : [])
+                    }
+                }
+                .accessibilityElement(children: .contain)
+                .accessibilityLabel(loc("طابع الجمعة"))
+
+                // يومَ الجمعة نفسِه: يقول له ما يراه بعينه، لئلّا يظنّ طابعه تبدّل عليه
+                // بلا سبب ويذهب يبحث عن الخلل. وسائرَ الأيام: يقول له متى يراه.
+                Text(store.fridayTheme == store.appTheme
+                     ? loc("اختر لونًا غير لونك الحالي حتى تفرق الجمعة عن باقي الأيام.")
+                     : dressed
+                       ? loc("اليوم الجمعة، ولون التطبيق %1$@ إلى آخر اليوم.", store.fridayTheme.title)
+                       : loc("يوم الجمعة يصير لون التطبيق %1$@، وبعدها يرجع %2$@.",
+                             store.fridayTheme.title, store.appTheme.title))
+                    .font(Theme.display(11))
+                    .foregroundStyle(Theme.inkFaint)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .animation(Motion.gentle, value: store.fridayDress)
+    }
+
+    /// مربّع طابع الجمعة: أصغر من مربّعات الطابع الأصل وبلا معاينة بطاقة — هذا
+    /// اختيارٌ ثانٍ تابع، فلا يزاحم الأوّلَ في الحجم ولا في ثقل النظر.
+    private func dressSwatch(_ theme: AppTheme) -> some View {
+        let on = store.fridayTheme == theme
+        let accent  = Color.adaptive(light: Color(hex: theme.accent.light),  dark: Color(hex: theme.accent.dark))
+        let accent2 = Color.adaptive(light: Color(hex: theme.accent2.light), dark: Color(hex: theme.accent2.dark))
+        let canvas  = Color.adaptive(light: Color(hex: theme.canvas.light),  dark: Color(hex: theme.canvas.dark))
+        return VStack(spacing: 6) {
+            ZStack {
+                RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous)
+                    .fill(LinearGradient(colors: [accent, accent2],
+                                         startPoint: .topTrailing, endPoint: .bottomLeading))
+                if on {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(canvas)
+                }
+            }
+            .frame(height: 40)
+            .overlay(
+                RoundedRectangle(cornerRadius: Theme.Radius.md, style: .continuous)
+                    .strokeBorder(on ? accent : Theme.hairline.opacity(0.6), lineWidth: on ? 2.5 : 1)
+            )
+            Text(theme.title)
+                .font(Theme.display(11, weight: on ? .semibold : .regular))
+                .foregroundStyle(on ? accent : Theme.inkSoft)
+        }
+    }
+
+    /// الودجات لا تُعاد إلا إن كان اللباس مرئيًّا الآن — يومَ الثلاثاء لا شيء تبدّل
+    /// على الشاشة الرئيسية، فإيقاظ الإضافة لأجله عبث.
+    private func reloadWidgetsIfDressed() {
+        guard AtharStore.isFriday() else { return }
+        WidgetCenter.shared.reloadAllTimelines()
+        if store.liveActivityEnabled { LiveActivityManager.sync(store: store) }
     }
 
     // MARK: أيقونة التطبيق

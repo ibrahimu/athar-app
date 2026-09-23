@@ -161,6 +161,7 @@ enum DataExport {
              ["athar.recitation.", "athar.ayah", "athar.tafsir."]),
             ("look", loc("المظهر والترتيب"), "paintbrush.fill", "green",
              ["athar.theme", "athar.appearance", "athar.bgPattern", "athar.unifyIcons",
+              "athar.fridayDress", "athar.fridayTheme",
               "athar.uiFont", "athar.fontScale", "athar.tabs.", "athar.home.", "athar.widgetPalette",
               "athar.countTapArea", "athar.hapticsEnabled", "athar.language"]),
             ("zakat", loc("الزكاة"), "banknote.fill", "calm",

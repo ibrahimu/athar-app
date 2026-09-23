@@ -230,6 +230,8 @@ extension AtharStore {
         static let bgPattern  = "athar.bgPattern"
         static let unifyIcons = "athar.unifyIcons"
         static let uiFont     = "athar.uiFont"
+        static let fridayDress = "athar.fridayDress"
+        static let fridayTheme = "athar.fridayTheme"
     }
 
     /// التبويبات الظاهرة بترتيب المستخدم.
@@ -282,9 +284,54 @@ extension AtharStore {
         get { AppTheme(rawValue: defaults.string(forKey: TKey.theme) ?? "") ?? .green }
         set {
             defaults.set(newValue.rawValue, forKey: TKey.theme)
-            Theme.current = newValue
+            // لا `newValue` مباشرةً: يوم الجمعة اللباسُ فوق الطابع، فمن بدّل طابعه
+            // الأصل يومَها حفظناه له ولم نخلع عنه لباسَ الجمعة قبل أوانه.
+            Theme.current = effectiveTheme
             objectWillChange.send()
         }
+    }
+
+    // MARK: - لباس الجمعة
+
+    /// «الجمعة سيّد الأيام» — فله في أثر طابعٌ يُلبَس يومَه ثمّ يُخلع.
+    ///
+    /// اختيارٌ لا افتراض: من لم يطلبه لم يتبدّل عليه شيء. ومن طلبه فطابعُه الأصل
+    /// محفوظٌ كما هو تحت اللباس — ليلةَ السبت يعود إليه بلا أن يُعيده بيده.
+    var fridayDress: Bool {
+        get { defaults.bool(forKey: TKey.fridayDress) }
+        set {
+            defaults.set(newValue, forKey: TKey.fridayDress)
+            Theme.current = effectiveTheme
+            objectWillChange.send()
+        }
+    }
+
+    /// الطابع الذي يُلبَس يوم الجمعة. الافتراض عسليٌّ يميل إلى الذهب — أبْيَنُ
+    /// ما في الاثني عشر عن الأخضر الأصل، فيُعرف اليومُ من أوّل نظرة.
+    var fridayTheme: AppTheme {
+        get { AppTheme(rawValue: defaults.string(forKey: TKey.fridayTheme) ?? "") ?? .amber }
+        set {
+            defaults.set(newValue.rawValue, forKey: TKey.fridayTheme)
+            Theme.current = effectiveTheme
+            objectWillChange.send()
+        }
+    }
+
+    /// الطابع الذي تُرسم به الشاشة الآن: طابعُ صاحبه، إلا يومَ الجمعة إن لبس.
+    /// تقرؤه الشاشاتُ والودجاتُ والساعة جميعًا — لا `appTheme` — فلا يلبس بعضُها
+    /// ويبقى بعضُها على حاله.
+    var effectiveTheme: AppTheme { dressedTheme(on: Date()) }
+
+    /// ما يُلبَس في يومٍ بعينه — منفصلًا عن «الآن» حتى يُقاس ولا يُنتظر يوم الجمعة.
+    func dressedTheme(on date: Date, calendar: Calendar = .current) -> AppTheme {
+        (fridayDress && AtharStore.isFriday(date, calendar: calendar)) ? fridayTheme : appTheme
+    }
+
+    /// هل اليومُ جمعة؟ بحساب التقويم المدنيّ (الجمعة = ٦) كما في سائر التطبيق:
+    /// بطاقةُ الجمعة، وسننُها، وتنبيهُ الكهف — كلُّها على هذا القياس، فلو خالفناه
+    /// هنا لبس أثر لباسَ الجمعة في يومٍ لا يعدّه هو جمعة.
+    static func isFriday(_ date: Date = Date(), calendar: Calendar = .current) -> Bool {
+        calendar.component(.weekday, from: date) == 6
     }
 
     /// خط الواجهة. النص الشرعي لا يتأثر به (يبقى نسخًا)، ولا تحمله الساعة والودجات
@@ -329,9 +376,21 @@ extension AtharStore {
         }
     }
 
+    /// يُنادى مع كل عودةٍ إلى التطبيق: قد يدخل عليه الليلُ وهو في الخلفية فيصبح
+    /// على جمعةٍ بطابع الخميس، أو تنقضي الجمعةُ وهو نائم فيبقى لابسًا. يُرجع
+    /// `true` إن تبدّل اللباس فعلًا — فتُعاد الودجات حينئذ وحدها، لا مع كل عودة.
+    @discardableResult
+    func refreshDress() -> Bool {
+        let wanted = effectiveTheme
+        guard Theme.current != wanted else { return false }
+        Theme.current = wanted
+        objectWillChange.send()
+        return true
+    }
+
     /// تُستدعى مرة عند الإقلاع لمزامنة الطابع والنقش والخط مع الحالة العامة.
     func applyStoredTheme() {
-        Theme.current = appTheme
+        Theme.current = effectiveTheme
         BackgroundPattern.current = backgroundPattern
         AppFont.current = uiFont
         Theme.unifyIcons = unifyIcons

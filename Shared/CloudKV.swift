@@ -118,6 +118,7 @@ final class CloudKV {
     static let keys: [String] = [
         "athar.tabs.visible", "athar.home.cards", "athar.home.cards.hidden",
         "athar.theme", "athar.appearance", "athar.bgPattern", "athar.unifyIcons",
+        "athar.fridayDress", "athar.fridayTheme",
         "athar.hadith.favorites", "athar.mushaf.bookmarks", "athar.mushaf.highlights",
         // التدبّرات تُزامَن كما تُزامَن العلامة والتظليل: ما كتبه القارئ على آيته أولى بالبقاء.
         NoteArchive.key,

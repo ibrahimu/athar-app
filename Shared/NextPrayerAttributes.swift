@@ -33,7 +33,7 @@ extension AtharStyle.Moment {
         case .sunset:    return "sunset"
         // اسم الطابع جزءٌ من المفتاح: حالة النشاط لا تتبدّل بتبديل الطابع وحده، فيبقى النشاط
         // القائم بلونه القديم حتى الأذان التالي. بالمفتاح المركّب تتبدّل الحالة فيُعاد رسمه.
-        case .theme:     return "theme:" + AtharStore.shared.appTheme.rawValue
+        case .theme:     return "theme:" + AtharStore.shared.effectiveTheme.rawValue
         }
     }
 

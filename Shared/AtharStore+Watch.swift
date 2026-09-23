@@ -12,7 +12,7 @@ extension AtharStore {
             "calc": calculationMethod.rawValue, "asr": asrMethod.rawValue,
             // للساعة حاويتها لا يبلغها دفتر الهاتف، فيُحمل إليها اللون والطابع مع المواقيت
             // وإلا بقيت تلبس وقت اليوم مهما اختار «لون الويدجت» في المظهر.
-            "palette": widgetPalette.rawValue, "theme": appTheme.rawValue,
+            "palette": widgetPalette.rawValue, "theme": effectiveTheme.rawValue,
             "sent": Date().timeIntervalSince1970,
         ]
         for (p, m) in prayerOffsets { d["offset." + p.rawValue] = m }

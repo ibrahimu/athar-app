@@ -84,7 +84,7 @@ struct SectionsView: View {
                     }
                 }
             }
-            .id("\(store.appTheme.rawValue)-\(store.unifyIcons)-\(store.visibleTabs.map(\.rawValue).joined())")
+            .id("\(store.effectiveTheme.rawValue)-\(store.unifyIcons)-\(store.visibleTabs.map(\.rawValue).joined())")
         }
     }
 }

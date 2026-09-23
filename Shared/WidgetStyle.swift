@@ -39,7 +39,7 @@ enum AtharStyle {
             case .sunset:    return [Color(hex: 0x2B1E2C), Color(hex: 0x3E2438)]
             // ورق الطابع الداكن وسطحه البديل — العمق نفسه الذي للّحظات، فالنص فوقه مقروء.
             case .theme:
-                let t = AtharStore.shared.appTheme
+                let t = AtharStore.shared.effectiveTheme
                 return [Color(hex: t.canvas.dark), Color(hex: t.surfaceAlt.dark)]
             }
         }
@@ -53,7 +53,7 @@ enum AtharStyle {
             case .noon:      return Color(hex: 0x7FD9AE)
             case .afternoon: return Color(hex: 0xE0B06A)
             case .sunset:    return Color(hex: 0xE39BB4)
-            case .theme:     return Color(hex: AtharStore.shared.appTheme.accent.dark)
+            case .theme:     return Color(hex: AtharStore.shared.effectiveTheme.accent.dark)
             }
         }
 

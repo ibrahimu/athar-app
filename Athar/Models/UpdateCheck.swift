@@ -54,6 +54,18 @@ final class UpdateCheck: ObservableObject {
         Task { await fetch(); fetching = false }
     }
 
+    /// نسخةٌ تُنتظَر — لمهمّة تجديد الخلفية. `refresh()` تطلق المهمّة وتعود، والنظام
+    /// يُجمِّد التطبيق فور `setTaskCompleted` فيموت السؤالُ قبل أن يصل جوابه.
+    /// وهنا يُنتظر الجواب، والمهلةُ في الطلب نفسه ثماني ثوانٍ فلا يُستنفد عمر المهمّة.
+    func refreshInBackground() async {
+        guard !fetching else { return }
+        let last = defaults.object(forKey: Key.lastCheck) as? Date
+        if let last, Date().timeIntervalSince(last) < Self.interval { return }
+        fetching = true
+        await fetch()
+        fetching = false
+    }
+
     private func fetch() async {
         let id = Bundle.main.bundleIdentifier ?? "com.ibrahim.athar"
         // بلا معرّف بلد: المتجر يستنتجه، والسؤال عن الإصدار لا عن السعر.
