@@ -35,14 +35,12 @@ struct HomeView: View {
                         // ولا تُعرض إلا إن وُجد أحدثُ ولم يُغلقها صاحبها.
                         updateBanner
                         // «اليوم على كيفي»: البطاقات وترتيبها من اختيار المستخدم (المظهر ← بطاقات اليوم).
-                        ForEach(Array(store.homeCards.enumerated()), id: \.element) { i, card in
-                            homeCard(card).appearStagger(i + 1)
-                        }
+                        cards
                         footerNote.appearStagger(store.homeCards.count + 1)
                     }
                     .padding(.horizontal, Theme.gutter)
                     .padding(.bottom, 32)
-                    .readableWidth()
+                    .readableWidth(wide ? 1000 : 680)
                     // عرضُ المحتوى يُثبَّت على عرض الحاوية بالضبط: `ScrollView` عموديٌّ
                     // يسمح بالجرّ الأفقي متى صار محتواه أعرضَ من إطاره ولو بنقطة —
                     // وقد رُئيت الشاشةُ الرئيسية على جهاز مُختبِرٍ تنزلق يمينًا ويسارًا.
@@ -89,6 +87,49 @@ struct HomeView: View {
     }
 
     // MARK: بطاقات اليوم
+
+    /// الشاشةُ العريضة: اللوحُ المفتوح (iPad، والهاتفُ المطويّ حين يُفتح) يسع
+    /// عمودين. وعمودٌ واحدٌ عليه يترك نصفَ اللوح بياضًا ويمطّ كلَّ بطاقةٍ حتى
+    /// يتباعد عنوانُها عن قيمتها بشبرٍ من الفراغ.
+    private var wide: Bool { sizeClass == .regular }
+
+    /// البطاقات: عمودٌ على الهاتف المطبق، وعمودان على اللوح المفتوح.
+    ///
+    /// والقسمةُ تبادلٌ لا نصفان: ترتيبُ صاحبها محفوظٌ في القراءة — الأولى في
+    /// أعلى اليمين، والثانية في أعلى اليسار، والثالثة تحت الأولى — فمن رتّب
+    /// «اليوم» على هاتفه وجده على اللوح بالترتيب نفسه، لا مقلوبًا ولا مبعثرًا.
+    /// (ولا قياسَ لارتفاعاتٍ يوازَن بها: البطاقاتُ تتبدّل بتبدّل اليوم نفسه،
+    /// فميزانٌ يُحسب مرّةً يختلّ في الساعة التالية.)
+    @ViewBuilder private var cards: some View {
+        if wide {
+            let split = Self.twoColumns(store.homeCards)
+            HStack(alignment: .top, spacing: 18) {
+                column(split.first)
+                column(split.second)
+            }
+        } else {
+            ForEach(Array(store.homeCards.enumerated()), id: \.element) { i, card in
+                homeCard(card).appearStagger(i + 1)
+            }
+        }
+    }
+
+    /// القسمةُ نفسُها منفصلةً عن الرسم لتُقاس: الأولى والثالثة والخامسة في
+    /// العمود الأوّل (الأيمن في العربية)، والثانية والرابعة في الثاني. ويُحمل
+    /// مع كل بطاقةٍ رقمُها الأصلُ فيبقى تسلسلُ ظهورها كما هو على الهاتف.
+    static func twoColumns(_ cards: [HomeCard]) -> (first: [(Int, HomeCard)], second: [(Int, HomeCard)]) {
+        let all = cards.enumerated().map { ($0.offset, $0.element) }
+        return (all.filter { $0.0.isMultiple(of: 2) }, all.filter { !$0.0.isMultiple(of: 2) })
+    }
+
+    private func column(_ items: [(Int, HomeCard)]) -> some View {
+        VStack(alignment: .leading, spacing: 26) {
+            ForEach(items, id: \.1) { i, card in
+                homeCard(card).appearStagger(i + 1)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .top)
+    }
 
     @ViewBuilder
     private func homeCard(_ card: HomeCard) -> some View {
@@ -653,7 +694,10 @@ struct HomeView: View {
                 }
                 .buttonStyle(.plain)
             }
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: sizeClass == .regular ? 3 : 2), spacing: 12) {
+            // عمودان دائمًا لا ثلاثة على اللوح: هذه الشبكة داخل بطاقةٍ من بطاقات
+            // «اليوم»، وعلى الشاشة العريضة تصير البطاقاتُ عمودين — فثلاثُ بلاطاتٍ
+            // في نصف لوحٍ تضيق حتى يُقطَّع اسمُ الذكر.
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: 2), spacing: 12) {
                 ForEach(AdhkarLibrary.categories.prefix(6)) { category in
                     NavigationLink {
                         DhikrSessionView(category: category)
