@@ -111,7 +111,9 @@ struct HajjView: View {
     }
 
     private var footer: some View {
-        Text("﴿ وَأَتِمُّوا۟ ٱلْحَجَّ وَٱلْعُمْرَةَ لِلَّهِ ﴾")
+        // بلا قوسين مزخرفين: خطّ Noto Naskh المضمَّن لا يحوي ﴿ ﴾ فتظهر نقاطًا
+        // مشوّهة في ذيل الصفحة — كما في ورقة التفسير سواءً بسواء.
+        Text("وَأَتِمُّوا۟ ٱلْحَجَّ وَٱلْعُمْرَةَ لِلَّهِ")
             .font(Theme.dhikrFont(size: 16))
             .foregroundStyle(Theme.inkFaint)
             .frame(maxWidth: .infinity)

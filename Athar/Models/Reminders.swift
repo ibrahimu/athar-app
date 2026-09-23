@@ -135,8 +135,14 @@ enum Reminders {
             guard let day = calendar.date(byAdding: .day, value: dayOffset, to: now),
                   let times = store.prayerTimes(for: day) else { continue }
 
+            // وضع السفر بجمعٍ: الصلاةُ المضمومة إلى أختها لا يُؤذَّن لها وحدها —
+            // وإلّا نُودي لعصرٍ قد صُلّي مع الظهر. والمسافرُ يعرف من النداء الواحد
+            // أنّهما معًا. (وبلا جمعٍ لا تُطوى صلاة: القصرُ عرضٌ لا جدولة.)
+            let join = store.travelMode ? store.travelJoin : .none
+
             for entry in times.ordered where entry.prayer.isPrayer {
                 guard entry.date > now else { continue }
+                guard !join.merged(into: entry.prayer) else { continue }
                 // تخصيص كل صلاة: قد تُعطَّل، أو تُنبَّه بنغمة النظام، أو صامتة، أو بتنبيه قبلي خاص.
                 let prefs = store.prayerPrefs(entry.prayer)
                 guard prefs.enabled else { continue }
@@ -144,8 +150,16 @@ enum Reminders {
                 let content = UNMutableNotificationContent()
                 // العنوان اسم الصلاة وحده، والسطر الثاني نداؤها ومكانها ووقتها، والمتن آية
                 // أو حديث ثابت يتبدّل مع الأيام — بدل «الرياض — حان وقت الظهر» الجافّة.
-                content.title = entry.prayer.title
-                content.subtitle = loc("حيّ على الصلاة · %1$@ · %2$@", store.placeName, clockText(entry.date, store: store))
+                // ومع الجمع يحمل العنوانُ الصلاتين معًا، والسطرُ الثاني نوعَ الجمع —
+                // فيُعرف من التنبيه نفسه أنّ العصر يُصلَّى الآن مع الظهر.
+                if let pair = join.pair(at: entry.prayer) {
+                    content.title = loc("%1$@ و%2$@", pair.first.title, pair.second.title)
+                    content.subtitle = loc("%1$@ · %2$@ · %3$@", join.title, store.placeName,
+                                           clockText(entry.date, store: store))
+                } else {
+                    content.title = entry.prayer.title
+                    content.subtitle = loc("حيّ على الصلاة · %1$@ · %2$@", store.placeName, clockText(entry.date, store: store))
+                }
                 content.body = athanBody(for: entry.prayer, dayOffset: dayOffset)
                 switch prefs.soundMode {
                 case .athan:  content.sound = athanSound(store)

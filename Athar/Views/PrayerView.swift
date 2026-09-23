@@ -50,6 +50,7 @@ struct PrayerView: View {
                         countdownCard.appearStagger(0)
                         dayArc.appearStagger(1)
                         timesList.appearStagger(2)
+                        if store.travelMode { travelCard.appearStagger(2) }
                         qiyamCard.appearStagger(3)
                         secondCityCard.appearStagger(4)
                         highLatitudeNote.appearStagger(4)
@@ -287,10 +288,21 @@ struct PrayerView: View {
         return HStack(spacing: 12) {
             IconChip(icon: entry.prayer.icon, tint: tint, size: .sm)
 
-            Text(entry.prayer.title)
-                .font(Theme.display(17, weight: isNext ? .bold : .regular))
-                .foregroundStyle(entry.prayer.isPrayer ? Theme.ink : Theme.inkSoft)
-                .layoutPriority(1)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(entry.prayer.title)
+                    .font(Theme.display(17, weight: isNext ? .bold : .regular))
+                    .foregroundStyle(entry.prayer.isPrayer ? Theme.ink : Theme.inkSoft)
+                // في السفر وحده يُكتب العدد: في الحضر يعرفه كلُّ أحد، وذكرُه
+                // يزحم الصفَّ بما لا يفيد. والجمعُ يُقال هنا لا في سطرٍ آخر.
+                if store.travelMode, entry.prayer.isPrayer,
+                   let rakaat = store.rakaatText(entry.prayer) {
+                    Text(travelJoinNote(entry.prayer) ?? rakaat)
+                        .font(Theme.display(11))
+                        .foregroundStyle(Theme.inkFaint)
+                        .lineLimit(1)
+                }
+            }
+            .layoutPriority(1)
 
             Spacer(minLength: 8)
 
@@ -389,6 +401,109 @@ struct PrayerView: View {
 
     // MARK: المسافر
 
+    /// ما يُكتب تحت اسم الصلاة في السفر: «تُصلَّى مع الظهر» للمضمومة، و«الظهر
+    /// والعصر جمعًا» للجامعة، وعددُ الركعات لما سواهما.
+    private func travelJoinNote(_ prayer: Prayer) -> String? {
+        let join = store.travelJoin
+        if join.merged(into: prayer) {
+            let with: Prayer = (prayer == .asr) ? .dhuhr : (prayer == .dhuhr ? .asr
+                              : (prayer == .isha ? .maghrib : .isha))
+            return loc("تُصلَّى مع %1$@", with.title)
+        }
+        if let pair = join.pair(at: prayer) {
+            return loc("%1$@ و%2$@ — %3$@", pair.first.title, pair.second.title, join.title)
+        }
+        return nil
+    }
+
+    /// بطاقةُ السفر: تظهر ما دام الوضع مشتغلًا، تقول منذ متى ومن أين، وتُبدّل
+    /// الجمع، وتُطفئ. ودليلُ القصر آيتُه تُحلّ من المصحف لا تُكتب هنا.
+    private var travelCard: some View {
+        AtharCard(padding: 16, elevation: .e2, tint: Theme.accent(for: "sea")) {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 10) {
+                    IconChip(icon: "airplane", tint: Theme.accent(for: "sea"), size: .sm)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(loc("وضع السفر"))
+                            .font(Theme.display(15, weight: .semibold))
+                            .foregroundStyle(Theme.ink)
+                        Text(travelSinceText)
+                            .font(Theme.display(11))
+                            .foregroundStyle(Theme.inkFaint)
+                            .lineLimit(2)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                    Spacer(minLength: 6)
+                    Button {
+                        withAnimation(Motion.gentle) { store.travelMode = false }
+                        Haptics.tap(enabled: store.hapticsEnabled)
+                        Task { await Reminders.rescheduleAll(store: store) }
+                    } label: {
+                        Text(loc("انتهى سفري"))
+                            .font(Theme.display(12, weight: .semibold))
+                            .foregroundStyle(Theme.inkSoft)
+                            .padding(.horizontal, 12).padding(.vertical, 8)
+                            .background(Capsule().fill(Theme.surfaceAlt))
+                    }
+                    .buttonStyle(.plain)
+                }
+
+                // الجمع اختيارٌ ثلاثيّ صريح: بلا جمع (قصرٌ فقط)، أو تقديم، أو تأخير.
+                Picker("", selection: Binding(
+                    get: { store.travelJoin },
+                    set: { value in
+                        store.travelJoin = value
+                        Haptics.tap(enabled: store.hapticsEnabled)
+                        // النداء يتبع الاختيار في لحظته — لا عند الفتح التالي.
+                        Task { await Reminders.rescheduleAll(store: store) }
+                    })) {
+                    ForEach(TravelJoin.allCases) { Text($0.title).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .accessibilityLabel(loc("الجمع في السفر"))
+
+                Text(store.travelJoin.detail)
+                    .font(Theme.display(12))
+                    .foregroundStyle(Theme.inkSoft)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                // الآية بمرجعها — نصّها من المصحف وعزوها من اسم سورته ورقمها.
+                if let ayah = Quran.text(Travel.proof), let surah = Quran.surah(Travel.proof.surah) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        // بلا قوسين مزخرفين: خطّ Noto Naskh المضمَّن لا يحوي ﴿ ﴾ فتظهر
+                        // نقاطًا مشوّهة (وهي القاعدة نفسها في ورقة التفسير). اللونُ
+                        // وخطُّ النسخ وسطرُ العزو تحتها تكفي لتمييزها آيةً.
+                        Text(ayah)
+                            .font(Theme.dhikrFont(size: 15, scale: store.fontScale))
+                            .foregroundStyle(Theme.accent(for: "sea"))
+                            .lineSpacing(6)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Text(loc("سورة %1$@: %2$@", surah.name, Travel.proof.ayah.counterText))
+                            .font(Theme.display(11))
+                            .foregroundStyle(Theme.inkFaint)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+                Text(Travel.disclaimer)
+                    .font(Theme.display(11))
+                    .foregroundStyle(Theme.inkFaint)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+    }
+
+    /// «منذ اليوم من الرياض» / «منذ 3 أيام من الرياض» — ومن نسيه شهرًا يراه مكتوبًا.
+    private var travelSinceText: String {
+        let days = store.travelDays
+        let since = days == 0 ? loc("منذ اليوم") : (days == 1 ? loc("منذ أمس")
+                     : loc("منذ %1$@ أيام", days.counterText))
+        guard let place = store.travelPlace, !place.isEmpty else { return since }
+        return loc("%1$@ · من %2$@", since, place)
+    }
+
     /// تغيّرت منطقة الجهاز الزمنية: نسأل قبل أن نبدّل المواقيت بصمت.
     private var travelBanner: some View {
         AtharCard(padding: 14, tint: Theme.accent(for: "gold")) {
@@ -414,12 +529,27 @@ struct PrayerView: View {
                     }
                     .pressable()
                     .disabled(location.isResolving)
+                    // وبابٌ ثانٍ: من بدّل منطقته فهو مسافرٌ في الغالب، وحاجتُه إلى
+                    // القصر والجمع قبل حاجته إلى ضبط دقيقتين. ولا يُشغَّل من نفسه:
+                    // الضغطةُ ضغطتُه، فالتطبيق لا يحكم على أحد بأنّه مسافر.
+                    Button {
+                        withAnimation(Motion.gentle) {
+                            store.travelMode = true
+                            store.timeZoneChangePending = false
+                        }
+                        Haptics.tap(enabled: store.hapticsEnabled)
+                        Task { await Reminders.rescheduleAll(store: store) }
+                    } label: {
+                        Text(loc("أنا مسافر")).font(Theme.display(13, weight: .semibold)).foregroundStyle(Theme.inkSoft)
+                            .padding(.horizontal, 14).padding(.vertical, 10)
+                            .background(Capsule().fill(Theme.surfaceAlt))
+                    }
+                    .buttonStyle(.plain)
                     Button {
                         store.timeZoneChangePending = false
                     } label: {
-                        Text(loc("لاحقًا")).font(Theme.display(13, weight: .semibold)).foregroundStyle(Theme.inkSoft)
-                            .padding(.horizontal, 14).padding(.vertical, 10)
-                            .background(Capsule().fill(Theme.surfaceAlt))
+                        Text(loc("لاحقًا")).font(Theme.display(13, weight: .semibold)).foregroundStyle(Theme.inkFaint)
+                            .padding(.horizontal, 10).padding(.vertical, 10)
                     }
                     .buttonStyle(.plain)
                 }

@@ -12,6 +12,7 @@ struct PrayerSettingsView: View {
         ScrollView {
             VStack(spacing: 30) {
                 times
+                travel
                 alerts
             }
             .padding(.horizontal, Theme.gutter)
@@ -42,6 +43,45 @@ struct PrayerSettingsView: View {
             // الكسوة الموحّدة تثبّت اتجاه الكتابة وتوحّد شكل الورقة مع نفس المنتقي في المواقيت والقبلة.
             LocationPickerHost(store: store)
                 .atharSheetChrome()
+        }
+    }
+
+    // MARK: السفر
+
+    /// بابُ وضع السفر لمن لم يعرضه عليه تبدّلُ المنطقة الزمنية — ومن يسافر
+    /// داخل بلده لا تتبدّل منطقتُه أصلًا. والتفصيلُ (الجمع والدليل) في بطاقة
+    /// «الصلاة» نفسها، فلا يُكتب مرّتين ولا يُضبط من موضعين.
+    private var travel: some View {
+        VStack(spacing: 8) {
+            SettingsGroupTitle(text: loc("السفر"), tint: Theme.accent(for: "sea"))
+            SettingsCard {
+                SettingsRow(icon: "airplane", tint: Theme.accent(for: "sea"),
+                            title: loc("وضع السفر"),
+                            subtitle: loc("ركعتان في الرباعية، ويمكنك جمع الصلاتين")) {
+                    Toggle("", isOn: Binding(
+                        get: { store.travelMode },
+                        set: { on in
+                            store.travelMode = on
+                            Haptics.tap(enabled: store.hapticsEnabled)
+                            refreshPrayers()
+                        }))
+                        .labelsHidden()
+                        .accessibilityLabel(loc("وضع السفر"))
+                }
+                if store.travelMode {
+                    SettingsDivider()
+                    SettingsRow(icon: "arrow.triangle.merge", tint: Theme.accent(for: "dusk"),
+                                title: loc("الجمع"), subtitle: store.travelJoin.detail) {
+                        SettingsValue(text: store.travelJoin.title)
+                    }
+                }
+            }
+            if store.travelMode {
+                Text(loc("تجد تفاصيله وتبديل الجمع في شاشة «الصلاة»."))
+                    .font(Theme.display(11))
+                    .foregroundStyle(Theme.inkFaint)
+                    .frame(maxWidth: .infinity)
+            }
         }
     }
 

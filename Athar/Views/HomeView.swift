@@ -759,9 +759,11 @@ struct HomeView: View {
     private var footerNote: some View {
         // النصّ يُحلّ من quran.json بمعرّفه: كان مكتوبًا بالرسم الإملائي فيختلف
         // حرفُه عن الآية نفسها في المصحف (٢:١٥٢) داخل التطبيق الواحد.
-        Text("﴿ " + (Quran.text(AyahRef(surah: 2, ayah: 152)).map {
+        // وبلا قوسين مزخرفين: خطّ Noto Naskh المضمَّن لا يحوي ﴿ ﴾ فتُرسمان نقطتين
+        // مشوّهتين في ذيل الشاشة — والقاعدة نفسها في ورقة التفسير.
+        Text(Quran.text(AyahRef(surah: 2, ayah: 152)).map {
             $0.split(separator: " ").prefix(2).joined(separator: " ")
-        } ?? "") + " ﴾")
+        } ?? "")
             .font(Theme.dhikrFont(size: 16))
             .foregroundStyle(Theme.inkFaint)
             .frame(maxWidth: .infinity)

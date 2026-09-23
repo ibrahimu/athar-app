@@ -48,3 +48,25 @@ final class ScriptureAttributionTests: XCTestCase {
         }
     }
 }
+
+extension ScriptureAttributionTests {
+    /// القوسان المزخرفان ﴿ ﴾ ليسا في خطّ Noto Naskh المضمَّن، فيُرسمان نقطتين
+    /// مشوّهتين. قاعدةُ ورقة التفسير: لا يُكتبان مع خطّ النسخ — واللونُ وسطرُ
+    /// العزو يكفيان. وهذا الاختبار يحرسها في كل الشاشات.
+    func testOrnateBracketsNeverMeetTheEmbeddedNaskhFont() throws {
+        let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+        let views = root.appendingPathComponent("Athar/Views")
+        let files = try FileManager.default.contentsOfDirectory(at: views, includingPropertiesForKeys: nil)
+            .filter { $0.pathExtension == "swift" }
+        for file in files {
+            let lines = try String(contentsOf: file, encoding: .utf8).components(separatedBy: "\n")
+            for (i, line) in lines.enumerated() where line.contains("﴿") {
+                // التعليقاتُ تشرح القاعدة فتذكر القوسين — ولا تُرسم.
+                guard !line.trimmingCharacters(in: .whitespaces).hasPrefix("//") else { continue }
+                let window = lines[i..<min(i + 4, lines.count)].joined(separator: "\n")
+                XCTAssertFalse(window.contains("dhikrFont") || window.contains("naskhFont"),
+                               "\(file.lastPathComponent):\(i + 1)")
+            }
+        }
+    }
+}
